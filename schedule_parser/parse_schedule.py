@@ -81,44 +81,92 @@ COLOR_TO_TYPE: dict[str, str] = {
     "FFD9D2E9": "additional",
 }
 
-# Каноническое расписание звонков ФРФиКТ (85-минутные пары + перерывы).
-# Время в столбце «Время» в таблицах year1/year2 — устаревшее 80-минутное, потому
-# мы детерминированно подменяем его по номеру пары. Для магистратуры pair_number=None,
-# и подмена не срабатывает — там остаётся время из ячейки.
-PAIR_BELLS: dict[int, tuple[str, str]] = {
-    1: ("09:00", "10:25"),
-    2: ("10:35", "12:00"),
-    3: ("12:10", "13:35"),
-    4: ("14:00", "15:25"),
-    5: ("15:35", "17:00"),
-    6: ("17:20", "18:45"),
-    7: ("18:55", "20:20"),
-    8: ("20:30", "21:55"),
-}
+# Расписание звонков резолвится из самих таблиц. Каждый лист бакалавриата содержит
+# столбец «Время». Собираем кандидатов (pair → [(start, end), …]) со всех листов
+# и для каждой пары выбираем слот с самой большой длительностью — это решает случаи, когда в одной
+# из таблиц забито устаревшее время (напр. 80-мин вместо 85-мин).
+# При равной длительности — слот, который встречается в большем числе ячеек (более надёжный сигнал).
+BellMap = dict[int, tuple[str, str]]
+BellCandidates = dict[int, list[tuple[str, str]]]
 
 
-def bells_for_pair(pair: int | str | None) -> tuple[str | None, str | None]:
-    """Каноническое время для пары или диапазона пар.
+def _duration_minutes(t_start: str, t_end: str) -> int:
+    h1, m1 = map(int, t_start.split(":"))
+    h2, m2 = map(int, t_end.split(":"))
+    return (h2 * 60 + m2) - (h1 * 60 + m1)
 
-    pair=3        → ("12:10", "13:35")
-    pair="3-4"    → ("12:10", "15:25")  — от начала первой до конца последней
-    pair=None     → (None, None)
-    pair=42       → (None, None)        — за пределами 1..8
+
+def collect_bell_candidates(rich_rows: list["RichRow"]) -> BellCandidates:
+    """Собрать время пар из столбца «Время» (col 2) одного листа-расписания.
+
+    Возвращает {pair_number: [(start, end), ...]}; один и тот же слот может повторяться
+    для каждого дня недели — это нормально и пригодится при резолве для tie-breaker.
     """
-    if pair is None:
+    out: BellCandidates = {}
+    for row in rich_rows:
+        if len(row.cells) < 3:
+            continue
+        pair_num = _pair_number_from_cell(row.value(1))
+        if pair_num is None:
+            continue
+        ts, te = parse_time_range(row.value(2))
+        if not (ts and te):
+            continue
+        out.setdefault(pair_num, []).append((ts, te))
+    return out
+
+
+def resolve_bells(*candidate_maps: BellCandidates) -> BellMap:
+    """Свести кандидатов из нескольких листов в финальное расписание звонков.
+
+    Стратегия выбора слота для каждой пары:
+      1. Максимальная длительность (`end-start`) — бьёт устаревшие 80-мин версии.
+      2. При равной длительности — слот с большей частотой в исходных ячейках.
+      3. При равной частоте — слот с более поздним концом (факультет обычно растягивает пары, а не сжимает).
+    """
+    merged: BellCandidates = {}
+    for cmap in candidate_maps:
+        for pair, slots in cmap.items():
+            merged.setdefault(pair, []).extend(slots)
+
+    out: BellMap = {}
+    for pair, slots in merged.items():
+        # Частота каждого уникального слота:
+        freq: dict[tuple[str, str], int] = {}
+        for s in slots:
+            freq[s] = freq.get(s, 0) + 1
+        best = max(
+            freq.keys(),
+            key=lambda s: (_duration_minutes(*s), freq[s], s[1]),
+        )
+        out[pair] = best
+    return out
+
+
+def bells_for_pair(
+    pair: int | str | None,
+    bells: BellMap | None = None,
+) -> tuple[str | None, str | None]:
+    """Время для пары или диапазона пар из резолвнутого расписания звонков.
+
+    pair=3, bells={3:("12:10","13:35"),..}  → ("12:10", "13:35")
+    pair="3-4"                              → ("12:10", "15:25")
+    pair=None / bells=None / pair неизвестен  → (None, None)
+    """
+    if pair is None or not bells:
         return (None, None)
     if isinstance(pair, int):
-        return PAIR_BELLS.get(pair, (None, None))
+        return bells.get(pair, (None, None))
     s = str(pair).strip()
     if s.isdigit():
-        return PAIR_BELLS.get(int(s), (None, None))
+        return bells.get(int(s), (None, None))
     m = re.match(r"^(\d+)\s*-\s*(\d+)$", s)
     if not m:
         return (None, None)
     a, b = int(m.group(1)), int(m.group(2))
-    if a not in PAIR_BELLS or b not in PAIR_BELLS:
+    if a not in bells or b not in bells:
         return (None, None)
-    return (PAIR_BELLS[a][0], PAIR_BELLS[b][1])
+    return (bells[a][0], bells[b][1])
 
 
 def detect_type_from_fill(fill: str | None) -> str | None:
@@ -350,13 +398,19 @@ def _pair_number_from_cell(text: str) -> int | None:
 def parse_bachelor(
     rows: list[list[str]] | list[RichRow],
     year: int,
+    bells: BellMap | None = None,
 ) -> tuple[list[Group], list[Lesson]]:
     """Парсит листы 1-3 курса (одинаковая структура).
 
     Принимает или плоские CSV-строки (без форматирования), или RichRow из
     XLSX-экспорта (с цветом, жирным шрифтом, merged-диапазонами).
+
+    Если ``bells`` передано (резолвнутое расписание со всех листов) — время берётся
+    из него по номеру пары. Иначе строится локальный bell-map из самих ``rows``.
     """
     rich_rows = _as_rich_rows(rows)
+    if bells is None:
+        bells = resolve_bells(collect_bell_candidates(rich_rows))
     if len(rich_rows) < 5:
         return [], []
 
@@ -406,8 +460,8 @@ def parse_bachelor(
         if current_day is None:
             continue
         pair_number_int = _pair_number_from_cell(pair_cell)
-        # Время в исходной ячейке используем только как фолбэк, если по номеру
-        # пары не нашлось канонической записи в PAIR_BELLS.
+        # Время в исходной ячейке используем только как фолбэк, если резолвер
+        # не нашёл время для этой пары.
         cell_t_start, cell_t_end = parse_time_range(time_cell)
         if pair_number_int is None and not (cell_t_start and cell_t_end):
             continue
@@ -430,9 +484,9 @@ def parse_bachelor(
                 if pair_number_int and bottom_pair and bottom_pair > pair_number_int:
                     pair_value = f"{pair_number_int}-{bottom_pair}"
 
-            # Время — из канонического расписания звонков по номеру пары; если
-            # пара неизвестна (или вне 1..8), берём то, что напечатано в ячейке.
-            canon_start, canon_end = bells_for_pair(pair_value)
+            # Время — из резолвнутого bell-расписания по номеру пары; если пара
+            # неизвестна (или резолвер её не нашёл), берём то, что напечатано в ячейке.
+            canon_start, canon_end = bells_for_pair(pair_value, bells)
             t_start = canon_start or cell_t_start
             t_end = canon_end or cell_t_end
             if not t_start or not t_end:
@@ -1093,15 +1147,18 @@ def build_dataset(
     all_groups: list[Group] = []
     all_lessons: list[Lesson] = []
     source_sheets: list[dict] = []
+
+    # Двухпроходное чтение для бакалавриата: сначала тащим все XLSX и собираем
+    # bell-кандидатов со всех листов, потом резолвим в общий bell-map и парсим
+    # уже с подменой времени по номеру пары. Это закрывает кейс, когда в одной
+    # из таблиц забито устаревшее время в столбце «Время» — победит самая
+    # «длинная» (а при равенстве — самая частая) версия слота.
+    bachelor_sheets: list[tuple[dict, list[RichRow]]] = []
+    bachelor_candidates: list[BellCandidates] = []
+
     for sheet in (sheets or SHEETS):
         if sheet["kind"] == "bachelor":
             base_name = f"year{sheet['year']}"
-        elif sheet["kind"] == "master_ru":
-            base_name = "year4_ru"
-        else:
-            base_name = "year4_en"
-
-        if sheet["kind"] == "bachelor":
             rich_rows: list[RichRow] | None = None
             if use_local:
                 xlsx_path = f"{local_dir}/{base_name}.xlsx"
@@ -1113,17 +1170,8 @@ def build_dataset(
                     )
             else:
                 rich_rows = fetch_xlsx_rich_rows(sheet["id"], sheet["gid"])
-            g, l = parse_bachelor(rich_rows, sheet["year"])
-        else:
-            csv_path = f"{local_dir}/{base_name}.csv"
-            if use_local:
-                rows_csv = read_local_csv(csv_path)
-            else:
-                rows_csv = fetch_csv(sheet["id"], sheet["gid"])
-            language = "ru" if sheet["kind"] == "master_ru" else "en"
-            g, l = parse_master(rows_csv, sheet["year"], language)
-        all_groups.extend(g)
-        all_lessons.extend(l)
+            bachelor_sheets.append((sheet, rich_rows))
+            bachelor_candidates.append(collect_bell_candidates(rich_rows))
         source_sheets.append({
             "year": sheet["year"],
             "kind": sheet["kind"],
@@ -1131,13 +1179,39 @@ def build_dataset(
             "gid": sheet["gid"],
         })
 
+    bells = resolve_bells(*bachelor_candidates) if bachelor_candidates else {}
+
+    for sheet, rich_rows in bachelor_sheets:
+        g, l = parse_bachelor(rich_rows, sheet["year"], bells=bells)
+        all_groups.extend(g)
+        all_lessons.extend(l)
+
+    # Магистратура — CSV без цветовой разметки, отдельная сетка.
+    for sheet in (sheets or SHEETS):
+        if sheet["kind"] == "bachelor":
+            continue
+        base_name = "year4_ru" if sheet["kind"] == "master_ru" else "year4_en"
+        csv_path = f"{local_dir}/{base_name}.csv"
+        if use_local:
+            rows_csv = read_local_csv(csv_path)
+        else:
+            rows_csv = fetch_csv(sheet["id"], sheet["gid"])
+        language = "ru" if sheet["kind"] == "master_ru" else "en"
+        g, l = parse_master(rows_csv, sheet["year"], language)
+        all_groups.extend(g)
+        all_lessons.extend(l)
+
     return {
         "academic_year": "2025-2026",
         "faculty": "ФРФиКТ",
         "semester": 2,
         "form": "очная",
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "source": {"type": "google_sheets", "sheets": source_sheets},
+        "source": {
+            "type": "google_sheets",
+            "sheets": source_sheets,
+            "bells_resolved": {str(p): list(s) for p, s in sorted(bells.items())},
+        },
         "groups": [asdict(g) for g in all_groups],
         "lessons": [asdict(l) for l in all_lessons],
     }

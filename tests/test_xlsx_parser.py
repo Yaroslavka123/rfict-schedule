@@ -10,12 +10,14 @@ import pytest
 
 from schedule_parser.parse_schedule import (
     COLOR_TO_TYPE,
-    PAIR_BELLS,
     bells_for_pair,
+    build_dataset,
     build_lessons_from_cell,
+    collect_bell_candidates,
     detect_type_from_fill,
     detect_type_for_cell,
     parse_bachelor,
+    resolve_bells,
 )
 from schedule_parser.rich_sheet import (
     CellRun,
@@ -175,41 +177,107 @@ class TestMergedPairs:
 
 # ---------- canonical bell schedule ----------
 
-class TestCanonicalBells:
-    @pytest.mark.parametrize("pair,expected", [
-        (1, ("09:00", "10:25")),
-        (2, ("10:35", "12:00")),
-        (3, ("12:10", "13:35")),
-        (4, ("14:00", "15:25")),
-        (5, ("15:35", "17:00")),
-        (6, ("17:20", "18:45")),
-        (7, ("18:55", "20:20")),
-        (8, ("20:30", "21:55")),
-        ("1-2", ("09:00", "12:00")),
-        ("3-4", ("12:10", "15:25")),
-        ("6-8", ("17:20", "21:55")),
-        ("3", ("12:10", "13:35")),
-        (None, (None, None)),
-        (42, (None, None)),
-        ("garbage", (None, None)),
-    ])
-    def test_bells_for_pair(self, pair, expected):
-        assert bells_for_pair(pair) == expected
+class TestBellsResolver:
+    """Расписание звонков резолвится из самих таблиц: longest-duration выигрывает."""
 
-    def test_year1_uses_canonical_times_not_cell_text(self):
-        """В year1 в столбце «Время» стоит устаревшее 80-минутное расписание
-        (09:00-10:20), а парсер обязан выдавать каноническое 85-минутное."""
+    def test_collect_candidates_from_time_column(self):
+        def cell(v, *, rowspan=1):
+            return RichCell(value=v, runs=[CellRun(text=v, bold=False)] if v else [], rowspan=rowspan)
+
+        rows = [
+            RichRow(),
+            RichRow(),
+            RichRow(),
+            RichRow(),
+            RichRow(),  # header rows 0..4
+            RichRow(cells=[cell("Пн"), cell("1"), cell("09:00\n-\n10:25")]),
+            RichRow(cells=[cell(""),  cell("2"), cell("10:35-12:00")]),
+            RichRow(cells=[cell(""),  cell("3"), cell("12:10 - 13:35")]),
+            # Повтор для вторника — слот должен войти дважды.
+            RichRow(cells=[cell("Вт"), cell("1"), cell("09:00-10:25")]),
+        ]
+        cand = collect_bell_candidates(rows)
+        assert cand[1] == [("09:00", "10:25"), ("09:00", "10:25")]
+        assert cand[2] == [("10:35", "12:00")]
+        assert cand[3] == [("12:10", "13:35")]
+
+    def test_resolve_picks_longest_duration(self):
+        # year1: пара 1 = 80 мин, year3: пара 1 = 85 мин → побеждает 85.
+        y1 = {1: [("09:00", "10:20")] * 44, 2: [("10:30", "11:50")] * 47}
+        y3 = {1: [("09:00", "10:25")] * 17, 2: [("10:35", "12:00")] * 21}
+        bells = resolve_bells(y1, y3)
+        assert bells[1] == ("09:00", "10:25")
+        assert bells[2] == ("10:35", "12:00")
+
+    def test_resolve_tie_breaker_by_frequency(self):
+        # Одинаковая длительность (60 мин), разная частота → побеждает более частый.
+        cand = {5: [("15:00", "16:00")] * 3 + [("15:30", "16:30")] * 10}
+        assert resolve_bells(cand)[5] == ("15:30", "16:30")
+
+    def test_resolve_falls_back_to_later_end_at_full_tie(self):
+        # Одинаковая длительность и частота → позднее окончание (факультет растягивает).
+        cand = {5: [("15:00", "16:00"), ("15:30", "16:30")]}
+        assert resolve_bells(cand)[5] == ("15:30", "16:30")
+
+    def test_resolve_empty_input(self):
+        assert resolve_bells() == {}
+        assert resolve_bells({}, {}) == {}
+
+    @pytest.mark.parametrize("pair,bells,expected", [
+        (1,    {1: ("09:00", "10:25")}, ("09:00", "10:25")),
+        ("3",  {3: ("12:10", "13:35")}, ("12:10", "13:35")),
+        ("1-2", {1: ("09:00", "10:25"), 2: ("10:35", "12:00")}, ("09:00", "12:00")),
+        ("6-8", {6: ("17:20", "18:45"), 7: ("18:55", "20:20"), 8: ("20:30", "21:55")},
+         ("17:20", "21:55")),
+        (None, {1: ("09:00", "10:25")}, (None, None)),
+        (42,   {1: ("09:00", "10:25")}, (None, None)),
+        ("junk", {1: ("09:00", "10:25")}, (None, None)),
+        (1, None, (None, None)),
+        (1, {}, (None, None)),
+    ])
+    def test_bells_for_pair(self, pair, bells, expected):
+        assert bells_for_pair(pair, bells) == expected
+
+    def test_build_dataset_resolves_across_sheets(self):
+        """build_dataset двухпроходно резолвит bell-map и пробрасывает в парсер."""
+        data = build_dataset(use_local=True, local_dir=str(FIXTURES))
+        # bells_resolved должен быть в source и иметь обязательные пары.
+        bells = data["source"]["bells_resolved"]
+        # year3 в фикстурах имеет канонические 85-минутные пары — они должны победить.
+        assert bells["1"] == ["09:00", "10:25"]
+        assert bells["2"] == ["10:35", "12:00"]
+        assert bells["3"] == ["12:10", "13:35"]
+        assert bells["4"] == ["14:00", "15:25"]
+        # Year 1 занятия на 1-й паре должны быть резолвнуты на 09:00-10:25,
+        # хотя в их исходном столбце времени в таблице стоит 09:00-10:20.
+        pair1_y1 = [
+            l for l in data["lessons"]
+            if l["pair_number"] == 1 and any(
+                gid.startswith("y1-") for gid in l["group_ids"]
+            )
+        ]
+        assert pair1_y1, "year 1 fixture: нет занятий на 1-й паре"
+        assert all(l["time_start"] == "09:00" and l["time_end"] == "10:25" for l in pair1_y1)
+
+    def test_parse_bachelor_local_resolve_when_no_bells_passed(self):
+        """Если вызвать parse_bachelor без bells= — он резолвит локальное расписание
+        из самого этого листа (нет cross-sheet выбора)."""
+        rows = read_local_xlsx(str(FIXTURES / "year3.xlsx"))
+        _, lessons = parse_bachelor(rows, 3)
+        pair1 = [l for l in lessons if l.pair_number == 1]
+        assert pair1
+        # year3 сам по себе имеет 09:00-10:25 → локальный резолв должен вернуть это же.
+        assert all(l.time_start == "09:00" and l.time_end == "10:25" for l in pair1)
+
+    def test_year1_alone_falls_back_to_its_own_stale_times(self):
+        """Если парсим только year1 без cross-sheet резолва — время останется
+        устаревшим из самой таблицы. Кросс-листовый выбор живёт в build_dataset."""
         rows = read_local_xlsx(str(FIXTURES / "year1.xlsx"))
         _, lessons = parse_bachelor(rows, 1)
-        # Все занятия с pair=1 должны иметь 09:00-10:25, не 09:00-10:20.
         pair1 = [l for l in lessons if l.pair_number == 1]
-        assert pair1, "year 1: нет занятий на 1-й паре"
-        assert all(l.time_start == "09:00" and l.time_end == "10:25" for l in pair1), \
-            f"year 1: 1-я пара не каноническая: {set((l.time_start, l.time_end) for l in pair1)}"
-        # Объединённая «1-2» → 09:00-12:00, не 09:00-11:50.
-        combined12 = [l for l in lessons if l.pair_number == "1-2"]
-        if combined12:
-            assert all(l.time_start == "09:00" and l.time_end == "12:00" for l in combined12)
+        assert pair1
+        # Локальный резолв из year1 вернёт 09:00-10:20 (это единственный слот в этой таблице).
+        assert all(l.time_start == "09:00" and l.time_end == "10:20" for l in pair1)
 
 
 # ---------- end-to-end on real XLSX fixtures ----------
