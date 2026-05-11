@@ -96,16 +96,23 @@
   }
   .day h2 .count { font-weight: 400; color: var(--fg-muted); margin-left: 6px }
 
-  table { width: 100%; border-collapse: collapse }
-  th, td { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); font-size: 13px }
-  th { font-weight: 500; color: var(--fg-muted); background: var(--row-alt); position: sticky; top: 0 }
+  /* единая плоская таблица для верификации */
+  .table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: auto; max-height: calc(100vh - 220px) }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px }
+  th, td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); white-space: nowrap }
+  th { font-weight: 500; color: var(--fg-muted); background: var(--row-alt); position: sticky; top: 0; cursor: pointer; user-select: none; z-index: 2 }
+  th:hover { color: var(--accent) }
+  th .sort-arrow { display: inline-block; width: 10px; opacity: 0.5; margin-left: 2px }
+  th.sorted .sort-arrow { opacity: 1; color: var(--accent) }
+  tr:hover td { background: var(--row-alt) }
   tr:last-child td { border-bottom: 0 }
-  td.time { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--fg-muted); width: 110px }
-  td.subject { font-weight: 500 }
-  td.subject .note { display: block; color: var(--fg-muted); font-size: 11px; font-weight: 400; margin-top: 2px }
-  td.teacher { color: var(--fg-muted); width: 180px }
-  td.room { color: var(--fg-muted); width: 90px; font-variant-numeric: tabular-nums }
-  td.groups { width: 220px }
+  td.time, td.pair, td.day { font-variant-numeric: tabular-nums; color: var(--fg-muted) }
+  td.subject { font-weight: 500; white-space: normal; max-width: 280px }
+  td.teacher { color: var(--fg-muted); white-space: normal; max-width: 220px }
+  td.rooms { font-variant-numeric: tabular-nums }
+  td.notes { color: var(--fg-muted); font-size: 11px; white-space: normal; max-width: 240px }
+  td.dates { color: var(--fg-muted); font-variant-numeric: tabular-nums; font-size: 11px }
+  td.course, td.group, td.subgroup { font-variant-numeric: tabular-nums }
 
   .tag {
     display: inline-block;
@@ -151,6 +158,7 @@
     <div><label>День недели</label><select id="f-day"><option value="">все</option><option value="1">Понедельник</option><option value="2">Вторник</option><option value="3">Среда</option><option value="4">Четверг</option><option value="5">Пятница</option><option value="6">Суббота</option></select></div>
     <div><label>Тип</label><select id="f-type"><option value="">все</option><option value="lecture">Лекция</option><option value="lab">Лаб</option><option value="seminar">Семинар</option><option value="practice">Практика</option></select></div>
     <div><label>Аудитория</label><input id="f-room" placeholder="напр. 117"></div>
+    <div><label>Подгруппа</label><input id="f-subgroup" placeholder="напр. 1ПГ"></div>
   </div>
   <div class="actions">
     <button id="reset">Сбросить фильтры</button>
@@ -231,7 +239,7 @@ function setOptions(id, pairs) {
 }
 
 function bindFilters() {
-  const inputs = ["f-year", "f-program", "f-group", "f-teacher", "f-subject", "f-day", "f-type", "f-room"];
+  const inputs = ["f-year", "f-program", "f-group", "f-teacher", "f-subject", "f-day", "f-type", "f-room", "f-subgroup"];
   for (const id of inputs) {
     const el = document.getElementById(id);
     el.addEventListener("input", () => {
@@ -256,6 +264,7 @@ function getFilters() {
     day:     document.getElementById("f-day").value,
     type:    document.getElementById("f-type").value,
     room:    document.getElementById("f-room").value.trim().toLowerCase(),
+    subgroup: document.getElementById("f-subgroup").value.trim().toLowerCase(),
   };
 }
 
@@ -276,8 +285,42 @@ function lessonMatches(l, f) {
   if (f.day && String(l.day_of_week) !== f.day) return false;
   if (f.type && l.lesson_type !== f.type) return false;
   if (f.room && !(l.rooms || []).some(r => r.toLowerCase().includes(f.room))) return false;
+  if (f.subgroup && !(l.subgroup || "").toLowerCase().includes(f.subgroup)) return false;
   return true;
 }
+
+// Колонки таблицы. key — поле в lesson/group, label — заголовок, sort — функция получения ключа сортировки.
+const COLUMNS = [
+  { key: "course",     label: "Курс",            cls: "course",    sort: l => primaryGroup(l)?.year ?? 99 },
+  { key: "group",      label: "Группа",          cls: "group",     sort: l => groupSortKey(l) },
+  { key: "program",    label: "Программа",       cls: "",          sort: l => primaryGroup(l)?.program_code || "" },
+  { key: "subgroup",   label: "Подгруппа",       cls: "subgroup",  sort: l => l.subgroup || "" },
+  { key: "day",        label: "День",            cls: "day",       sort: l => l.day_of_week || 0 },
+  { key: "pair",       label: "Пара",            cls: "pair",      sort: l => l.pair_number || 0 },
+  { key: "time",       label: "Время",           cls: "time",      sort: l => l.time_start || "" },
+  { key: "subject",    label: "Предмет",         cls: "subject",   sort: l => l.subject || "" },
+  { key: "type",       label: "Тип",             cls: "",          sort: l => l.lesson_type || "" },
+  { key: "teacher",    label: "Преподаватель",   cls: "teacher",   sort: l => l.teacher || "" },
+  { key: "rooms",      label: "Ауд.",            cls: "rooms",     sort: l => (l.rooms || []).join(",") },
+  { key: "weeks",      label: "Недели",          cls: "",          sort: l => l.weeks || "" },
+  { key: "dates",      label: "Даты",            cls: "dates",     sort: l => l.date_from || "" },
+  { key: "notes",      label: "Заметки",         cls: "notes",     sort: l => l.notes || "" },
+];
+
+function primaryGroup(l) {
+  const gid = (l.group_ids || [])[0];
+  return gid ? GROUPS[gid] : null;
+}
+
+function groupSortKey(l) {
+  const g = primaryGroup(l);
+  if (!g) return "";
+  // числовая сортировка по номеру группы внутри курса
+  const num = String(g.number).padStart(4, "0");
+  return `${g.year}-${num}`;
+}
+
+let sortState = { key: "course", dir: 1 }; // 1=asc, -1=desc
 
 function render() {
   const f = getFilters();
@@ -291,52 +334,76 @@ function render() {
     return;
   }
 
-  // group by day_of_week, then sort by time, then by pair_number
-  const byDay = {};
-  for (const l of filtered) {
-    (byDay[l.day_of_week] = byDay[l.day_of_week] || []).push(l);
-  }
-  const days = Object.keys(byDay).map(Number).sort();
+  // Сортировка: первичный ключ из sortState; вторичный — стабильный по (курс, группа, день, время)
+  const sortCol = COLUMNS.find(c => c.key === sortState.key) || COLUMNS[0];
+  const sorted = [...filtered].sort((a, b) => {
+    const va = sortCol.sort(a), vb = sortCol.sort(b);
+    const primary = compare(va, vb) * sortState.dir;
+    if (primary !== 0) return primary;
+    // tie-breakers
+    return compare(primaryGroup(a)?.year ?? 99, primaryGroup(b)?.year ?? 99)
+        || compare(groupSortKey(a), groupSortKey(b))
+        || compare(a.day_of_week || 0, b.day_of_week || 0)
+        || compare(a.time_start || "", b.time_start || "");
+  });
 
-  const html = [];
-  for (const d of days) {
-    const lessons = byDay[d].sort((a, b) =>
-      a.time_start.localeCompare(b.time_start) || ((a.pair_number || 0) - (b.pair_number || 0))
-    );
-    html.push(`
-      <section class="day">
-        <h2>${DAY_NAMES[d]}<span class="count">${lessons.length} занятий</span></h2>
-        <table>
-          <thead><tr><th>Время</th><th>Предмет</th><th>Преподаватель</th><th>Ауд.</th><th>Группы</th></tr></thead>
-          <tbody>
-            ${lessons.map(l => renderRow(l)).join("")}
-          </tbody>
-        </table>
-      </section>
-    `);
-  }
-  main.innerHTML = html.join("");
+  const headerHtml = COLUMNS.map(c => {
+    const isActive = c.key === sortState.key;
+    const arrow = isActive ? (sortState.dir === 1 ? "▲" : "▼") : "⇅";
+    return `<th data-key="${c.key}" class="${isActive ? "sorted" : ""}">${escapeHtml(c.label)}<span class="sort-arrow">${arrow}</span></th>`;
+  }).join("");
+
+  main.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>${headerHtml}</tr></thead>
+        <tbody>${sorted.map(renderRow).join("")}</tbody>
+      </table>
+    </div>
+  `;
+
+  // bind sort handlers
+  main.querySelectorAll("th[data-key]").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.getAttribute("data-key");
+      if (sortState.key === key) sortState.dir = -sortState.dir;
+      else { sortState.key = key; sortState.dir = 1; }
+      render();
+    });
+  });
+}
+
+function compare(a, b) {
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b), "ru", { numeric: true });
 }
 
 function renderRow(l) {
+  const g = primaryGroup(l);
+  const allGroups = (l.group_ids || []).map(gid => {
+    const gg = GROUPS[gid];
+    return gg ? `${gg.year}-${gg.number}${gg.language === "en" ? " EN" : ""}` : gid;
+  }).join(", ");
   const t = l.lesson_type;
   const typeBadge = t ? `<span class="tag ${t}">${TYPE_NAMES[t] || t}</span>` : "";
-  const subgroupBadge = l.subgroup ? `<span class="tag">${escapeHtml(l.subgroup)}</span>` : "";
-  const weeksBadge = (l.weeks && l.weeks !== "all") ? `<span class="tag">${l.weeks === "odd" ? "нечёт" : "чёт"}</span>` : "";
-  const groupBadges = l.group_ids.map(gid => {
-    const g = GROUPS[gid];
-    if (!g) return `<span class="badge">${gid}</span>`;
-    return `<span class="badge">${g.year}-${g.number}${g.language === "en" ? " EN" : ""}</span>`;
-  }).join(" ");
-  const notes = l.notes ? `<span class="note">${escapeHtml(l.notes)}</span>` : "";
-  const dates = (l.date_from || l.date_to) ? `<span class="note">${[l.date_from, l.date_to].filter(Boolean).join(" → ")}</span>` : "";
+  const weeksLabel = l.weeks === "odd" ? "нечёт" : l.weeks === "even" ? "чёт" : (l.weeks || "");
+  const dates = [l.date_from, l.date_to].filter(Boolean).join(" → ");
   return `
     <tr>
-      <td class="time">${l.time_start}<br>${l.time_end}${l.pair_number ? ` <span style="opacity:0.5">·${l.pair_number}п</span>` : ""}</td>
-      <td class="subject">${typeBadge}${subgroupBadge}${weeksBadge}${escapeHtml(l.subject)}${notes}${dates}</td>
-      <td class="teacher">${escapeHtml(l.teacher || "—")}</td>
-      <td class="room">${(l.rooms || []).map(escapeHtml).join(", ") || "—"}</td>
-      <td class="groups">${groupBadges}</td>
+      <td class="course">${g ? g.year : "—"}</td>
+      <td class="group">${escapeHtml(allGroups || "—")}</td>
+      <td>${escapeHtml(g?.program_code || "")}${g?.language === "en" ? " <span class=\"badge\">EN</span>" : ""}</td>
+      <td class="subgroup">${escapeHtml(l.subgroup || "")}</td>
+      <td class="day">${DAY_NAMES[l.day_of_week] || l.day_of_week || ""}</td>
+      <td class="pair">${l.pair_number || ""}</td>
+      <td class="time">${l.time_start || ""}–${l.time_end || ""}</td>
+      <td class="subject">${escapeHtml(l.subject || "")}</td>
+      <td>${typeBadge || ""}</td>
+      <td class="teacher">${escapeHtml(l.teacher || "")}</td>
+      <td class="rooms">${(l.rooms || []).map(escapeHtml).join(", ")}</td>
+      <td>${weeksLabel}</td>
+      <td class="dates">${escapeHtml(dates)}</td>
+      <td class="notes">${escapeHtml(l.notes || "")}</td>
     </tr>
   `;
 }
