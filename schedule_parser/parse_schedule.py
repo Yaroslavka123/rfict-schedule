@@ -380,6 +380,8 @@ def _parse_block(block: dict) -> dict:
 
     return {
         "subject": subject,
+        "subject_lines": subject_lines,
+        "subgroup_lines": subgroup_lines,
         "teacher_lines": teacher_lines,
         "single_subgroup": single_sg,
         "subgroup_seq": subgroup_seq,
@@ -391,6 +393,14 @@ def _parse_block(block: dict) -> dict:
         "raw": block_text,
         "start": block["start"],
     }
+
+
+def _normalize_subgroup(sg_text: str) -> str | None:
+    """'3ПГ/4ПГ нечет/чет' → '3ПГ/4ПГ'. Возвращает компактное представление."""
+    if not sg_text:
+        return None
+    m = re.match(r"\s*(\d\s*ПГ(?:\s*/\s*\d\s*ПГ)*)\s*", sg_text)
+    return m.group(1).replace(" ", "") if m else None
 
 
 def _assign_rooms(sub_lessons: list[dict], parsed_blocks: list[dict], room_text: str) -> None:
@@ -512,8 +522,31 @@ def build_lessons_from_cell(*, lesson_text: str, room_text: str, day: int, pair:
     sub_lessons: list[dict] = []
     for pb in parsed_blocks:
         teachers = pb["teacher_lines"]
-        if pb["subgroup_seq"] and len(teachers) >= 2 and len(pb["subgroup_seq"]) == len(teachers):
-            for t, sg in zip(teachers, pb["subgroup_seq"]):
+        subj_lines = pb.get("subject_lines") or []
+        sg_lines = pb.get("subgroup_lines") or []
+        sg_seq = pb["subgroup_seq"]
+        n_t = len(teachers)
+        # Кейс A: N>=2 предметов + N учителей + N subgroup-строк (каждый предмет со своей
+        # подгруппой). Это новый формат живых таблиц, когда вместо '\n\n' между блоками
+        # стоит дата-нота 'с DD.MM' → блок остаётся один, но содержимое чётко делится по индексу.
+        if (
+            n_t >= 2
+            and len(subj_lines) == n_t
+            and len(sg_lines) == n_t
+        ):
+            weeks_seq = [extract_weeks(sg) for sg in sg_lines]
+            for s, t, sg_text, wk in zip(subj_lines, teachers, sg_lines, weeks_seq):
+                sub_lessons.append({
+                    **pb,
+                    "subject": s,
+                    "teacher": t,
+                    "subgroup": _normalize_subgroup(sg_text),
+                    "weeks": wk,
+                })
+        # Кейс B: 1 subject + N учителей + 1 subgroup-строка с N подгруппами (English-кейс):
+        # 'Английский язык / 2 ПГ/1 ПГ / Дингилевская / Бурковская' → split по teacher×digit
+        elif sg_seq and n_t >= 2 and len(sg_seq) == n_t:
+            for t, sg in zip(teachers, sg_seq):
                 sub_lessons.append({
                     **pb,
                     "teacher": t,

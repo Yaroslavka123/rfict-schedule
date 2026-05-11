@@ -134,6 +134,26 @@ class TestCellSplit:
         assert not is_teacher_line('доп.занятие на 11.05')
         assert not is_teacher_line('')
 
+    def test_year3_602_live_format_with_date_note(self):
+        """LIVE формат расписания: вместо blank line между блоками стоит дата-нота 'с 16.02'.
+        Парсер должен распознать что внутри одной cell — 2 разных предмета и расщепить их по индексу."""
+        out = build_lessons_from_cell(
+            lesson_text='ФОХиОИ\n3ПГ/4ПГ нечет/чет  \nпроф. Гайдук ПИ\nс 16.02\nТиБПСиВ\n3ПГ/4ПГ чет/нечет \nст.пр. ШалатонинИ.А.',
+            room_text='129',
+            day=1, pair=3, t_start='12:00', t_end='13:20',
+            group_id='y3-g602', year=3,
+        )
+        assert len(out) == 2, f'expected 2 lessons, got {len(out)}: {[(l.subject, l.teacher) for l in out]}'
+        subj = _by_subject(out)
+        assert 'ФОХиОИ' in subj, f'subjects: {list(subj)}'
+        assert 'ТиБПСиВ' in subj
+        assert subj['ФОХиОИ'].teacher == 'проф. Гайдук ПИ'
+        assert subj['ТиБПСиВ'].teacher == 'ст.пр. ШалатонинИ.А.'
+        assert subj['ФОХиОИ'].subgroup == '3ПГ/4ПГ'
+        assert subj['ТиБПСиВ'].subgroup == '3ПГ/4ПГ'
+        assert subj['ФОХиОИ'].rooms == ['129']
+        assert subj['ТиБПСиВ'].rooms == ['129']
+
     def test_lesson_ids_unique_when_split(self):
         """После split lesson'ы должны иметь уникальные id (включают teacher/subgroup в хэш)."""
         out = build_lessons_from_cell(
