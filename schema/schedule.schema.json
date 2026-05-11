@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kartel.local/schemas/schedule.schema.json",
+  "title": "FRFiKT Schedule",
+  "type": "object",
+  "required": ["academic_year", "faculty", "semester", "groups", "lessons"],
+  "properties": {
+    "academic_year": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{4}$" },
+    "faculty": { "type": "string" },
+    "semester": { "type": "integer", "minimum": 1, "maximum": 12 },
+    "form": { "type": "string", "enum": ["очная", "заочная", "магистратура"] },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["google_sheets", "xlsx", "manual"] },
+        "sheet_id": { "type": "string" },
+        "gid": { "type": ["string", "integer"] },
+        "url": { "type": "string", "format": "uri" }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Group" }
+    },
+    "lessons": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Lesson" }
+    }
+  },
+  "$defs": {
+    "Group": {
+      "type": "object",
+      "required": ["id", "year", "number"],
+      "properties": {
+        "id": { "type": "string", "description": "stable id, например y1-g1" },
+        "year": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "number": { "type": ["integer", "string"], "description": "номер группы в таблице (1, 2, ..., 601, А51)" },
+        "program_code": { "type": ["string", "null"], "description": "РФ, ИЭ, КБ, КБиПИ, ПИ и т.д." },
+        "program_name": { "type": ["string", "null"], "description": "Полное название специальности" },
+        "language": { "type": "string", "enum": ["ru", "en"], "default": "ru" }
+      }
+    },
+    "Lesson": {
+      "type": "object",
+      "required": ["id", "group_ids", "day_of_week", "time_start", "time_end", "subject"],
+      "properties": {
+        "id": { "type": "string", "description": "deterministic hash" },
+        "group_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Одно занятие может быть общим для нескольких групп (поток)"
+        },
+        "day_of_week": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7,
+          "description": "1=Пн ... 7=Вс"
+        },
+        "pair_number": { "type": ["integer", "null"], "minimum": 1, "maximum": 8 },
+        "time_start": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
+        "time_end": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
+        "subject": { "type": "string" },
+        "lesson_type": {
+          "type": ["string", "null"],
+          "enum": [null, "lecture", "seminar", "lab", "practice", "exam", "consult"],
+          "description": "ЛК->lecture, Семинар->seminar, ЛБ->lab, ПЗ->practice"
+        },
+        "teacher": { "type": ["string", "null"] },
+        "rooms": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Аудитории; могут быть с указанием корпуса (124-4, 67/К1)"
+        },
+        "subgroup": {
+          "type": ["string", "null"],
+          "description": "1ПГ, 2ПГ, 3ПГ, 1ПГ/2ПГ"
+        },
+        "weeks": {
+          "type": "string",
+          "enum": ["all", "even", "odd"],
+          "default": "all"
+        },
+        "date_from": { "type": ["string", "null"], "format": "date" },
+        "date_to": { "type": ["string", "null"], "format": "date" },
+        "notes": { "type": ["string", "null"] },
+        "raw": { "type": "string", "description": "Исходный текст ячейки, для верификации" }
+      }
+    }
+  }
+}
