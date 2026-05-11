@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Расписание ФРФиКТ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #fafafa;
+    --bg-card: #fff;
+    --fg: #1a1a1a;
+    --fg-muted: #666;
+    --border: #e3e3e3;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --row-alt: #f5f5f5;
+    --tag-lecture: #dbeafe;
+    --tag-lab:     #dcfce7;
+    --tag-seminar: #fef3c7;
+    --tag-practice:#fce7f3;
+    --tag-default: #f1f1f1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f0f12;
+      --bg-card: #18181d;
+      --fg: #e5e5e7;
+      --fg-muted: #8a8a92;
+      --border: #2a2a32;
+      --accent: #60a5fa;
+      --accent-soft: #1e3a8a55;
+      --row-alt: #15151a;
+      --tag-lecture: #1e3a8a55;
+      --tag-lab:     #14532d55;
+      --tag-seminar: #78350f55;
+      --tag-practice:#831a5b55;
+      --tag-default: #2a2a32;
+    }
+  }
+  * { box-sizing: border-box }
+  body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--fg);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card);
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 { margin: 0 0 12px; font-size: 18px; font-weight: 600 }
+  header .meta { color: var(--fg-muted); font-size: 12px; margin-bottom: 12px }
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+  }
+  .filters label { display: block; font-size: 11px; color: var(--fg-muted); margin-bottom: 2px }
+  .filters select, .filters input {
+    width: 100%;
+    padding: 6px 8px;
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13px;
+  }
+  .filters select:focus, .filters input:focus {
+    outline: none; border-color: var(--accent);
+  }
+  .actions { display: flex; gap: 8px; margin-top: 10px; align-items: center }
+  button {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-card); color: var(--fg);
+    cursor: pointer; font-size: 13px;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent) }
+  .counter { color: var(--fg-muted); font-size: 12px; margin-left: auto }
+
+  main { padding: 20px; max-width: 1400px; margin: 0 auto }
+
+  .day {
+    margin-bottom: 28px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .day h2 {
+    margin: 0; padding: 10px 16px;
+    font-size: 14px; font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    background: var(--row-alt);
+  }
+  .day h2 .count { font-weight: 400; color: var(--fg-muted); margin-left: 6px }
+
+  table { width: 100%; border-collapse: collapse }
+  th, td { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); font-size: 13px }
+  th { font-weight: 500; color: var(--fg-muted); background: var(--row-alt); position: sticky; top: 0 }
+  tr:last-child td { border-bottom: 0 }
+  td.time { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--fg-muted); width: 110px }
+  td.subject { font-weight: 500 }
+  td.subject .note { display: block; color: var(--fg-muted); font-size: 11px; font-weight: 400; margin-top: 2px }
+  td.teacher { color: var(--fg-muted); width: 180px }
+  td.room { color: var(--fg-muted); width: 90px; font-variant-numeric: tabular-nums }
+  td.groups { width: 220px }
+
+  .tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    background: var(--tag-default);
+    margin-right: 4px;
+    margin-bottom: 2px;
+  }
+  .tag.lecture  { background: var(--tag-lecture) }
+  .tag.lab      { background: var(--tag-lab) }
+  .tag.seminar  { background: var(--tag-seminar) }
+  .tag.practice { background: var(--tag-practice) }
+
+  .badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    margin-right: 3px;
+  }
+  .empty { padding: 60px 20px; text-align: center; color: var(--fg-muted) }
+  .loading { padding: 60px 20px; text-align: center; color: var(--fg-muted) }
+  .error { padding: 20px; background: #fee; color: #900; border-radius: 6px; margin: 20px }
+  @media (prefers-color-scheme: dark) {
+    .error { background: #3a1010; color: #fca5a5 }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Расписание ФРФиКТ <span style="font-weight:400;color:var(--fg-muted)">— 2025/2026</span></h1>
+  <div class="meta" id="meta">Загрузка…</div>
+  <div class="filters">
+    <div><label>Курс</label><select id="f-year"><option value="">все</option></select></div>
+    <div><label>Программа</label><select id="f-program"><option value="">все</option></select></div>
+    <div><label>Группа</label><select id="f-group"><option value="">все</option></select></div>
+    <div><label>Преподаватель</label><input id="f-teacher" placeholder="фамилия…" list="teacher-list"><datalist id="teacher-list"></datalist></div>
+    <div><label>Предмет</label><input id="f-subject" placeholder="название…"></div>
+    <div><label>День недели</label><select id="f-day"><option value="">все</option><option value="1">Понедельник</option><option value="2">Вторник</option><option value="3">Среда</option><option value="4">Четверг</option><option value="5">Пятница</option><option value="6">Суббота</option></select></div>
+    <div><label>Тип</label><select id="f-type"><option value="">все</option><option value="lecture">Лекция</option><option value="lab">Лаб</option><option value="seminar">Семинар</option><option value="practice">Практика</option></select></div>
+    <div><label>Аудитория</label><input id="f-room" placeholder="напр. 117"></div>
+  </div>
+  <div class="actions">
+    <button id="reset">Сбросить фильтры</button>
+    <div class="counter" id="counter"></div>
+  </div>
+</header>
+<main id="main">
+  <div class="loading">Загружаю schedule.json…</div>
+</main>
+
+<script>
+const DAY_NAMES = ["", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+const TYPE_NAMES = { lecture: "Лк", lab: "ЛБ", seminar: "Сем", practice: "ПЗ" };
+
+let DATA = null;
+let GROUPS = {};
+
+const SOURCES = [
+  "./schedule.json",
+  "https://yaroslavka123.github.io/rfict-schedule/schedule.json",
+];
+
+async function loadData() {
+  let lastErr = null;
+  for (const url of SOURCES) {
+    try {
+      const r = await fetch(url, { cache: "no-cache" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      return { data, url };
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+}
+
+function init(data, sourceUrl) {
+  DATA = data;
+  GROUPS = Object.fromEntries(data.groups.map(g => [g.id, g]));
+
+  const meta = document.getElementById("meta");
+  const generatedAt = new Date(data.generated_at).toLocaleString("ru-RU");
+  meta.innerHTML = `обновлено ${generatedAt} · ${data.groups.length} групп · ${data.lessons.length} занятий · источник: <code style="opacity:0.7">${sourceUrl}</code>`;
+
+  populateFilters();
+  bindFilters();
+  render();
+}
+
+function populateFilters() {
+  const years = [...new Set(DATA.groups.map(g => g.year))].sort();
+  setOptions("f-year", years.map(y => [y, `${y} курс`]));
+
+  const programs = [...new Set(DATA.groups.map(g => g.program_code).filter(Boolean))].sort();
+  setOptions("f-program", programs.map(p => [p, p]));
+
+  refreshGroupOptions();
+
+  const teachers = [...new Set(DATA.lessons.map(l => l.teacher).filter(Boolean))].sort();
+  const dl = document.getElementById("teacher-list");
+  dl.innerHTML = teachers.map(t => `<option value="${escapeAttr(t)}">`).join("");
+}
+
+function refreshGroupOptions() {
+  const year = document.getElementById("f-year").value;
+  const program = document.getElementById("f-program").value;
+  const groups = DATA.groups
+    .filter(g => !year || String(g.year) === year)
+    .filter(g => !program || g.program_code === program)
+    .sort((a, b) => (a.year - b.year) || String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
+  setOptions("f-group", groups.map(g => [g.id, `${g.year} курс — гр. ${g.number}${g.program_code ? " (" + g.program_code + ")" : ""}${g.language === "en" ? " [EN]" : ""}`]));
+}
+
+function setOptions(id, pairs) {
+  const sel = document.getElementById(id);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">все</option>' + pairs.map(([v, t]) => `<option value="${escapeAttr(v)}">${escapeHtml(t)}</option>`).join("");
+  if (pairs.find(p => String(p[0]) === cur)) sel.value = cur;
+}
+
+function bindFilters() {
+  const inputs = ["f-year", "f-program", "f-group", "f-teacher", "f-subject", "f-day", "f-type", "f-room"];
+  for (const id of inputs) {
+    const el = document.getElementById(id);
+    el.addEventListener("input", () => {
+      if (id === "f-year" || id === "f-program") refreshGroupOptions();
+      render();
+    });
+  }
+  document.getElementById("reset").addEventListener("click", () => {
+    for (const id of inputs) document.getElementById(id).value = "";
+    refreshGroupOptions();
+    render();
+  });
+}
+
+function getFilters() {
+  return {
+    year:    document.getElementById("f-year").value,
+    program: document.getElementById("f-program").value,
+    group:   document.getElementById("f-group").value,
+    teacher: document.getElementById("f-teacher").value.trim().toLowerCase(),
+    subject: document.getElementById("f-subject").value.trim().toLowerCase(),
+    day:     document.getElementById("f-day").value,
+    type:    document.getElementById("f-type").value,
+    room:    document.getElementById("f-room").value.trim().toLowerCase(),
+  };
+}
+
+function lessonMatches(l, f) {
+  if (f.year || f.program || f.group) {
+    const groupsHit = l.group_ids.some(gid => {
+      const g = GROUPS[gid];
+      if (!g) return false;
+      if (f.year && String(g.year) !== f.year) return false;
+      if (f.program && g.program_code !== f.program) return false;
+      if (f.group && g.id !== f.group) return false;
+      return true;
+    });
+    if (!groupsHit) return false;
+  }
+  if (f.teacher && !(l.teacher || "").toLowerCase().includes(f.teacher)) return false;
+  if (f.subject && !l.subject.toLowerCase().includes(f.subject)) return false;
+  if (f.day && String(l.day_of_week) !== f.day) return false;
+  if (f.type && l.lesson_type !== f.type) return false;
+  if (f.room && !(l.rooms || []).some(r => r.toLowerCase().includes(f.room))) return false;
+  return true;
+}
+
+function render() {
+  const f = getFilters();
+  const filtered = DATA.lessons.filter(l => lessonMatches(l, f));
+
+  document.getElementById("counter").textContent = `${filtered.length} / ${DATA.lessons.length} занятий`;
+
+  const main = document.getElementById("main");
+  if (filtered.length === 0) {
+    main.innerHTML = '<div class="empty">Ничего не нашлось. Сбрось фильтры или поменяй критерии.</div>';
+    return;
+  }
+
+  // group by day_of_week, then sort by time, then by pair_number
+  const byDay = {};
+  for (const l of filtered) {
+    (byDay[l.day_of_week] = byDay[l.day_of_week] || []).push(l);
+  }
+  const days = Object.keys(byDay).map(Number).sort();
+
+  const html = [];
+  for (const d of days) {
+    const lessons = byDay[d].sort((a, b) =>
+      a.time_start.localeCompare(b.time_start) || ((a.pair_number || 0) - (b.pair_number || 0))
+    );
+    html.push(`
+      <section class="day">
+        <h2>${DAY_NAMES[d]}<span class="count">${lessons.length} занятий</span></h2>
+        <table>
+          <thead><tr><th>Время</th><th>Предмет</th><th>Преподаватель</th><th>Ауд.</th><th>Группы</th></tr></thead>
+          <tbody>
+            ${lessons.map(l => renderRow(l)).join("")}
+          </tbody>
+        </table>
+      </section>
+    `);
+  }
+  main.innerHTML = html.join("");
+}
+
+function renderRow(l) {
+  const t = l.lesson_type;
+  const typeBadge = t ? `<span class="tag ${t}">${TYPE_NAMES[t] || t}</span>` : "";
+  const subgroupBadge = l.subgroup ? `<span class="tag">${escapeHtml(l.subgroup)}</span>` : "";
+  const weeksBadge = (l.weeks && l.weeks !== "all") ? `<span class="tag">${l.weeks === "odd" ? "нечёт" : "чёт"}</span>` : "";
+  const groupBadges = l.group_ids.map(gid => {
+    const g = GROUPS[gid];
+    if (!g) return `<span class="badge">${gid}</span>`;
+    return `<span class="badge">${g.year}-${g.number}${g.language === "en" ? " EN" : ""}</span>`;
+  }).join(" ");
+  const notes = l.notes ? `<span class="note">${escapeHtml(l.notes)}</span>` : "";
+  const dates = (l.date_from || l.date_to) ? `<span class="note">${[l.date_from, l.date_to].filter(Boolean).join(" → ")}</span>` : "";
+  return `
+    <tr>
+      <td class="time">${l.time_start}<br>${l.time_end}${l.pair_number ? ` <span style="opacity:0.5">·${l.pair_number}п</span>` : ""}</td>
+      <td class="subject">${typeBadge}${subgroupBadge}${weeksBadge}${escapeHtml(l.subject)}${notes}${dates}</td>
+      <td class="teacher">${escapeHtml(l.teacher || "—")}</td>
+      <td class="room">${(l.rooms || []).map(escapeHtml).join(", ") || "—"}</td>
+      <td class="groups">${groupBadges}</td>
+    </tr>
+  `;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+loadData()
+  .then(({ data, url }) => init(data, url))
+  .catch(err => {
+    document.getElementById("main").innerHTML =
+      `<div class="error">Не удалось загрузить schedule.json: ${escapeHtml(err.message)}<br>
+       Пробовал: <code>${SOURCES.join("</code>, <code>")}</code></div>`;
+  });
+</script>
+</body>
+</html>
