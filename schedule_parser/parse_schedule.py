@@ -81,6 +81,45 @@ COLOR_TO_TYPE: dict[str, str] = {
     "FFD9D2E9": "additional",
 }
 
+# Каноническое расписание звонков ФРФиКТ (85-минутные пары + перерывы).
+# Время в столбце «Время» в таблицах year1/year2 — устаревшее 80-минутное, потому
+# мы детерминированно подменяем его по номеру пары. Для магистратуры pair_number=None,
+# и подмена не срабатывает — там остаётся время из ячейки.
+PAIR_BELLS: dict[int, tuple[str, str]] = {
+    1: ("09:00", "10:25"),
+    2: ("10:35", "12:00"),
+    3: ("12:10", "13:35"),
+    4: ("14:00", "15:25"),
+    5: ("15:35", "17:00"),
+    6: ("17:20", "18:45"),
+    7: ("18:55", "20:20"),
+    8: ("20:30", "21:55"),
+}
+
+
+def bells_for_pair(pair: int | str | None) -> tuple[str | None, str | None]:
+    """Каноническое время для пары или диапазона пар.
+
+    pair=3        → ("12:10", "13:35")
+    pair="3-4"    → ("12:10", "15:25")  — от начала первой до конца последней
+    pair=None     → (None, None)
+    pair=42       → (None, None)        — за пределами 1..8
+    """
+    if pair is None:
+        return (None, None)
+    if isinstance(pair, int):
+        return PAIR_BELLS.get(pair, (None, None))
+    s = str(pair).strip()
+    if s.isdigit():
+        return PAIR_BELLS.get(int(s), (None, None))
+    m = re.match(r"^(\d+)\s*-\s*(\d+)$", s)
+    if not m:
+        return (None, None)
+    a, b = int(m.group(1)), int(m.group(2))
+    if a not in PAIR_BELLS or b not in PAIR_BELLS:
+        return (None, None)
+    return (PAIR_BELLS[a][0], PAIR_BELLS[b][1])
+
 
 def detect_type_from_fill(fill: str | None) -> str | None:
     """Определить тип занятия по цвету заливки ячейки.
@@ -367,8 +406,10 @@ def parse_bachelor(
         if current_day is None:
             continue
         pair_number_int = _pair_number_from_cell(pair_cell)
-        t_start, t_end = parse_time_range(time_cell)
-        if not t_start or not t_end:
+        # Время в исходной ячейке используем только как фолбэк, если по номеру
+        # пары не нашлось канонической записи в PAIR_BELLS.
+        cell_t_start, cell_t_end = parse_time_range(time_cell)
+        if pair_number_int is None and not (cell_t_start and cell_t_end):
             continue
 
         for col, num, prog, _ in group_cols:
@@ -380,18 +421,22 @@ def parse_bachelor(
                 continue
 
             # Объединённые пары: ячейка занятия перекрывает несколько строк-пар.
-            #   pair="3-4", time = от начала верхней пары до конца нижней.
+            #   pair="3-4", время — от начала верхней пары до конца нижней.
             span = max(1, lesson_cell.rowspan)
             pair_value: int | str | None = pair_number_int
-            eff_t_end = t_end
             if span > 1 and r_idx + span - 1 < n_rows:
                 bottom_row = rich_rows[r_idx + span - 1]
                 bottom_pair = _pair_number_from_cell(bottom_row.value(1))
-                _, bottom_t_end = parse_time_range(bottom_row.value(2))
-                if bottom_t_end:
-                    eff_t_end = bottom_t_end
                 if pair_number_int and bottom_pair and bottom_pair > pair_number_int:
                     pair_value = f"{pair_number_int}-{bottom_pair}"
+
+            # Время — из канонического расписания звонков по номеру пары; если
+            # пара неизвестна (или вне 1..8), берём то, что напечатано в ячейке.
+            canon_start, canon_end = bells_for_pair(pair_value)
+            t_start = canon_start or cell_t_start
+            t_end = canon_end or cell_t_end
+            if not t_start or not t_end:
+                continue
 
             lessons.extend(
                 build_lessons_from_cell(
@@ -400,7 +445,7 @@ def parse_bachelor(
                     day=current_day,
                     pair=pair_value,
                     t_start=t_start,
-                    t_end=eff_t_end,
+                    t_end=t_end,
                     group_id=f"y{year}-g{num}",
                     year=year,
                     lesson_cell=lesson_cell,

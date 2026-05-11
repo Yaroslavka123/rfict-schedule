@@ -10,6 +10,8 @@ import pytest
 
 from schedule_parser.parse_schedule import (
     COLOR_TO_TYPE,
+    PAIR_BELLS,
+    bells_for_pair,
     build_lessons_from_cell,
     detect_type_from_fill,
     detect_type_for_cell,
@@ -169,6 +171,45 @@ class TestMergedPairs:
         assert l.time_start == "09:00"
         assert l.time_end == "12:00"
         assert l.lesson_type == "lecture"
+
+
+# ---------- canonical bell schedule ----------
+
+class TestCanonicalBells:
+    @pytest.mark.parametrize("pair,expected", [
+        (1, ("09:00", "10:25")),
+        (2, ("10:35", "12:00")),
+        (3, ("12:10", "13:35")),
+        (4, ("14:00", "15:25")),
+        (5, ("15:35", "17:00")),
+        (6, ("17:20", "18:45")),
+        (7, ("18:55", "20:20")),
+        (8, ("20:30", "21:55")),
+        ("1-2", ("09:00", "12:00")),
+        ("3-4", ("12:10", "15:25")),
+        ("6-8", ("17:20", "21:55")),
+        ("3", ("12:10", "13:35")),
+        (None, (None, None)),
+        (42, (None, None)),
+        ("garbage", (None, None)),
+    ])
+    def test_bells_for_pair(self, pair, expected):
+        assert bells_for_pair(pair) == expected
+
+    def test_year1_uses_canonical_times_not_cell_text(self):
+        """В year1 в столбце «Время» стоит устаревшее 80-минутное расписание
+        (09:00-10:20), а парсер обязан выдавать каноническое 85-минутное."""
+        rows = read_local_xlsx(str(FIXTURES / "year1.xlsx"))
+        _, lessons = parse_bachelor(rows, 1)
+        # Все занятия с pair=1 должны иметь 09:00-10:25, не 09:00-10:20.
+        pair1 = [l for l in lessons if l.pair_number == 1]
+        assert pair1, "year 1: нет занятий на 1-й паре"
+        assert all(l.time_start == "09:00" and l.time_end == "10:25" for l in pair1), \
+            f"year 1: 1-я пара не каноническая: {set((l.time_start, l.time_end) for l in pair1)}"
+        # Объединённая «1-2» → 09:00-12:00, не 09:00-11:50.
+        combined12 = [l for l in lessons if l.pair_number == "1-2"]
+        if combined12:
+            assert all(l.time_start == "09:00" and l.time_end == "12:00" for l in combined12)
 
 
 # ---------- end-to-end on real XLSX fixtures ----------
