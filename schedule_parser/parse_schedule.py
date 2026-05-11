@@ -123,6 +123,66 @@ def extract_weeks(text: str) -> str:
     return "all"
 
 
+# Префиксы должностей преподавателей. Порядок важен — длинные ДО коротких,
+# иначе "ст.пр." поймается как "ст.".
+_TEACHER_PREFIXES = (
+    "ст. пр.", "ст.пр.", "пр.ст.", "проф.", "доц.", "асс.", "преп.", "пр.", "ст.",
+)
+_INITIALS_RE = re.compile(r"[А-Яа-яA-Za-z]\.\s*[А-Яа-яA-Za-z]?\.?")
+
+
+def is_teacher_line(line: str) -> bool:
+    """Строка вида 'ст.пр. ШалатонинИ.А.' / 'пр. БурковскаяА.И.' / 'проф. Гайдук П.И.'"""
+    s = (line or "").strip()
+    if not s or len(s) > 120:
+        return False
+    low = s.lower()
+    matched = False
+    for p in _TEACHER_PREFIXES:
+        if low.startswith(p):
+            matched = True
+            break
+    if not matched:
+        return False
+    # Должны быть инициалы (иначе "ст. курс" / "пр. ст. ..." поймаются)
+    return bool(_INITIALS_RE.search(s))
+
+
+def is_subgroup_only_line(line: str) -> bool:
+    """Строки типа '3ПГ/4ПГ нечет/чет', '1 ПГ', '3 ПГ чет' — без названия предмета.
+    Признак: начинается с цифры+ПГ И не содержит длинного слова с заглавной."""
+    s = (line or "").strip()
+    if not s or len(s) > 40:
+        return False
+    if not re.match(r"^\d\s*ПГ", s):
+        return False
+    # Если внутри есть капитализированное слово (предмет, преподаватель) — это не «чистая» подгруппа
+    return not re.search(r"[А-ЯA-Z][а-яa-z]{3,}", s)
+
+
+def is_note_line(line: str) -> bool:
+    """Строки-пометки: 'с 16.02', 'по 21.05', 'на 11.05', 'доп. занятие'."""
+    s = (line or "").strip().lower()
+    if not s:
+        return False
+    return bool(re.match(
+        r"^(по\s+\d|с\s+\d|до\s+\d|на\s+\d|отмен|отработк|доп[\.\s]|с\s+1[0-9][.:]\d)",
+        s,
+    ))
+
+
+_LEADING_SUBGROUP_RE = re.compile(r"^\s*\d\s*ПГ(?:\s*/\s*\d\s*ПГ)*\s*")
+
+
+def strip_leading_subgroup_marker(line: str) -> str:
+    """'2ПГАнглийский язык' → 'Английский язык'. Удаляет ведущий '<n>ПГ' если за ним идёт текст."""
+    s = (line or "").strip()
+    m = _LEADING_SUBGROUP_RE.match(s)
+    if m and m.end() < len(s) and s[m.end()].isalpha():
+        return s[m.end():].strip()
+    return s
+
+
 def parse_date(token: str, year: int = 2026) -> str | None:
     m = re.fullmatch(r"(\d{1,2})\.(\d{1,2})", token)
     if not m:
@@ -224,75 +284,288 @@ def parse_bachelor(rows: list[list[str]], year: int) -> tuple[list[Group], list[
             room_text = row[col + 1] if col + 1 < len(row) else ""
             if not lesson_text.strip():
                 continue
-            les = build_lesson_from_cell(
-                lesson_text=lesson_text,
-                room_text=room_text,
-                day=current_day,
-                pair=pair_number,
-                t_start=t_start,
-                t_end=t_end,
-                group_id=f"y{year}-g{num}",
-                year=year,
+            lessons.extend(
+                build_lessons_from_cell(
+                    lesson_text=lesson_text,
+                    room_text=room_text,
+                    day=current_day,
+                    pair=pair_number,
+                    t_start=t_start,
+                    t_end=t_end,
+                    group_id=f"y{year}-g{num}",
+                    year=year,
+                )
             )
-            if les:
-                lessons.append(les)
 
     return groups, lessons
 
 
+def _split_blocks_by_blank(lesson_text: str) -> list[dict]:
+    """Разделить ячейку на блоки по пустым строкам. Возвращает [{lines:[(idx,text)], start:int}, ...]."""
+    blocks: list[dict] = []
+    current: list[tuple[int, str]] = []
+    current_start: int | None = None
+    for i, ln in enumerate((lesson_text or "").splitlines()):
+        s = ln.strip()
+        if s:
+            if not current:
+                current_start = i
+            current.append((i, s))
+        else:
+            if current:
+                blocks.append({"lines": current, "start": current_start})
+                current = []
+                current_start = None
+    if current:
+        blocks.append({"lines": current, "start": current_start})
+    return blocks
+
+
+def _split_blocks_by_teacher_boundary(lesson_text: str) -> list[dict]:
+    """Когда нет blank-line разделителя, режем после каждой teacher-строки."""
+    blocks: list[dict] = []
+    current: list[tuple[int, str]] = []
+    current_start: int | None = None
+    for i, ln in enumerate((lesson_text or "").splitlines()):
+        s = ln.strip()
+        if not s:
+            continue
+        if not current:
+            current_start = i
+        current.append((i, s))
+        if is_teacher_line(s):
+            blocks.append({"lines": current, "start": current_start})
+            current = []
+            current_start = None
+    if current:
+        if blocks:
+            # хвостовые строки без teacher — прицепить к последнему блоку
+            blocks[-1]["lines"].extend(current)
+        else:
+            blocks.append({"lines": current, "start": current_start})
+    return blocks
+
+
+def _parse_block(block: dict) -> dict:
+    """Разобрать содержимое одного блока на subject/teacher/subgroup/notes/weeks/dates."""
+    teacher_lines: list[str] = []
+    subject_lines: list[str] = []
+    subgroup_lines: list[str] = []
+    note_lines: list[str] = []
+    for _, ln in block["lines"]:
+        if is_note_line(ln):
+            note_lines.append(ln)
+        elif is_teacher_line(ln):
+            teacher_lines.append(ln)
+        elif is_subgroup_only_line(ln):
+            subgroup_lines.append(ln)
+        else:
+            subject_lines.append(strip_leading_subgroup_marker(ln))
+
+    block_text = "\n".join(ln for _, ln in block["lines"])
+    subject = " ".join(s for s in subject_lines if s).strip()
+
+    # Определяем подгруппы
+    single_sg: str | None = None
+    subgroup_seq: list[str] | None = None
+    for sg_ln in subgroup_lines:
+        digits = re.findall(r"(\d)\s*ПГ", sg_ln)
+        if len(digits) >= 2 and len(teacher_lines) >= 2 and len(digits) == len(teacher_lines):
+            subgroup_seq = [f"{d}ПГ" for d in digits]
+            break
+        if single_sg is None:
+            mm = re.match(r"\s*(\d\s*ПГ(?:\s*/\s*\d\s*ПГ)*)\s*", sg_ln)
+            if mm:
+                single_sg = mm.group(1).replace(" ", "")
+
+    return {
+        "subject": subject,
+        "teacher_lines": teacher_lines,
+        "single_subgroup": single_sg,
+        "subgroup_seq": subgroup_seq,
+        "weeks": extract_weeks(block_text),
+        "date_from": extract_date_range(block_text)[0],
+        "date_to": extract_date_range(block_text)[1],
+        "lesson_type": detect_type(block_text),
+        "notes": "; ".join(note_lines) or None,
+        "raw": block_text,
+        "start": block["start"],
+    }
+
+
+def _assign_rooms(sub_lessons: list[dict], parsed_blocks: list[dict], room_text: str) -> None:
+    """Простановка rooms[] в каждом sub-lesson по информации из room_text.
+
+    Правила:
+    - 0 аудиторий → rooms = [];
+    - 1 аудитория → одна и та же у всех;
+    - #аудиторий == #sub-lesson → 1-к-1;
+    - иначе пробуем сгруппировать аудитории по пустым строкам.
+    """
+    room_lines = (room_text or "").splitlines()
+    flat = [r.strip() for r in room_lines if r.strip()]
+    n_subs = len(sub_lessons)
+    if not flat or not sub_lessons:
+        for s in sub_lessons:
+            s["rooms"] = []
+        return
+    if len(flat) == 1:
+        for s in sub_lessons:
+            s["rooms"] = [flat[0]]
+        return
+    if len(flat) == n_subs:
+        for s, r in zip(sub_lessons, flat):
+            s["rooms"] = [r]
+        return
+    # Группируем по пустым строкам
+    groups: list[list[str]] = []
+    current: list[str] = []
+    for ln in room_lines:
+        if ln.strip():
+            current.append(ln.strip())
+        else:
+            if current:
+                groups.append(current)
+                current = []
+    if current:
+        groups.append(current)
+    if len(groups) == n_subs:
+        for s, g in zip(sub_lessons, groups):
+            s["rooms"] = g
+        return
+    # 1-to-1 по блокам, аудитория шарится между подзанятиями блока (multi-teacher split)
+    if len(flat) == len(parsed_blocks):
+        iterator = iter(flat)
+        block_assignments: list[list[str]] = []
+        for b in parsed_blocks:
+            r = next(iterator)
+            n_teachers = len(b["teacher_lines"])
+            if b.get("subgroup_seq") and n_teachers >= 2 and len(b["subgroup_seq"]) == n_teachers:
+                block_assignments.extend([[r]] * n_teachers)
+            else:
+                block_assignments.append([r])
+        if len(block_assignments) == n_subs:
+            for s, rs in zip(sub_lessons, block_assignments):
+                s["rooms"] = rs
+            return
+    # fallback: все аудитории всем
+    for s in sub_lessons:
+        s["rooms"] = list(flat)
+
+
+def build_lessons_from_cell(*, lesson_text: str, room_text: str, day: int, pair: int | None,
+                            t_start: str, t_end: str, group_id: str, year: int) -> list[Lesson]:
+    """Распарсить одну ячейку расписания в N lesson'ов.
+
+    Алгоритм:
+      1. Разбить текст на блоки по пустым строкам (если их нет — пробуем по teacher-границам,
+         когда количество аудиторий подсказывает что блоков должно быть больше).
+      2. В каждом блоке выделить subject / teachers / subgroup / notes.
+      3. Если в блоке N>=2 учителей и подгруппа задана списком вроде '2 ПГ/1 ПГ' длины N —
+         расщепить блок на N подзанятий, по одному преподу в каждом.
+      4. Сопоставить аудитории: 0/1/N=#sub-lesson/N=#блоков.
+    """
+    if not (lesson_text or "").strip():
+        return []
+
+    room_lines = (room_text or "").splitlines()
+    n_rooms = sum(1 for r in room_lines if r.strip())
+
+    blocks = _split_blocks_by_blank(lesson_text)
+    if not blocks:
+        return []
+    parsed_blocks = [_parse_block(b) for b in blocks]
+
+    def _effective_count(pbs: list[dict]) -> int:
+        total = 0
+        for pb in pbs:
+            teachers = pb["teacher_lines"]
+            if pb.get("subgroup_seq") and len(teachers) >= 2 and len(pb["subgroup_seq"]) == len(teachers):
+                total += len(teachers)
+            else:
+                total += 1
+        return total
+
+    # Если эффективных подзанятий меньше, чем аудиторий — пробуем перенарезать по teacher-границам
+    if _effective_count(parsed_blocks) < n_rooms and n_rooms >= 2:
+        alt_blocks = _split_blocks_by_teacher_boundary(lesson_text)
+        if alt_blocks:
+            alt_parsed = [_parse_block(b) for b in alt_blocks]
+            if _effective_count(alt_parsed) == n_rooms:
+                blocks = alt_blocks
+                parsed_blocks = alt_parsed
+
+    # Если у блока пустой subject, наследуем от предыдущего блока (часто встречается в
+    # ячейках вроде "СРиТИ / 1ПГ-2ПГ / Гринько / 3ПГ / Беленькая" — второй учитель ведёт ТОТ ЖЕ предмет)
+    last_subject = ""
+    for pb in parsed_blocks:
+        if pb["subject"]:
+            last_subject = pb["subject"]
+        else:
+            pb["subject"] = last_subject
+    # Финальный fallback на первую строку, если предыдущего предмета не было
+    for pb, b in zip(parsed_blocks, blocks):
+        if not pb["subject"] and b["lines"]:
+            pb["subject"] = b["lines"][0][1]
+
+    # Раскладываем блоки в плоский список sub-lessons (учитываем split по нескольким учителям)
+    sub_lessons: list[dict] = []
+    for pb in parsed_blocks:
+        teachers = pb["teacher_lines"]
+        if pb["subgroup_seq"] and len(teachers) >= 2 and len(pb["subgroup_seq"]) == len(teachers):
+            for t, sg in zip(teachers, pb["subgroup_seq"]):
+                sub_lessons.append({
+                    **pb,
+                    "teacher": t,
+                    "subgroup": sg,
+                })
+        else:
+            sub_lessons.append({
+                **pb,
+                "teacher": "; ".join(teachers) or None,
+                "subgroup": pb["single_subgroup"],
+            })
+
+    _assign_rooms(sub_lessons, parsed_blocks, room_text)
+
+    out: list[Lesson] = []
+    for s in sub_lessons:
+        if not s.get("subject"):
+            continue
+        lid = hash_id(
+            group_id, str(day), str(pair), t_start,
+            s["subject"], s.get("teacher") or "", s.get("subgroup") or "",
+        )
+        out.append(Lesson(
+            id=lid,
+            group_ids=[group_id],
+            day_of_week=day,
+            pair_number=pair,
+            time_start=t_start,
+            time_end=t_end,
+            subject=s["subject"],
+            lesson_type=s.get("lesson_type"),
+            teacher=s.get("teacher"),
+            rooms=s.get("rooms", []),
+            subgroup=s.get("subgroup"),
+            weeks=s.get("weeks", "all"),
+            date_from=s.get("date_from"),
+            date_to=s.get("date_to"),
+            notes=s.get("notes"),
+            raw=s.get("raw", "").strip(),
+        ))
+    return out
+
+
 def build_lesson_from_cell(*, lesson_text: str, room_text: str, day: int, pair: int | None,
                            t_start: str, t_end: str, group_id: str, year: int) -> Lesson | None:
-    lines = clean_lines(lesson_text)
-    if not lines:
-        return None
-
-    notes: list[str] = []
-    subject_lines: list[str] = []
-    teacher_lines: list[str] = []
-    subgroup = extract_subgroup(lesson_text)
-    weeks = extract_weeks(lesson_text)
-    d_from, d_to = extract_date_range(lesson_text)
-    lesson_type = detect_type(lesson_text)
-    # эвристика: строки начинающиеся "по", "с ... по", "отмены", "доп.", "отработка" — заметки
-    for ln in lines:
-        low = ln.lower()
-        if re.match(r"^(по\s+\d|с\s+\d|отмены|отработк|доп\.|до\s+\d|с\s+\d)", low):
-            notes.append(ln)
-        elif re.match(r"^(доц\.|ст\.пр\.|пр\.ст\.|асс\.|проф\.|преп\.)", low):
-            teacher_lines.append(ln)
-        elif "ПГ" in ln and len(ln) < 20:
-            # типа "1ПГ/2ПГ нечет"
-            continue
-        else:
-            subject_lines.append(ln)
-
-    subject = " ".join(subject_lines).strip()
-    if not subject:
-        subject = lines[0]
-    teacher = "; ".join(teacher_lines).strip() or None
-
-    rooms = [r.strip() for r in re.split(r"[\n,;]", room_text or "") if r.strip()]
-    raw = lesson_text + ("\n[room] " + room_text if room_text else "")
-
-    lid = hash_id(group_id, str(day), str(pair), t_start, subject)
-    return Lesson(
-        id=lid,
-        group_ids=[group_id],
-        day_of_week=day,
-        pair_number=pair,
-        time_start=t_start,
-        time_end=t_end,
-        subject=subject,
-        lesson_type=lesson_type,
-        teacher=teacher,
-        rooms=rooms,
-        subgroup=subgroup,
-        weeks=weeks,
-        date_from=d_from,
-        date_to=d_to,
-        notes="; ".join(notes) or None,
-        raw=raw.strip(),
+    """DEPRECATED: возвращает только первый lesson из ячейки. Оставлено для обратной совместимости."""
+    out = build_lessons_from_cell(
+        lesson_text=lesson_text, room_text=room_text,
+        day=day, pair=pair, t_start=t_start, t_end=t_end,
+        group_id=group_id, year=year,
     )
+    return out[0] if out else None
 
 
 # ---------- master (year 4) ----------
