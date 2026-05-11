@@ -3,7 +3,7 @@
   "faculty": "ФРФиКТ",
   "semester": 2,
   "form": "очная",
-  "generated_at": "2026-05-11T16:48:23Z",
+  "generated_at": "2026-05-11T16:55:50Z",
   "source": {
     "type": "google_sheets",
     "sheets": [
@@ -7113,7 +7113,7 @@
       "raw": "на 09.02,16.02\nБЖЧ\nст.пр. ЕрмаковичВ.Р."
     },
     {
-      "id": "1a02264ee186",
+      "id": "f0a0ad6e78ae",
       "group_ids": [
         "y2-g9"
       ],
@@ -7121,14 +7121,14 @@
       "pair_number": 1,
       "time_start": "09:00",
       "time_end": "10:20",
-      "subject": "ИЭ Оптоэлектроника",
+      "subject": "ИЭ",
       "lesson_type": null,
       "teacher": "ст.пр. ШмарловскийВ.Н.",
       "rooms": [
         "618/",
         "619а"
       ],
-      "subgroup": "1ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-16",
       "date_to": null,
@@ -7136,7 +7136,7 @@
       "raw": "с 16.02\nИЭ\n1ПГ/2ПГ чет/нечет\nст.пр. ШмарловскийВ.Н.\nс 23.02\nОптоэлектроника\n3ПГ/4ПГ чет/нечет\nст.пр.  КадолаЕ.В."
     },
     {
-      "id": "9f3713dfd346",
+      "id": "c677e25f151e",
       "group_ids": [
         "y2-g9"
       ],
@@ -7144,13 +7144,13 @@
       "pair_number": 1,
       "time_start": "09:00",
       "time_end": "10:20",
-      "subject": "ИЭ Оптоэлектроника",
+      "subject": "Оптоэлектроника",
       "lesson_type": null,
       "teacher": "ст.пр.  КадолаЕ.В.",
       "rooms": [
         "83/К1"
       ],
-      "subgroup": "2ПГ",
+      "subgroup": "3ПГ/4ПГ",
       "weeks": "all",
       "date_from": "2026-02-16",
       "date_to": null,
@@ -7598,7 +7598,7 @@
       "raw": "Квантовая физика\nдоц. ЖелезняковаТ.А"
     },
     {
-      "id": "6b22b609e5be",
+      "id": "02d2a7f36a8a",
       "group_ids": [
         "y2-g5"
       ],
@@ -7606,13 +7606,13 @@
       "pair_number": 4,
       "time_start": "13:50",
       "time_end": "15:10",
-      "subject": "ИЭ ИМ",
+      "subject": "ИЭ",
       "lesson_type": null,
       "teacher": "ст.пр. ЩетькоН.Н.",
       "rooms": [
         "619"
       ],
-      "subgroup": "1ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-16",
       "date_to": null,
@@ -7620,7 +7620,7 @@
       "raw": "с 16.02\nИЭ\n1ПГ/2ПГ чет/нечет\nст.пр. ЩетькоН.Н.\nс 16.02\nИМ\n1ПГ/2ПГ нечет/чет\nдоц. БелыйА.А."
     },
     {
-      "id": "64e4bedfba7a",
+      "id": "6cbf2bd6d0be",
       "group_ids": [
         "y2-g5"
       ],
@@ -7628,13 +7628,13 @@
       "pair_number": 4,
       "time_start": "13:50",
       "time_end": "15:10",
-      "subject": "ИЭ ИМ",
+      "subject": "ИМ",
       "lesson_type": null,
       "teacher": "доц. БелыйА.А.",
       "rooms": [
         "619"
       ],
-      "subgroup": "2ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-16",
       "date_to": null,
@@ -9781,7 +9781,7 @@
       "raw": "с  18.02\nИМ\n3ПГ чет\nст.пр. РомашкоА.В."
     },
     {
-      "id": "f1fd44ba3543",
+      "id": "3b5a7f62fbcf",
       "group_ids": [
         "y2-g8"
       ],
@@ -9789,13 +9789,13 @@
       "pair_number": 3,
       "time_start": "12:00",
       "time_end": "13:20",
-      "subject": "ПМК   КБ Оптоэлектроника ПИ",
+      "subject": "ПМК   КБ",
       "lesson_type": null,
       "teacher": "асс. РундыгинС.Д.",
       "rooms": [
         "112"
       ],
-      "subgroup": "1ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-18",
       "date_to": null,
@@ -9803,7 +9803,7 @@
       "raw": "с 18.02\nПМК   КБ\n1ПГ/2ПГ  нечет/чет\nасс. РундыгинС.Д.\nс 25.02\nОптоэлектроника ПИ\n1ПГ/2ПГ чет/нечет\nст.пр. КадолаЕ.В."
     },
     {
-      "id": "7d9aac18a39f",
+      "id": "24b07f0602be",
       "group_ids": [
         "y2-g8"
       ],
@@ -9811,13 +9811,13 @@
       "pair_number": 3,
       "time_start": "12:00",
       "time_end": "13:20",
-      "subject": "ПМК   КБ Оптоэлектроника ПИ",
+      "subject": "Оптоэлектроника ПИ",
       "lesson_type": null,
       "teacher": "ст.пр. КадолаЕ.В.",
       "rooms": [
         "112"
       ],
-      "subgroup": "2ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-18",
       "date_to": null,
@@ -10824,7 +10824,7 @@
       "raw": "с 19.02\nИМ\n1ПГ/2ПГ  нечет/чет\nст.пр. ЛутковскийВ.М.\n3ПГ нечет\nст.пр. РомашкоА.В."
     },
     {
-      "id": "767c218680b3",
+      "id": "c5dc132d050d",
       "group_ids": [
         "y2-g7"
       ],
@@ -10832,14 +10832,83 @@
       "pair_number": 3,
       "time_start": "12:00",
       "time_end": "13:20",
-      "subject": "ИИиММО  8 раз Java ПМК ИМ",
+      "subject": "ИИиММО  8 раз",
       "lesson_type": null,
-      "teacher": "ст.пр. КораньВ.В.; асс. ВорганА.В.; асс. РундыгинС.Д.; асс. ЛазаренковА.А",
+      "teacher": "ст.пр. КораньВ.В.",
       "rooms": [
         "619",
         "708"
       ],
       "subgroup": "3ПГ",
+      "weeks": "odd",
+      "date_from": "2026-02-26",
+      "date_to": null,
+      "notes": "с 26.02; с 19.02; с 19.02",
+      "raw": "с 26.02\nИИиММО  8 раз\n3ПГ  нечет\nст.пр. КораньВ.В.\nJava\n3ПГ чет\nасс. ВорганА.В.\nс 19.02\nПМК\n1ПГ/2ПГ  нечет/чет\nасс. РундыгинС.Д.\nс 19.02\nИМ\n1ПГ/2ПГ чет/нечет\nасс. ЛазаренковА.А"
+    },
+    {
+      "id": "23cf8e11c646",
+      "group_ids": [
+        "y2-g7"
+      ],
+      "day_of_week": 4,
+      "pair_number": 3,
+      "time_start": "12:00",
+      "time_end": "13:20",
+      "subject": "Java",
+      "lesson_type": null,
+      "teacher": "асс. ВорганА.В.",
+      "rooms": [
+        "619",
+        "708"
+      ],
+      "subgroup": "3ПГ",
+      "weeks": "even",
+      "date_from": "2026-02-26",
+      "date_to": null,
+      "notes": "с 26.02; с 19.02; с 19.02",
+      "raw": "с 26.02\nИИиММО  8 раз\n3ПГ  нечет\nст.пр. КораньВ.В.\nJava\n3ПГ чет\nасс. ВорганА.В.\nс 19.02\nПМК\n1ПГ/2ПГ  нечет/чет\nасс. РундыгинС.Д.\nс 19.02\nИМ\n1ПГ/2ПГ чет/нечет\nасс. ЛазаренковА.А"
+    },
+    {
+      "id": "02cd6e260cee",
+      "group_ids": [
+        "y2-g7"
+      ],
+      "day_of_week": 4,
+      "pair_number": 3,
+      "time_start": "12:00",
+      "time_end": "13:20",
+      "subject": "ПМК",
+      "lesson_type": null,
+      "teacher": "асс. РундыгинС.Д.",
+      "rooms": [
+        "619",
+        "708"
+      ],
+      "subgroup": "1ПГ/2ПГ",
+      "weeks": "all",
+      "date_from": "2026-02-26",
+      "date_to": null,
+      "notes": "с 26.02; с 19.02; с 19.02",
+      "raw": "с 26.02\nИИиММО  8 раз\n3ПГ  нечет\nст.пр. КораньВ.В.\nJava\n3ПГ чет\nасс. ВорганА.В.\nс 19.02\nПМК\n1ПГ/2ПГ  нечет/чет\nасс. РундыгинС.Д.\nс 19.02\nИМ\n1ПГ/2ПГ чет/нечет\nасс. ЛазаренковА.А"
+    },
+    {
+      "id": "710abb41c5e3",
+      "group_ids": [
+        "y2-g7"
+      ],
+      "day_of_week": 4,
+      "pair_number": 3,
+      "time_start": "12:00",
+      "time_end": "13:20",
+      "subject": "ИМ",
+      "lesson_type": null,
+      "teacher": "асс. ЛазаренковА.А",
+      "rooms": [
+        "619",
+        "708"
+      ],
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-26",
       "date_to": null,
@@ -12241,7 +12310,7 @@
       "raw": "по 27.02\nИмитационное\nмоделирование\nдоц. СкакунВ.В."
     },
     {
-      "id": "0148b93b0d50",
+      "id": "e1b3e43ecda9",
       "group_ids": [
         "y2-g6"
       ],
@@ -12249,13 +12318,13 @@
       "pair_number": 5,
       "time_start": "15:20",
       "time_end": "16:40",
-      "subject": "ИЭ ПМК",
+      "subject": "ИЭ",
       "lesson_type": null,
       "teacher": "ст.пр. ШмарловскийВ.Н.",
       "rooms": [
         "620"
       ],
-      "subgroup": "1ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-19",
       "date_to": null,
@@ -12263,7 +12332,7 @@
       "raw": "с 19.02\nИЭ\n1ПГ/2ПГ чет/нечет\nст.пр. ШмарловскийВ.Н.\nс 20.02\nПМК\n3ПГ нечет\nасс. РундыгинС.Д."
     },
     {
-      "id": "9251f1e8ba98",
+      "id": "2c318438b1fa",
       "group_ids": [
         "y2-g6"
       ],
@@ -12271,14 +12340,14 @@
       "pair_number": 5,
       "time_start": "15:20",
       "time_end": "16:40",
-      "subject": "ИЭ ПМК",
+      "subject": "ПМК",
       "lesson_type": null,
       "teacher": "асс. РундыгинС.Д.",
       "rooms": [
         "620"
       ],
-      "subgroup": "2ПГ",
-      "weeks": "all",
+      "subgroup": "3ПГ",
+      "weeks": "odd",
       "date_from": "2026-02-19",
       "date_to": null,
       "notes": "с 19.02; с 20.02",
@@ -13363,7 +13432,7 @@
       "raw": "Интеллектуальный\nанализ данных\nдоц. ЯцковН.Н."
     },
     {
-      "id": "bea99c60013f",
+      "id": "d72b58945f7b",
       "group_ids": [
         "y3-g5"
       ],
@@ -13371,13 +13440,13 @@
       "pair_number": 1,
       "time_start": "09:00",
       "time_end": "10:20",
-      "subject": "БИС ОДвКиИС",
+      "subject": "БИС",
       "lesson_type": null,
       "teacher": "ст.пр. ПопкоЕ.Е.",
       "rooms": [
         "707"
       ],
-      "subgroup": "1ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-16",
       "date_to": null,
@@ -13385,7 +13454,7 @@
       "raw": "с 16.02\nБИС\n1ПГ/2ПГ нечет/чет\nст.пр. ПопкоЕ.Е.\nс 16.02\nОДвКиИС\n1ПГ/2ПГ чет/нечет\nст.пр. ЧуйкоВ.А."
     },
     {
-      "id": "afd9846d9934",
+      "id": "d8f92eb1a919",
       "group_ids": [
         "y3-g5"
       ],
@@ -13393,13 +13462,13 @@
       "pair_number": 1,
       "time_start": "09:00",
       "time_end": "10:20",
-      "subject": "БИС ОДвКиИС",
+      "subject": "ОДвКиИС",
       "lesson_type": null,
       "teacher": "ст.пр. ЧуйкоВ.А.",
       "rooms": [
         "707"
       ],
-      "subgroup": "2ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-16",
       "date_to": null,
@@ -13935,7 +14004,7 @@
       "raw": "МОиОИ\n3ПГ\nст.пр. АфоненкоА.А."
     },
     {
-      "id": "4bdc54fd4029",
+      "id": "060b1e2fc291",
       "group_ids": [
         "y3-g602"
       ],
@@ -13943,13 +14012,13 @@
       "pair_number": 3,
       "time_start": "12:00",
       "time_end": "13:20",
-      "subject": "ФОХиОИ ТиБПСиВ",
+      "subject": "ФОХиОИ",
       "lesson_type": null,
       "teacher": "проф. Гайдук ПИ",
       "rooms": [
         "129"
       ],
-      "subgroup": "3ПГ",
+      "subgroup": "3ПГ/4ПГ",
       "weeks": "all",
       "date_from": "2026-02-16",
       "date_to": null,
@@ -13957,7 +14026,7 @@
       "raw": "ФОХиОИ\n3ПГ/4ПГ нечет/чет\nпроф. Гайдук ПИ\nс 16.02\nТиБПСиВ\n3ПГ/4ПГ чет/нечет\nст.пр. ШалатонинИ.А."
     },
     {
-      "id": "9c86c6bc0b7a",
+      "id": "be8af501992e",
       "group_ids": [
         "y3-g602"
       ],
@@ -13965,13 +14034,13 @@
       "pair_number": 3,
       "time_start": "12:00",
       "time_end": "13:20",
-      "subject": "ФОХиОИ ТиБПСиВ",
+      "subject": "ТиБПСиВ",
       "lesson_type": null,
       "teacher": "ст.пр. ШалатонинИ.А.",
       "rooms": [
         "129"
       ],
-      "subgroup": "4ПГ",
+      "subgroup": "3ПГ/4ПГ",
       "weeks": "all",
       "date_from": "2026-02-16",
       "date_to": null,
@@ -14688,7 +14757,7 @@
       "raw": "ОСвСИВ\n3ПГ еженедельно\nст.пр. КурилоВ.С."
     },
     {
-      "id": "1cd61c5f3918",
+      "id": "2ddf61dd1a53",
       "group_ids": [
         "y3-g2"
       ],
@@ -14696,7 +14765,7 @@
       "pair_number": 3,
       "time_start": "12:00",
       "time_end": "13:20",
-      "subject": "Оптоэлектроника Оптоэлектр. датчики",
+      "subject": "Оптоэлектроника",
       "lesson_type": null,
       "teacher": "ст.пр.  КадолаЕ.В.",
       "rooms": [
@@ -14710,7 +14779,7 @@
       "raw": "с 10.03\nОптоэлектроника\n1ПГ\\2ПГ чет/нечет\nст.пр.  КадолаЕ.В.\nс 10.03\nОптоэлектр. датчики\n1ПГ/2ПГ  нечет/чет\nпроф. КозловВ.М."
     },
     {
-      "id": "6a0a9cbf4d2f",
+      "id": "f3606f3c020d",
       "group_ids": [
         "y3-g2"
       ],
@@ -14718,13 +14787,13 @@
       "pair_number": 3,
       "time_start": "12:00",
       "time_end": "13:20",
-      "subject": "Оптоэлектроника Оптоэлектр. датчики",
+      "subject": "Оптоэлектр. датчики",
       "lesson_type": null,
       "teacher": "проф. КозловВ.М.",
       "rooms": [
         "83/К1"
       ],
-      "subgroup": "2ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-03-10",
       "date_to": null,
@@ -14800,7 +14869,7 @@
       "raw": "ПЭД\n1ПГ/2ПГ чет/нечет\nдоц. Демидчик В.И."
     },
     {
-      "id": "146a94c77b0f",
+      "id": "4e3ffb029666",
       "group_ids": [
         "y3-g8"
       ],
@@ -14808,21 +14877,21 @@
       "pair_number": 3,
       "time_start": "12:00",
       "time_end": "13:20",
-      "subject": "СПиОМПиОвП ПСКЗиВО",
+      "subject": "СПиОМПиОвП",
       "lesson_type": null,
       "teacher": "ст.пр. ЧуйкоВ.А.",
       "rooms": [
         "620"
       ],
-      "subgroup": "1ПГ",
-      "weeks": "all",
+      "subgroup": "3ПГ",
+      "weeks": "odd",
       "date_from": "2026-02-24",
       "date_to": null,
       "notes": "с 24.02; с 17.02",
       "raw": "с 24.02\nСПиОМПиОвП\n3ПГ  нечет\nст.пр. ЧуйкоВ.А.\nс 17.02\nПСКЗиВО\n1ПГ/2ПГ чет/нечет\nст.пр. ШмарловскийА.В."
     },
     {
-      "id": "bb6dce6223b9",
+      "id": "6ec3cfb8150c",
       "group_ids": [
         "y3-g8"
       ],
@@ -14830,13 +14899,13 @@
       "pair_number": 3,
       "time_start": "12:00",
       "time_end": "13:20",
-      "subject": "СПиОМПиОвП ПСКЗиВО",
+      "subject": "ПСКЗиВО",
       "lesson_type": null,
       "teacher": "ст.пр. ШмарловскийА.В.",
       "rooms": [
         "619"
       ],
-      "subgroup": "2ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-24",
       "date_to": null,
@@ -15174,7 +15243,7 @@
       "raw": "с 30.03  с 15.20\nПТАБД\n2ПГ еженедельно\nст.пр. ДигрисА.В."
     },
     {
-      "id": "41b86245c482",
+      "id": "c12fc35d258e",
       "group_ids": [
         "y3-g1"
       ],
@@ -15182,15 +15251,61 @@
       "pair_number": 1,
       "time_start": "09:00",
       "time_end": "10:20",
-      "subject": "ИАД МОиИО ТКиВ",
+      "subject": "ИАД",
       "lesson_type": null,
-      "teacher": "ст.пр. ИсмайиловаА.С.; ст.пр. ЖевнякО.Г.; ст.пр. КурилоВ.С.",
+      "teacher": "ст.пр. ИсмайиловаА.С.",
       "rooms": [
         "31/К1",
         "508"
       ],
       "subgroup": "3ПГ",
+      "weeks": "even",
+      "date_from": null,
+      "date_to": null,
+      "notes": null,
+      "raw": "ИАД\n3ПГ чет\nст.пр. ИсмайиловаА.С.\nМОиИО\n1ПГ/2ПГ чет/нечет\nст.пр. ЖевнякО.Г.\nТКиВ\n3ПГ нечет\nст.пр. КурилоВ.С."
+    },
+    {
+      "id": "dad768cfdb67",
+      "group_ids": [
+        "y3-g1"
+      ],
+      "day_of_week": 3,
+      "pair_number": 1,
+      "time_start": "09:00",
+      "time_end": "10:20",
+      "subject": "МОиИО",
+      "lesson_type": null,
+      "teacher": "ст.пр. ЖевнякО.Г.",
+      "rooms": [
+        "31/К1",
+        "508"
+      ],
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
+      "date_from": null,
+      "date_to": null,
+      "notes": null,
+      "raw": "ИАД\n3ПГ чет\nст.пр. ИсмайиловаА.С.\nМОиИО\n1ПГ/2ПГ чет/нечет\nст.пр. ЖевнякО.Г.\nТКиВ\n3ПГ нечет\nст.пр. КурилоВ.С."
+    },
+    {
+      "id": "a418a3d1cdfd",
+      "group_ids": [
+        "y3-g1"
+      ],
+      "day_of_week": 3,
+      "pair_number": 1,
+      "time_start": "09:00",
+      "time_end": "10:20",
+      "subject": "ТКиВ",
+      "lesson_type": null,
+      "teacher": "ст.пр. КурилоВ.С.",
+      "rooms": [
+        "31/К1",
+        "508"
+      ],
+      "subgroup": "3ПГ",
+      "weeks": "odd",
       "date_from": null,
       "date_to": null,
       "notes": null,
@@ -15440,7 +15555,7 @@
       "raw": "ИАД\n1ПГ/2ПГ чет/нечет\nасс. КолесниковК.Д."
     },
     {
-      "id": "30cd52aae313",
+      "id": "3b8f82bdb286",
       "group_ids": [
         "y3-g602"
       ],
@@ -15448,13 +15563,13 @@
       "pair_number": 2,
       "time_start": "10:30",
       "time_end": "11:50",
-      "subject": "ФОХиОИ ТиБПСиВ",
+      "subject": "ФОХиОИ",
       "lesson_type": null,
       "teacher": "ст.пр. ЗайковВ.А.",
       "rooms": [
         "129"
       ],
-      "subgroup": "1ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-18",
       "date_to": null,
@@ -15462,7 +15577,7 @@
       "raw": "ФОХиОИ\n1ПГ/2ПГ нечет/чет\nст.пр. ЗайковВ.А.\nс 18.02\nТиБПСиВ\n1ПГ/2ПГ чет/нечет\nст.пр. ШалатонинИ.А."
     },
     {
-      "id": "7ee3bfec3ace",
+      "id": "09779847112d",
       "group_ids": [
         "y3-g602"
       ],
@@ -15470,13 +15585,13 @@
       "pair_number": 2,
       "time_start": "10:30",
       "time_end": "11:50",
-      "subject": "ФОХиОИ ТиБПСиВ",
+      "subject": "ТиБПСиВ",
       "lesson_type": null,
       "teacher": "ст.пр. ШалатонинИ.А.",
       "rooms": [
         "129"
       ],
-      "subgroup": "2ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-18",
       "date_to": null,
@@ -16832,7 +16947,7 @@
       "raw": "с 26.02\nЦОС\n3ПГ нечет\nст.пр. БолотькоТ.П."
     },
     {
-      "id": "02191531e30b",
+      "id": "08c96659e4df",
       "group_ids": [
         "y3-g2"
       ],
@@ -16840,9 +16955,31 @@
       "pair_number": 5,
       "time_start": "15:20",
       "time_end": "16:40",
-      "subject": "Оптоэлектр. датчики Оптоэлектроника",
+      "subject": "Оптоэлектр. датчики",
       "lesson_type": null,
-      "teacher": "проф. КозловВ.Л.; проф.   КозловВ.Л.",
+      "teacher": "проф. КозловВ.Л.",
+      "rooms": [
+        "81/К1"
+      ],
+      "subgroup": "3ПГ",
+      "weeks": "even",
+      "date_from": "2026-03-12",
+      "date_to": null,
+      "notes": "с 12.03; с 12.03",
+      "raw": "с 12.03\nОптоэлектр. датчики\n3ПГ чет\nпроф. КозловВ.Л.\nс 12.03\nОптоэлектроника\n3ПГ нечет\nпроф.   КозловВ.Л."
+    },
+    {
+      "id": "110af72a21c8",
+      "group_ids": [
+        "y3-g2"
+      ],
+      "day_of_week": 4,
+      "pair_number": 5,
+      "time_start": "15:20",
+      "time_end": "16:40",
+      "subject": "Оптоэлектроника",
+      "lesson_type": null,
+      "teacher": "проф.   КозловВ.Л.",
       "rooms": [
         "81/К1"
       ],
@@ -18152,7 +18289,7 @@
       "raw": "Социальная\nпсихология\nасс. ЧепикЕ.А."
     },
     {
-      "id": "ee8e0da2a31e",
+      "id": "101afbc569f8",
       "group_ids": [
         "y3-g2"
       ],
@@ -18160,13 +18297,35 @@
       "pair_number": 1,
       "time_start": "09:00",
       "time_end": "10:20",
-      "subject": "МОиИО ИАД",
+      "subject": "МОиИО",
       "lesson_type": null,
-      "teacher": "ст.пр. АфоненкоА.А.; ст.пр. ИсмайиловаА.С.",
+      "teacher": "ст.пр. АфоненкоА.А.",
       "rooms": [
         "708"
       ],
       "subgroup": "1ПГ",
+      "weeks": "all",
+      "date_from": null,
+      "date_to": null,
+      "notes": null,
+      "raw": "МОиИО\n1ПГ  еженедельно\nст.пр. АфоненкоА.А.\nИАД\n2 ПГ  нечет\nст.пр. ИсмайиловаА.С."
+    },
+    {
+      "id": "35094efa2dd7",
+      "group_ids": [
+        "y3-g2"
+      ],
+      "day_of_week": 6,
+      "pair_number": 1,
+      "time_start": "09:00",
+      "time_end": "10:20",
+      "subject": "ИАД",
+      "lesson_type": null,
+      "teacher": "ст.пр. ИсмайиловаА.С.",
+      "rooms": [
+        "708"
+      ],
+      "subgroup": "2ПГ",
       "weeks": "odd",
       "date_from": null,
       "date_to": null,
@@ -18174,7 +18333,7 @@
       "raw": "МОиИО\n1ПГ  еженедельно\nст.пр. АфоненкоА.А.\nИАД\n2 ПГ  нечет\nст.пр. ИсмайиловаА.С."
     },
     {
-      "id": "bfddfc495c09",
+      "id": "9430c91c1862",
       "group_ids": [
         "y3-g3"
       ],
@@ -18182,13 +18341,35 @@
       "pair_number": 1,
       "time_start": "09:00",
       "time_end": "10:20",
-      "subject": "МОиИО ИАД",
+      "subject": "МОиИО",
       "lesson_type": null,
-      "teacher": "доц. ЖевнякО.Г.; ст.пр. ИсмайиловаА.С.",
+      "teacher": "доц. ЖевнякО.Г.",
       "rooms": [
         "508"
       ],
       "subgroup": "1ПГ",
+      "weeks": "all",
+      "date_from": null,
+      "date_to": null,
+      "notes": null,
+      "raw": "МОиИО\n1ПГ  еженедельно\nдоц. ЖевнякО.Г.\nИАД\n2ПГ   чет\nст.пр. ИсмайиловаА.С."
+    },
+    {
+      "id": "0ec98dc009fa",
+      "group_ids": [
+        "y3-g3"
+      ],
+      "day_of_week": 6,
+      "pair_number": 1,
+      "time_start": "09:00",
+      "time_end": "10:20",
+      "subject": "ИАД",
+      "lesson_type": null,
+      "teacher": "ст.пр. ИсмайиловаА.С.",
+      "rooms": [
+        "508"
+      ],
+      "subgroup": "2ПГ",
       "weeks": "even",
       "date_from": null,
       "date_to": null,
@@ -18218,7 +18399,7 @@
       "raw": "14.02\nЭДиУС\n3ПГ\nст.пр. ВасиленкоС.В."
     },
     {
-      "id": "009aa4a81c88",
+      "id": "a438f855cfc8",
       "group_ids": [
         "y3-g4"
       ],
@@ -18226,13 +18407,13 @@
       "pair_number": 1,
       "time_start": "09:00",
       "time_end": "10:20",
-      "subject": "СРиТИ ЦОС",
+      "subject": "СРиТИ",
       "lesson_type": null,
       "teacher": "асс. МигельА.С.",
       "rooms": [
         "56/К1"
       ],
-      "subgroup": "1ПГ",
+      "subgroup": "1ПГ/2ПГ",
       "weeks": "all",
       "date_from": "2026-02-21",
       "date_to": null,
@@ -18240,7 +18421,7 @@
       "raw": "с 28,02\nСРиТИ\n1ПГ/2ПГ нечет/чет\nасс. МигельА.С.\nс 21.02\nЦОС\n3ПГ еженедельно\nст.пр. ДемьянюкД.В."
     },
     {
-      "id": "a65be3f4dc1c",
+      "id": "a31eeb509854",
       "group_ids": [
         "y3-g4"
       ],
@@ -18248,13 +18429,13 @@
       "pair_number": 1,
       "time_start": "09:00",
       "time_end": "10:20",
-      "subject": "СРиТИ ЦОС",
+      "subject": "ЦОС",
       "lesson_type": null,
       "teacher": "ст.пр. ДемьянюкД.В.",
       "rooms": [
         "56/К1"
       ],
-      "subgroup": "2ПГ",
+      "subgroup": "3ПГ",
       "weeks": "all",
       "date_from": "2026-02-21",
       "date_to": null,
