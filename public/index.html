@@ -14,11 +14,14 @@
     --accent: #2563eb;
     --accent-soft: #dbeafe;
     --row-alt: #f5f5f5;
-    --tag-lecture: #dbeafe;
-    --tag-lab:     #dcfce7;
-    --tag-seminar: #fef3c7;
-    --tag-practice:#fce7f3;
-    --tag-default: #f1f1f1;
+    /* Цвета бейджей типов — повторяют палитру ячеек в самой Google Sheets. */
+    --tag-lecture:      #d9ead3;  /* зелёный — лекция */
+    --tag-lab:          #fce5cd;  /* оранжевый — лаба */
+    --tag-seminar:      #fef3c7;  /* жёлтый — семинар (магистратура) */
+    --tag-practice:     #c9daf8;  /* синий — практическое */
+    --tag-curator:      #fff2cc;  /* жёлтый — кураторский час */
+    --tag-additional:   #d9d2e9;  /* фиолетовый — ДО */
+    --tag-default:      #f1f1f1;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -30,11 +33,13 @@
       --accent: #60a5fa;
       --accent-soft: #1e3a8a55;
       --row-alt: #15151a;
-      --tag-lecture: #1e3a8a55;
-      --tag-lab:     #14532d55;
-      --tag-seminar: #78350f55;
-      --tag-practice:#831a5b55;
-      --tag-default: #2a2a32;
+      --tag-lecture:    #1f6b3855;  /* зелёный */
+      --tag-lab:        #c2510e55;  /* оранжевый */
+      --tag-seminar:    #78350f55;  /* жёлтый */
+      --tag-practice:   #1e3a8a55;  /* синий */
+      --tag-curator:    #92400e55;  /* жёлтый кураторский */
+      --tag-additional: #5b21b655;  /* фиолетовый ДО */
+      --tag-default:    #2a2a32;
     }
   }
   * { box-sizing: border-box }
@@ -123,10 +128,12 @@
     margin-right: 4px;
     margin-bottom: 2px;
   }
-  .tag.lecture  { background: var(--tag-lecture) }
-  .tag.lab      { background: var(--tag-lab) }
-  .tag.seminar  { background: var(--tag-seminar) }
-  .tag.practice { background: var(--tag-practice) }
+  .tag.lecture      { background: var(--tag-lecture) }
+  .tag.lab          { background: var(--tag-lab) }
+  .tag.seminar      { background: var(--tag-seminar) }
+  .tag.practice     { background: var(--tag-practice) }
+  .tag.curator_hour { background: var(--tag-curator) }
+  .tag.additional   { background: var(--tag-additional) }
 
   .badge {
     display: inline-block;
@@ -156,7 +163,7 @@
     <div><label>Преподаватель</label><input id="f-teacher" placeholder="фамилия…" list="teacher-list"><datalist id="teacher-list"></datalist></div>
     <div><label>Предмет</label><input id="f-subject" placeholder="название…"></div>
     <div><label>День недели</label><select id="f-day"><option value="">все</option><option value="1">Понедельник</option><option value="2">Вторник</option><option value="3">Среда</option><option value="4">Четверг</option><option value="5">Пятница</option><option value="6">Суббота</option></select></div>
-    <div><label>Тип</label><select id="f-type"><option value="">все</option><option value="lecture">Лекция</option><option value="lab">Лаб</option><option value="seminar">Семинар</option><option value="practice">Практика</option></select></div>
+    <div><label>Тип</label><select id="f-type"><option value="">все</option><option value="lecture">Лекция</option><option value="lab">Лабораторная</option><option value="practice">Практика</option><option value="seminar">Семинар</option><option value="curator_hour">Кураторский час</option><option value="additional">ДО (дополн.)</option></select></div>
     <div><label>Аудитория</label><input id="f-room" placeholder="напр. 117"></div>
     <div><label>Подгруппа</label><input id="f-subgroup" placeholder="напр. 1ПГ"></div>
   </div>
@@ -171,7 +178,26 @@
 
 <script>
 const DAY_NAMES = ["", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
-const TYPE_NAMES = { lecture: "Лк", lab: "ЛБ", seminar: "Сем", practice: "ПЗ" };
+const TYPE_NAMES = {
+  lecture: "Лк",
+  lab: "ЛБ",
+  seminar: "Сем",
+  practice: "ПЗ",
+  curator_hour: "Курат.",
+  additional: "ДО",
+  exam: "Экз",
+  consult: "Конс",
+};
+const TYPE_FULL_NAMES = {
+  lecture: "Лекция",
+  lab: "Лабораторная",
+  seminar: "Семинар",
+  practice: "Практическое",
+  curator_hour: "Кураторский час",
+  additional: "ДО (дополнительное)",
+  exam: "Экзамен",
+  consult: "Консультация",
+};
 
 let DATA = null;
 let GROUPS = {};
@@ -296,7 +322,7 @@ const COLUMNS = [
   { key: "program",    label: "Программа",       cls: "",          sort: l => primaryGroup(l)?.program_code || "" },
   { key: "subgroup",   label: "Подгруппа",       cls: "subgroup",  sort: l => l.subgroup || "" },
   { key: "day",        label: "День",            cls: "day",       sort: l => l.day_of_week || 0 },
-  { key: "pair",       label: "Пара",            cls: "pair",      sort: l => l.pair_number || 0 },
+  { key: "pair",       label: "Пара",            cls: "pair",      sort: l => pairSortKey(l.pair_number) },
   { key: "time",       label: "Время",           cls: "time",      sort: l => l.time_start || "" },
   { key: "subject",    label: "Предмет",         cls: "subject",   sort: l => l.subject || "" },
   { key: "type",       label: "Тип",             cls: "",          sort: l => l.lesson_type || "" },
@@ -306,6 +332,14 @@ const COLUMNS = [
   { key: "dates",      label: "Даты",            cls: "dates",     sort: l => l.date_from || "" },
   { key: "notes",      label: "Заметки",         cls: "notes",     sort: l => l.notes || "" },
 ];
+
+function pairSortKey(p) {
+  // Числовая сортировка по первому номеру пары: 1 < 2 < 3-4 < 5.
+  if (p == null) return 99;
+  if (typeof p === "number") return p;
+  const m = String(p).match(/^\d+/);
+  return m ? parseInt(m[0], 10) : 99;
+}
 
 function primaryGroup(l) {
   const gid = (l.group_ids || [])[0];
@@ -385,7 +419,9 @@ function renderRow(l) {
     return gg ? `${gg.year}-${gg.number}${gg.language === "en" ? " EN" : ""}` : gid;
   }).join(", ");
   const t = l.lesson_type;
-  const typeBadge = t ? `<span class="tag ${t}">${TYPE_NAMES[t] || t}</span>` : "";
+  const typeBadge = t
+    ? `<span class="tag ${t}" title="${escapeAttr(TYPE_FULL_NAMES[t] || t)}">${TYPE_NAMES[t] || t}</span>`
+    : "";
   const weeksLabel = l.weeks === "odd" ? "нечёт" : l.weeks === "even" ? "чёт" : (l.weeks || "");
   const dates = [l.date_from, l.date_to].filter(Boolean).join(" → ");
   return `
@@ -395,7 +431,7 @@ function renderRow(l) {
       <td>${escapeHtml(g?.program_code || "")}${g?.language === "en" ? " <span class=\"badge\">EN</span>" : ""}</td>
       <td class="subgroup">${escapeHtml(l.subgroup || "")}</td>
       <td class="day">${DAY_NAMES[l.day_of_week] || l.day_of_week || ""}</td>
-      <td class="pair">${l.pair_number || ""}</td>
+      <td class="pair">${escapeHtml(l.pair_number != null ? String(l.pair_number) : "")}</td>
       <td class="time">${l.time_start || ""}–${l.time_end || ""}</td>
       <td class="subject">${escapeHtml(l.subject || "")}</td>
       <td>${typeBadge || ""}</td>
