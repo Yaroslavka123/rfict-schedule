@@ -58,14 +58,27 @@
           "maximum": 7,
           "description": "1=Пн ... 7=Вс"
         },
-        "pair_number": { "type": ["integer", "null"], "minimum": 1, "maximum": 8 },
+        "pair_number": {
+          "type": ["integer", "string", "null"],
+          "description": "Номер пары. Целое (1–8) для одной пары или строка-диапазон «3-4» для объединённой ячейки на несколько пар."
+        },
         "time_start": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
         "time_end": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
         "subject": { "type": "string" },
         "lesson_type": {
           "type": ["string", "null"],
-          "enum": [null, "lecture", "seminar", "lab", "practice", "exam", "consult"],
-          "description": "ЛК->lecture, Семинар->seminar, ЛБ->lab, ПЗ->practice"
+          "enum": [
+            null,
+            "lecture",
+            "seminar",
+            "lab",
+            "practice",
+            "curator_hour",
+            "additional",
+            "exam",
+            "consult"
+          ],
+          "description": "Тип занятия. Для бакалавриата определяется по цвету ячейки:\n  зелёный → lecture, оранжевый → lab, синий → practice,\n  жёлтый → curator_hour, фиолетовый → additional (ДО).\nДля магистратуры выводится из текста (ЛК/ЛБ/ПЗ/Семинар)."
         },
         "teacher": { "type": ["string", "null"] },
         "rooms": {

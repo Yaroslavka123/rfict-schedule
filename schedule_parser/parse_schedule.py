@@ -16,12 +16,22 @@ import csv
 import hashlib
 import io
 import json
+import os
 import re
 import sys
 import urllib.request
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from typing import Iterable
+
+from schedule_parser.rich_sheet import (
+    CellRun,
+    RichCell,
+    RichRow,
+    csv_rows_to_rich_rows,
+    fetch_xlsx_rich_rows,
+    read_local_xlsx,
+)
 
 SHEETS = [
     {"year": 1, "semester": 2, "id": "1Wmsij8rOJAcOaPaKWnUphEghdldCRvXDqvX7am6Km4A", "gid": "1900569018", "kind": "bachelor"},
@@ -55,6 +65,40 @@ TYPE_MAP = {
     "ПЗ": "practice",
     "Практика": "practice",
 }
+
+# Цвета заливки ячеек в реальных таблицах rct.bsu.by (Google Sheets XLSX-export).
+# Хранятся как 8-символьные ARGB-hex без префикса '#'.
+#   D9EAD3 (светло-зелёный)  → лекция
+#   FCE5CD (светло-оранжевый)→ лабораторная
+#   C9DAF8 (светло-синий)    → практическое занятие
+#   FFF2CC (светло-жёлтый)   → кураторский час
+#   D9D2E9 (светло-фиолет.)  → ДО (дополнительное занятие на отдельные даты)
+COLOR_TO_TYPE: dict[str, str] = {
+    "FFD9EAD3": "lecture",
+    "FFFCE5CD": "lab",
+    "FFC9DAF8": "practice",
+    "FFFFF2CC": "curator_hour",
+    "FFD9D2E9": "additional",
+}
+
+
+def detect_type_from_fill(fill: str | None) -> str | None:
+    """Определить тип занятия по цвету заливки ячейки.
+
+    Сравнение нечувствительно к регистру; принимает 6- или 8-символьный hex
+    (с/без альфа-канала). Неизвестные цвета → None.
+    """
+    if not fill or not isinstance(fill, str):
+        return None
+    f = fill.upper()
+    if f in COLOR_TO_TYPE:
+        return COLOR_TO_TYPE[f]
+    # Принять также 6-символьный hex без альфы.
+    if len(f) == 6:
+        return COLOR_TO_TYPE.get("FF" + f)
+    if len(f) == 8:
+        return COLOR_TO_TYPE.get("FF" + f[2:])
+    return None
 
 TIME_RE = re.compile(r"(\d{1,2}):(\d{2})")
 DATE_RANGE_RE = re.compile(r"(\d{1,2}\.\d{1,2})(?:\s*[-–]\s*(\d{1,2}\.\d{1,2}))?")
@@ -105,6 +149,15 @@ def detect_type(text: str) -> str | None:
         if re.search(rf"\b{re.escape(key)}\b", text):
             return val
     return None
+
+
+def detect_type_for_cell(cell: RichCell | None, text: str) -> str | None:
+    """Тип занятия: сначала по цвету заливки, fallback — по тексту."""
+    if cell is not None:
+        by_color = detect_type_from_fill(cell.fill)
+        if by_color is not None:
+            return by_color
+    return detect_type(text or "")
 
 
 def extract_subgroup(text: str) -> str | None:
@@ -215,7 +268,9 @@ class Lesson:
     id: str
     group_ids: list[str]
     day_of_week: int
-    pair_number: int | None
+    # pair_number — или целое ("3"), или строка-диапазон ("3-4") для объединённых
+    # пар. None — когда номер пары недоступен (расписание магистратуры).
+    pair_number: int | str | None
     time_start: str
     time_end: str
     subject: str
@@ -230,20 +285,56 @@ class Lesson:
     raw: str
 
 
-def parse_bachelor(rows: list[list[str]], year: int) -> tuple[list[Group], list[Lesson]]:
-    """Парсит листы 1-3 курса (одинаковая структура)."""
+def _as_rich_rows(rows: list[list[str]] | list[RichRow]) -> list[RichRow]:
+    """Принять либо "сырые" CSV-строки, либо уже RichRow."""
+    if not rows:
+        return []
+    if isinstance(rows[0], RichRow):
+        return rows  # type: ignore[return-value]
+    return csv_rows_to_rich_rows(rows)  # type: ignore[arg-type]
+
+
+def _pair_number_from_cell(text: str) -> int | None:
+    """Парсит номер пары из ячейки: '1', '1.0', '01' → 1."""
+    s = (text or "").strip()
+    if not s:
+        return None
+    m = re.match(r"^(\d+)(?:\.\d+)?$", s)
+    if m:
+        try:
+            return int(m.group(1))
+        except ValueError:
+            return None
+    return None
+
+
+def parse_bachelor(
+    rows: list[list[str]] | list[RichRow],
+    year: int,
+) -> tuple[list[Group], list[Lesson]]:
+    """Парсит листы 1-3 курса (одинаковая структура).
+
+    Принимает или плоские CSV-строки (без форматирования), или RichRow из
+    XLSX-экспорта (с цветом, жирным шрифтом, merged-диапазонами).
+    """
+    rich_rows = _as_rich_rows(rows)
+    if len(rich_rows) < 5:
+        return [], []
+
     # ряд с программой — row 3, ряд с группами — row 4
-    prog_row = rows[3]
-    grp_row = rows[4]
+    prog_row = rich_rows[3]
+    grp_row = rich_rows[4]
+    n_cols = max(len(r.cells) for r in rich_rows)
 
     # колонки с группами: где в grp_row начинается «Группа …»
     group_cols: list[tuple[int, str, str | None, str | None]] = []
     last_prog = None
-    for col, cell in enumerate(grp_row):
-        prog_cell = prog_row[col] if col < len(prog_row) else ""
+    for col in range(n_cols):
+        prog_cell = prog_row.value(col)
         if prog_cell.strip():
             last_prog = prog_cell.strip()
-        m = re.match(r"\s*Группа\s+(\S+)\s*\n?(.*)", cell or "", re.DOTALL)
+        cell_val = grp_row.value(col)
+        m = re.match(r"\s*Группа\s+(\S+)\s*\n?(.*)", cell_val or "", re.DOTALL)
         if m:
             number = m.group(1).strip()
             program_name = m.group(2).strip() or None
@@ -262,38 +353,58 @@ def parse_bachelor(rows: list[list[str]], year: int) -> tuple[list[Group], list[
 
     lessons: list[Lesson] = []
     current_day: int | None = None
-    for r_idx in range(5, len(rows)):
-        row = rows[r_idx]
-        if not any(c.strip() for c in row):
+    n_rows = len(rich_rows)
+    for r_idx in range(5, n_rows):
+        row = rich_rows[r_idx]
+        if not any((c.value or "").strip() for c in row.cells):
             continue
-        day_cell = row[0] if len(row) > 0 else ""
-        pair_cell = row[1] if len(row) > 1 else ""
-        time_cell = row[2] if len(row) > 2 else ""
+        day_cell = row.value(0)
+        pair_cell = row.value(1)
+        time_cell = row.value(2)
         d = parse_day(day_cell)
         if d:
             current_day = d
         if current_day is None:
             continue
-        pair_number = int(pair_cell) if (pair_cell or "").strip().isdigit() else None
+        pair_number_int = _pair_number_from_cell(pair_cell)
         t_start, t_end = parse_time_range(time_cell)
         if not t_start or not t_end:
             continue
 
         for col, num, prog, _ in group_cols:
-            lesson_text = row[col] if col < len(row) else ""
-            room_text = row[col + 1] if col + 1 < len(row) else ""
-            if not lesson_text.strip():
+            lesson_cell = row.cell(col)
+            room_cell = row.cell(col + 1)
+            lesson_text = lesson_cell.value
+            room_text = room_cell.value
+            if not (lesson_text or "").strip():
                 continue
+
+            # Объединённые пары: ячейка занятия перекрывает несколько строк-пар.
+            #   pair="3-4", time = от начала верхней пары до конца нижней.
+            span = max(1, lesson_cell.rowspan)
+            pair_value: int | str | None = pair_number_int
+            eff_t_end = t_end
+            if span > 1 and r_idx + span - 1 < n_rows:
+                bottom_row = rich_rows[r_idx + span - 1]
+                bottom_pair = _pair_number_from_cell(bottom_row.value(1))
+                _, bottom_t_end = parse_time_range(bottom_row.value(2))
+                if bottom_t_end:
+                    eff_t_end = bottom_t_end
+                if pair_number_int and bottom_pair and bottom_pair > pair_number_int:
+                    pair_value = f"{pair_number_int}-{bottom_pair}"
+
             lessons.extend(
                 build_lessons_from_cell(
                     lesson_text=lesson_text,
                     room_text=room_text,
                     day=current_day,
-                    pair=pair_number,
+                    pair=pair_value,
                     t_start=t_start,
-                    t_end=t_end,
+                    t_end=eff_t_end,
                     group_id=f"y{year}-g{num}",
                     year=year,
+                    lesson_cell=lesson_cell,
+                    room_cell=room_cell,
                 )
             )
 
@@ -344,6 +455,109 @@ def _split_blocks_by_teacher_boundary(lesson_text: str) -> list[dict]:
         else:
             blocks.append({"lines": current, "start": current_start})
     return blocks
+
+
+def _split_blocks_by_bold(lesson_cell: RichCell) -> list[dict]:
+    """Разбить ячейку на подзанятия, используя жирный шрифт как основной сигнал.
+
+    Название предмета в реальных таблицах всегда выделено жирным. Новый блок
+    начинается, когда мы встречаем жирную строку-предмет (не дату-пометку) ПОСЛЕ того,
+    как в текущем блоке уже объявлены предмет и преподаватель.
+    """
+    if not lesson_cell.runs:
+        return []
+    lines_bold = lesson_cell.lines_with_bold()
+    blocks: list[dict] = []
+    current: list[tuple[int, str]] = []
+    current_start: int | None = None
+    have_subject = False
+    have_teacher = False
+    for i, (ln, is_bold) in enumerate(lines_bold):
+        s = (ln or "").strip()
+        if not s:
+            continue
+        # Начало нового блока: жирная не-note строка после того, как в текущем
+        # блоке уже есть subject и teacher.
+        if (
+            is_bold
+            and not is_note_line(s)
+            and not is_teacher_line(s)
+            and have_subject
+            and have_teacher
+        ):
+            if current:
+                blocks.append({"lines": current, "start": current_start})
+            current = []
+            current_start = None
+            have_subject = False
+            have_teacher = False
+        if not current:
+            current_start = i
+        current.append((i, s))
+        # Пометки вроде "по 01.06" обычно тоже жирные, но не предмет; временные метки
+        # проверяем отдельно.
+        if is_bold and not is_note_line(s) and not is_teacher_line(s):
+            have_subject = True
+        if is_teacher_line(s):
+            have_teacher = True
+    if current:
+        blocks.append({"lines": current, "start": current_start})
+    return blocks
+
+
+def _parse_block_with_bold(block: dict, bold_lines: set[str]) -> dict:
+    """Вариант _parse_block, использующий информацию о жирности строки для
+    надёжного выделения названия предмета (всегда жирное).
+    """
+    teacher_lines: list[str] = []
+    subject_lines: list[str] = []
+    subgroup_lines: list[str] = []
+    note_lines: list[str] = []
+    for _, ln in block["lines"]:
+        if is_note_line(ln):
+            note_lines.append(ln)
+        elif is_teacher_line(ln):
+            teacher_lines.append(ln)
+        elif is_subgroup_only_line(ln):
+            subgroup_lines.append(ln)
+        elif ln in bold_lines:
+            # Жирная не-note/teacher строка — точно название предмета.
+            subject_lines.append(strip_leading_subgroup_marker(ln))
+        else:
+            # Нежирная нераспознанная строка: обычно это продолжение предмета
+            # или подгруппа-без-ключевых-слов.
+            subject_lines.append(strip_leading_subgroup_marker(ln))
+
+    block_text = "\n".join(ln for _, ln in block["lines"])
+    subject = " ".join(s for s in subject_lines if s).strip()
+
+    single_sg: str | None = None
+    subgroup_seq: list[str] | None = None
+    for sg_ln in subgroup_lines:
+        digits = re.findall(r"(\d)\s*ПГ", sg_ln)
+        if len(digits) >= 2 and len(teacher_lines) >= 2 and len(digits) == len(teacher_lines):
+            subgroup_seq = [f"{d}ПГ" for d in digits]
+            break
+        if single_sg is None:
+            mm = re.match(r"\s*(\d\s*ПГ(?:\s*/\s*\d\s*ПГ)*)\s*", sg_ln)
+            if mm:
+                single_sg = mm.group(1).replace(" ", "")
+
+    return {
+        "subject": subject,
+        "subject_lines": subject_lines,
+        "subgroup_lines": subgroup_lines,
+        "teacher_lines": teacher_lines,
+        "single_subgroup": single_sg,
+        "subgroup_seq": subgroup_seq,
+        "weeks": extract_weeks(block_text),
+        "date_from": extract_date_range(block_text)[0],
+        "date_to": extract_date_range(block_text)[1],
+        "lesson_type": detect_type(block_text),
+        "notes": "; ".join(note_lines) or None,
+        "raw": block_text,
+        "start": block["start"],
+    }
 
 
 def _parse_block(block: dict) -> dict:
@@ -463,17 +677,30 @@ def _assign_rooms(sub_lessons: list[dict], parsed_blocks: list[dict], room_text:
         s["rooms"] = list(flat)
 
 
-def build_lessons_from_cell(*, lesson_text: str, room_text: str, day: int, pair: int | None,
-                            t_start: str, t_end: str, group_id: str, year: int) -> list[Lesson]:
+def build_lessons_from_cell(
+    *,
+    lesson_text: str,
+    room_text: str,
+    day: int,
+    pair: int | str | None,
+    t_start: str,
+    t_end: str,
+    group_id: str,
+    year: int,
+    lesson_cell: RichCell | None = None,
+    room_cell: RichCell | None = None,
+) -> list[Lesson]:
     """Распарсить одну ячейку расписания в N lesson'ов.
 
     Алгоритм:
-      1. Разбить текст на блоки по пустым строкам (если их нет — пробуем по teacher-границам,
-         когда количество аудиторий подсказывает что блоков должно быть больше).
+      1. Если доступна информация о жирном шрифте (XLSX), режем ячейку по
+         bold-границам (название предмета всегда жирное). Иначе — по пустым
+         строкам (и по teacher-границам, если аудиторий больше чем эффективных блоков).
       2. В каждом блоке выделить subject / teachers / subgroup / notes.
       3. Если в блоке N>=2 учителей и подгруппа задана списком вроде '2 ПГ/1 ПГ' длины N —
          расщепить блок на N подзанятий, по одному преподу в каждом.
       4. Сопоставить аудитории: 0/1/N=#sub-lesson/N=#блоков.
+      5. Тип занятия — по цвету заливки ячейки (lecture/practice/lab/curator/...).
     """
     if not (lesson_text or "").strip():
         return []
@@ -481,10 +708,30 @@ def build_lessons_from_cell(*, lesson_text: str, room_text: str, day: int, pair:
     room_lines = (room_text or "").splitlines()
     n_rooms = sum(1 for r in room_lines if r.strip())
 
-    blocks = _split_blocks_by_blank(lesson_text)
+    # Пытаемся использовать bold-информацию (XLSX-путь) — это надёжнее.
+    bold_lines: set[str] = set()
+    blocks: list[dict] = []
+    use_bold_path = False
+    if lesson_cell is not None and any(r.bold for r in lesson_cell.runs):
+        bold_blocks = _split_blocks_by_bold(lesson_cell)
+        if bold_blocks:
+            blocks = bold_blocks
+            for ln, b in lesson_cell.lines_with_bold():
+                if b:
+                    s = (ln or "").strip()
+                    if s:
+                        bold_lines.add(s)
+            use_bold_path = True
+
+    if not blocks:
+        blocks = _split_blocks_by_blank(lesson_text)
     if not blocks:
         return []
-    parsed_blocks = [_parse_block(b) for b in blocks]
+
+    if use_bold_path:
+        parsed_blocks = [_parse_block_with_bold(b, bold_lines) for b in blocks]
+    else:
+        parsed_blocks = [_parse_block(b) for b in blocks]
 
     def _effective_count(pbs: list[dict]) -> int:
         total = 0
@@ -497,7 +744,7 @@ def build_lessons_from_cell(*, lesson_text: str, room_text: str, day: int, pair:
         return total
 
     # Если эффективных подзанятий меньше, чем аудиторий — пробуем перенарезать по teacher-границам
-    if _effective_count(parsed_blocks) < n_rooms and n_rooms >= 2:
+    if not use_bold_path and _effective_count(parsed_blocks) < n_rooms and n_rooms >= 2:
         alt_blocks = _split_blocks_by_teacher_boundary(lesson_text)
         if alt_blocks:
             alt_parsed = [_parse_block(b) for b in alt_blocks]
@@ -561,6 +808,9 @@ def build_lessons_from_cell(*, lesson_text: str, room_text: str, day: int, pair:
 
     _assign_rooms(sub_lessons, parsed_blocks, room_text)
 
+    # Тип занятия по цвету заливки — единый для всех подзанятий из ячейки.
+    type_by_color = detect_type_from_fill(lesson_cell.fill) if lesson_cell is not None else None
+
     out: list[Lesson] = []
     for s in sub_lessons:
         if not s.get("subject"):
@@ -569,6 +819,7 @@ def build_lessons_from_cell(*, lesson_text: str, room_text: str, day: int, pair:
             group_id, str(day), str(pair), t_start,
             s["subject"], s.get("teacher") or "", s.get("subgroup") or "",
         )
+        ltype = type_by_color if type_by_color is not None else s.get("lesson_type")
         out.append(Lesson(
             id=lid,
             group_ids=[group_id],
@@ -577,7 +828,7 @@ def build_lessons_from_cell(*, lesson_text: str, room_text: str, day: int, pair:
             time_start=t_start,
             time_end=t_end,
             subject=s["subject"],
-            lesson_type=s.get("lesson_type"),
+            lesson_type=ltype,
             teacher=s.get("teacher"),
             rooms=s.get("rooms", []),
             subgroup=s.get("subgroup"),
@@ -785,25 +1036,47 @@ def build_dataset(
     local_dir: str = ".",
     sheets: list[dict] | None = None,
 ) -> dict:
+    """Собрать датасет, прокачав все известные листы.
+
+    Бакалавриат (1–3 курсы) парсится из XLSX (онлайн) или локального .xlsx с
+    fallback на .csv — XLSX сохраняет цвет ячеек и жирный шрифт, без которых
+    нельзя надёжно определить тип занятия и название предмета.
+
+    Магистратура (4 курс) парсится из CSV — там другая структура без цветовой
+    разметки.
+    """
     all_groups: list[Group] = []
     all_lessons: list[Lesson] = []
     source_sheets: list[dict] = []
     for sheet in (sheets or SHEETS):
         if sheet["kind"] == "bachelor":
-            local_name = f"year{sheet['year']}.csv"
+            base_name = f"year{sheet['year']}"
         elif sheet["kind"] == "master_ru":
-            local_name = "year4_ru.csv"
+            base_name = "year4_ru"
         else:
-            local_name = "year4_en.csv"
-        if use_local:
-            rows = read_local_csv(f"{local_dir}/{local_name}")
-        else:
-            rows = fetch_csv(sheet["id"], sheet["gid"])
+            base_name = "year4_en"
+
         if sheet["kind"] == "bachelor":
-            g, l = parse_bachelor(rows, sheet["year"])
+            rich_rows: list[RichRow] | None = None
+            if use_local:
+                xlsx_path = f"{local_dir}/{base_name}.xlsx"
+                if os.path.exists(xlsx_path):
+                    rich_rows = read_local_xlsx(xlsx_path)
+                else:
+                    rich_rows = csv_rows_to_rich_rows(
+                        read_local_csv(f"{local_dir}/{base_name}.csv")
+                    )
+            else:
+                rich_rows = fetch_xlsx_rich_rows(sheet["id"], sheet["gid"])
+            g, l = parse_bachelor(rich_rows, sheet["year"])
         else:
+            csv_path = f"{local_dir}/{base_name}.csv"
+            if use_local:
+                rows_csv = read_local_csv(csv_path)
+            else:
+                rows_csv = fetch_csv(sheet["id"], sheet["gid"])
             language = "ru" if sheet["kind"] == "master_ru" else "en"
-            g, l = parse_master(rows, sheet["year"], language)
+            g, l = parse_master(rows_csv, sheet["year"], language)
         all_groups.extend(g)
         all_lessons.extend(l)
         source_sheets.append({
