@@ -827,28 +827,27 @@ function looksLikeNotes_(s) {
  *     Event type:   On edit
  */
 function onSheetEdit(e) {
-  if (e && e.source && e.range) {
-    const sheetName = e.range.getSheet().getName();
-    if (sheetName === DICT_SHEET_NAME) return;
-  }
-  const rangeStr = (e && e.range) ? e.range.getA1Notation() : '';
-  dispatchScheduleUpdate_('onEdit', rangeStr);
+  if (!e || !e.source || !e.range) return;
+  const sheetName = e.range.getSheet().getName();
+  if (sheetName === DICT_SHEET_NAME) return;
+  const rangeStr = e.range.getA1Notation();
+  dispatchScheduleUpdate_('onEdit', rangeStr, sheetName);
 }
 
 /**
- * Собрать JSON для каждого листа и запушить в GitHub (1 файл = 1 лист).
- * source — откуда вызов ('form:applyLesson', 'onEdit', 'manual-menu').
- * detail — доп. информация (адрес ячейки, и т.п.).
+ * Экспорт JSON в GitHub + webhook.
+ * source — 'form:applyLesson', 'onEdit', 'manual-menu'.
+ * detail — адрес ячейки.
+ * editedSheetName — название листа (при onEdit обновляем только его).
  */
-function dispatchScheduleUpdate_(source, detail) {
+function dispatchScheduleUpdate_(source, detail, editedSheetName) {
   const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
   if (!token) {
     console.warn('GITHUB_TOKEN not set — export skipped');
     return {sent: false, reason: 'no_token'};
   }
 
-  // Cooldown: не экспортируем чаще чем раз в DISPATCH_COOLDOWN_MS
-  // (manual-menu игнорирует cooldown)
+  // Cooldown (manual-menu игнорирует)
   const props = PropertiesService.getScriptProperties();
   const lastDispatch = parseInt(props.getProperty('_lastDispatchMs') || '0', 10);
   const now = Date.now();
@@ -859,8 +858,12 @@ function dispatchScheduleUpdate_(source, detail) {
   props.setProperty('_lastDispatchMs', String(now));
 
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    exportAllSheets_(ss, token);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (editedSheetName && source === 'onEdit') {
+      exportSingleSheet_(ss, editedSheetName, token);
+    } else {
+      exportAllSheets_(ss, token);
+    }
     console.log('schedule pushed (' + source + ', ' + detail + ')');
     return {sent: true};
   } catch (err) {
@@ -885,9 +888,9 @@ const COLOR_TO_TYPE_MAP_ = {
 const DAY_NAMES_ = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 /**
- * Экспорт всех листов — каждый лист = отдельный JSON файл.
+ * Метаданные таблицы: курс, семестр, группы.
  */
-function exportAllSheets_(ss, token) {
+function getSheetMeta_(ss) {
   var sheets = ss.getSheets();
   var weekSheets = sheets.filter(function(s) {
     var name = s.getName();
@@ -896,38 +899,104 @@ function exportAllSheets_(ss, token) {
   if (!weekSheets.length) throw new Error('Не найдены листы расписания');
 
   var firstSheet = weekSheets[0];
-  var course = firstSheet.getRange('A2').getValue();
+  var courseVal = firstSheet.getRange('A2').getValue();
+  var course = typeof courseVal === 'number' ? courseVal : parseInt(courseVal, 10) || null;
   var semesterMatch = String(firstSheet.getRange('D1').getValue() || '').match(/(\d+)\s*семестр/);
   var semester = semesterMatch ? parseInt(semesterMatch[1], 10) : null;
   var groups = discoverGroups_(firstSheet);
   var groupsMeta = groups.map(function(g) {
     return {id: g.id, name: g.name, specialty: g.specialty, department: g.department};
   });
+  return {weekSheets: weekSheets, course: course, semester: semester, groups: groups, groupsMeta: groupsMeta};
+}
 
-  for (var i = 0; i < weekSheets.length; i++) {
-    var ws = weekSheets[i];
-    var sheetName = ws.getName().trim();
-    var weekMatch = sheetName.match(/(\d+)-я неделя/);
-    var weekNumber = weekMatch ? parseInt(weekMatch[1], 10) : i + 1;
-    var dateMatch = sheetName.match(/^([\d.]+\s*-\s*[\d.]+)/);
-    var dateRange = dateMatch ? dateMatch[1] : '';
+/**
+ * Пушит один лист в GitHub + webhook.
+ */
+function pushSheet_(ws, meta, token) {
+  var sheetName = ws.getName().trim();
+  var weekMatch = sheetName.match(/(\d+)-я неделя/);
+  var weekNumber = weekMatch ? parseInt(weekMatch[1], 10) : 0;
+  var dateMatch = sheetName.match(/^([\d.]+\s*-\s*[\d.]+)/);
+  var dateRange = dateMatch ? dateMatch[1] : '';
 
-    var lessons = parseWeekSheet_(ws, groups);
+  var lessons = parseWeekSheet_(ws, meta.groups);
 
-    var json = {
-      name: sheetName,
-      generated_at: new Date().toISOString(),
-      course: typeof course === 'number' ? course : parseInt(course, 10) || null,
-      semester: semester,
-      week_number: weekNumber,
-      date_range: dateRange,
-      groups: groupsMeta,
-      lessons: lessons,
-    };
+  var json = {
+    name: sheetName,
+    generated_at: new Date().toISOString(),
+    course: meta.course,
+    semester: meta.semester,
+    week_number: weekNumber,
+    date_range: dateRange,
+    groups: meta.groupsMeta,
+    lessons: lessons,
+  };
 
-    var fileName = sheetName.replace(/[\s/\\:*?"<>|]/g, '_') + '.json';
-    var filePath = SCHEDULE_DIR + fileName;
-    pushFileToGitHub_(filePath, JSON.stringify(json, null, 2), token);
+  var courseDir = 'course_' + (meta.course || 'unknown');
+  var fileName = sheetName.replace(/[\s/\\:*?"<>|]/g, '_') + '.json';
+  var filePath = SCHEDULE_DIR + courseDir + '/' + fileName;
+  var content = JSON.stringify(json, null, 2);
+  pushFileToGitHub_(filePath, content, token);
+  notifyWebhook_(filePath, json);
+}
+
+/**
+ * Экспорт одного листа (при onEdit).
+ */
+function exportSingleSheet_(ss, sheetName, token) {
+  var meta = getSheetMeta_(ss);
+  var targetSheet = null;
+  for (var i = 0; i < meta.weekSheets.length; i++) {
+    if (meta.weekSheets[i].getName().trim() === sheetName.trim()) {
+      targetSheet = meta.weekSheets[i];
+      break;
+    }
+  }
+  if (!targetSheet) {
+    console.log('Sheet "' + sheetName + '" is not a week sheet, skipping');
+    return;
+  }
+  pushSheet_(targetSheet, meta, token);
+}
+
+/**
+ * Экспорт всех листов (manual-menu / form).
+ */
+function exportAllSheets_(ss, token) {
+  var meta = getSheetMeta_(ss);
+  for (var i = 0; i < meta.weekSheets.length; i++) {
+    pushSheet_(meta.weekSheets[i], meta, token);
+  }
+}
+
+/**
+ * Уведомление Go backend о новом файле.
+ * WEBHOOK_URL задаётся в Script Properties.
+ */
+function notifyWebhook_(filePath, json) {
+  var webhookUrl = PropertiesService.getScriptProperties().getProperty('WEBHOOK_URL');
+  if (!webhookUrl) return;
+
+  try {
+    UrlFetchApp.fetch(webhookUrl, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({
+        event: 'schedule_updated',
+        file: filePath,
+        course: json.course,
+        semester: json.semester,
+        week_number: json.week_number,
+        date_range: json.date_range,
+        name: json.name,
+        generated_at: json.generated_at,
+        lessons_count: json.lessons.length,
+      }),
+      muteHttpExceptions: true,
+    });
+  } catch (err) {
+    console.warn('webhook error: ' + err.message);
   }
 }
 
@@ -1172,7 +1241,7 @@ function pushFileToGitHub_(path, content, token) {
   } catch (_) { /* файл не существует */ }
 
   var payload = {
-    message: 'chore: обновление schedule.json',
+    message: 'chore: обновление ' + path.split('/').pop(),
     content: Utilities.base64Encode(content, Utilities.Charset.UTF_8),
     branch: 'main',
   };
