@@ -145,24 +145,22 @@ function buildCellContent_(subgroups) {
   const styleRanges = [];
   const roomLines = [];
 
-  function pushStyled(line, style) {
+  function pushStyled(line, style, extra) {
     const start = lines.join('\n').length + (lines.length ? 1 : 0);
     lines.push(line);
-    styleRanges.push({start: start, end: start + line.length, style: style});
+    const r = {start: start, end: start + line.length, style: style};
+    if (extra) Object.assign(r, extra);
+    styleRanges.push(r);
   }
 
   subgroups.forEach((sg, sgIdx) => {
     if (sg.notes && sg.notes.trim()) pushStyled(sg.notes.trim(), 'italic');
     const subj = (sg.subject && sg.subject.trim()) || '';
-    if (subj) pushStyled(subj, 'bold');
+    if (subj) pushStyled(subj, 'subject_bold');
     if (sg.subgroup) lines.push(sg.subgroup);
-    // Если несколько подгрупп в одной ячейке — цвет для препода
     if (sg.teacher) {
       if (subgroups.length > 1) {
-        const color = SG_COLORS[sgIdx % SG_COLORS.length];
-        const start = lines.join('\n').length + (lines.length ? 1 : 0);
-        lines.push(sg.teacher);
-        styleRanges.push({start: start, end: start + sg.teacher.length, style: 'color', color: color});
+        pushStyled(sg.teacher, 'color', {color: SG_COLORS[sgIdx % SG_COLORS.length]});
       } else {
         lines.push(sg.teacher);
       }
@@ -175,7 +173,7 @@ function buildCellContent_(subgroups) {
   return {
     text: lines.join('\n'),
     styleRanges: styleRanges,
-    roomText: roomLines.join('\n'),
+    roomLines: roomLines,
   };
 }
 
@@ -185,23 +183,32 @@ function buildCellContent_(subgroups) {
 function applyRichTextToCell_(cell, text, styleRanges, bgColor) {
   if (!text) { cell.clearContent(); cell.setBackground(bgColor); return; }
   const builder = SpreadsheetApp.newRichTextValue().setText(text);
-  const normalStyle = SpreadsheetApp.newTextStyle().setBold(false).setItalic(false).setForegroundColor('#000000').build();
+  // Сброс: весь текст — чёрный, обычный, нормальный размер
+  const normalStyle = SpreadsheetApp.newTextStyle()
+    .setBold(false).setItalic(false)
+    .setForegroundColor('#000000')
+    .setFontSize(10)
+    .build();
   builder.setTextStyle(0, text.length, normalStyle);
 
   styleRanges.forEach(r => {
     if (r.start >= r.end || r.start < 0 || r.end > text.length) return;
-    if (r.style === 'bold') {
-      builder.setTextStyle(r.start, r.end, SpreadsheetApp.newTextStyle().setBold(true).setForegroundColor('#000000').build());
+    if (r.style === 'subject_bold') {
+      // Предмет: жирный, чуть крупнее
+      builder.setTextStyle(r.start, r.end,
+        SpreadsheetApp.newTextStyle().setBold(true).setFontSize(11).setForegroundColor('#000000').build());
+    } else if (r.style === 'bold') {
+      builder.setTextStyle(r.start, r.end,
+        SpreadsheetApp.newTextStyle().setBold(true).setForegroundColor('#000000').build());
     } else if (r.style === 'italic') {
-      builder.setTextStyle(r.start, r.end, SpreadsheetApp.newTextStyle().setItalic(true).setForegroundColor('#000000').build());
+      builder.setTextStyle(r.start, r.end,
+        SpreadsheetApp.newTextStyle().setItalic(true).setForegroundColor('#000000').build());
     } else if (r.style === 'cancel') {
       builder.setTextStyle(r.start, r.end,
-        SpreadsheetApp.newTextStyle().setBold(true).setForegroundColor('#cc0000').build()
-      );
+        SpreadsheetApp.newTextStyle().setBold(true).setForegroundColor('#cc0000').build());
     } else if (r.style === 'color') {
       builder.setTextStyle(r.start, r.end,
-        SpreadsheetApp.newTextStyle().setForegroundColor(r.color).build()
-      );
+        SpreadsheetApp.newTextStyle().setForegroundColor(r.color).build());
     }
   });
 
@@ -214,8 +221,8 @@ function applyRichTextToCell_(cell, text, styleRanges, bgColor) {
 
 /**
  * Записывает занятие в активную ячейку.
- * Для лабы: пишет в 2 ячейки (текущая + ниже).
- * Если 2 подгруппы — каждая в своей ячейке.
+ * Для лабы: объединяет 2 ячейки (текущая + ниже), все подгруппы в одной.
+ * Аудитории — в отдельных ячейках справа.
  */
 function applyLesson(data) {
   const sheet = SpreadsheetApp.getActiveSheet();
@@ -233,36 +240,37 @@ function applyLesson(data) {
     const hasSubj = data.teachers_by_subgroup.some(sg => sg.subject && sg.subject.trim());
     if (!hasSubj) throw new Error('Не указан предмет.');
 
-    // Лаба = 2 ячейки: если 2 подгруппы → каждая в своей строке
     const sgs = data.teachers_by_subgroup;
-    let cell1Sgs, cell2Sgs;
-    if (sgs.length === 2) {
-      cell1Sgs = [sgs[0]];
-      cell2Sgs = [sgs[1]];
-    } else {
-      cell1Sgs = sgs;
-      cell2Sgs = sgs;
-    }
+    const content = buildCellContent_(sgs);
 
-    // Ячейка 1 (текущая)
-    const c1 = buildCellContent_(cell1Sgs);
-    const cell1 = sheet.getRange(row, col);
-    applyRichTextToCell_(cell1, c1.text, c1.styleRanges, type.color);
+    // Разъединяем ячейки если они были объединены ранее
+    const mergeRange = sheet.getRange(row, col, 2, 1);
+    mergeRange.breakApart();
+
+    // Записываем контент в верхнюю ячейку
+    const topCell = sheet.getRange(row, col);
+    applyRichTextToCell_(topCell, content.text, content.styleRanges, type.color);
+
+    // Очищаем нижнюю и объединяем 2 ячейки
+    const bottomCell = sheet.getRange(row + 1, col);
+    bottomCell.clearContent();
+    bottomCell.setBackground(type.color);
+    mergeRange.merge();
+
+    // Аудитории: каждая подгруппа — своя ячейка справа
+    const roomLines = content.roomLines;
     const room1 = sheet.getRange(row, col + 1);
-    if (c1.roomText.trim()) {
-      room1.setValue(c1.roomText);
-      room1.setVerticalAlignment('middle'); room1.setHorizontalAlignment('center'); room1.setWrap(true);
-    } else { room1.clearContent(); }
-
-    // Ячейка 2 (ниже)
-    const c2 = buildCellContent_(cell2Sgs);
-    const cell2 = sheet.getRange(row + 1, col);
-    applyRichTextToCell_(cell2, c2.text, c2.styleRanges, type.color);
     const room2 = sheet.getRange(row + 1, col + 1);
-    if (c2.roomText.trim()) {
-      room2.setValue(c2.roomText);
-      room2.setVerticalAlignment('middle'); room2.setHorizontalAlignment('center'); room2.setWrap(true);
-    } else { room2.clearContent(); }
+    if (roomLines.length >= 2) {
+      setRoomCell_(room1, roomLines[0]);
+      setRoomCell_(room2, roomLines[1]);
+    } else if (roomLines.length === 1) {
+      setRoomCell_(room1, roomLines[0]);
+      room2.clearContent();
+    } else {
+      room1.clearContent();
+      room2.clearContent();
+    }
 
   } else {
     // Не лаба — одна ячейка
@@ -277,7 +285,7 @@ function applyLesson(data) {
     }
 
     if (data.notes && data.notes.trim()) pushStyled(data.notes.trim(), 'italic');
-    pushStyled(data.subject.trim(), 'bold');
+    pushStyled(data.subject.trim(), 'subject_bold');
     if (data.subgroup && data.subgroup.trim()) lines.push(data.subgroup.trim());
     if (data.teacher && data.teacher.trim()) lines.push(data.teacher.trim());
     if (data.comment && data.comment.trim()) pushStyled(data.comment.trim(), 'italic');
@@ -287,10 +295,7 @@ function applyLesson(data) {
     applyRichTextToCell_(cell, text, styleRanges, type.color);
 
     const roomCell = sheet.getRange(row, col + 1);
-    if (data.room && data.room.trim()) {
-      roomCell.setValue(data.room.trim());
-      roomCell.setVerticalAlignment('middle'); roomCell.setHorizontalAlignment('center'); roomCell.setWrap(true);
-    } else { roomCell.clearContent(); }
+    setRoomCell_(roomCell, data.room || '');
   }
 
   // Справочник
@@ -302,6 +307,17 @@ function applyLesson(data) {
 
   dispatchScheduleUpdate_('form:applyLesson', cellAddress_(row, col));
   return {ok: true, cell: cellAddress_(row, col)};
+}
+
+/** Аудитория: жирный, по центру */
+function setRoomCell_(cell, text) {
+  const val = (text || '').trim();
+  if (!val) { cell.clearContent(); return; }
+  cell.setValue(val);
+  cell.setFontWeight('bold');
+  cell.setVerticalAlignment('middle');
+  cell.setHorizontalAlignment('center');
+  cell.setWrap(true);
 }
 
 /**
@@ -602,13 +618,15 @@ function parseMultiSubjectLab_(allLines, subjectLines) {
     const trimmed = line.trim();
     if (!trimmed) return;
     if (subjectSet.has(trimmed)) {
-      current = { subject: trimmed, subgroup: '', teacher: '', notes: '' };
+      current = { subject: trimmed, subgroup: '', teacher: '', notes: '', cancelled: false };
       groups.push(current);
     } else if (current) {
       if (looksLikeTeacher_(trimmed) && !current.teacher) {
         current.teacher = trimmed;
       } else if (looksLikeSubgroup_(trimmed) && !current.subgroup) {
         current.subgroup = trimmed;
+      } else if (/^\s*ОТМЕНА\s*$/i.test(trimmed)) {
+        current.cancelled = true;
       } else if (looksLikeNotes_(trimmed) && !current.notes) {
         current.notes = trimmed;
       }

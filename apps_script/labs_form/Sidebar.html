@@ -16,28 +16,28 @@
     * { box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      font-size: 13px;
-      padding: 12px;
+      font-size: 15px;
+      padding: 14px;
       color: #202124;
       margin: 0;
     }
-    h2 { font-size: 14px; font-weight: 600; margin: 0 0 4px 0; }
-    .hint { color: var(--muted); font-size: 11px; margin-bottom: 12px; }
+    h2 { font-size: 17px; font-weight: 600; margin: 0 0 6px 0; }
+    .hint { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
     label {
       display: block;
-      margin-top: 8px;
-      font-size: 12px;
+      margin-top: 10px;
+      font-size: 14px;
       font-weight: 500;
       color: var(--muted);
     }
     input[type="text"], select {
       width: 100%;
-      padding: 6px 8px;
+      padding: 8px 10px;
       border: 1px solid var(--border);
       border-radius: 4px;
-      font-size: 13px;
+      font-size: 15px;
       font-family: inherit;
-      margin-top: 2px;
+      margin-top: 3px;
     }
     input:focus, select:focus { outline: none; border-color: var(--primary); }
     .types {
@@ -47,12 +47,12 @@
       margin-top: 4px;
     }
     .type-btn {
-      padding: 8px 6px;
+      padding: 10px 8px;
       border: 2px solid transparent;
       border-radius: 4px;
       cursor: pointer;
       text-align: center;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 500;
       user-select: none;
       transition: border-color 0.1s;
@@ -64,8 +64,8 @@
     .subgroup-block {
       border-left: 3px solid var(--primary);
       border-radius: 0 6px 6px 0;
-      padding: 10px;
-      margin-top: 8px;
+      padding: 12px;
+      margin-top: 10px;
       background: #f8f9fa;
       position: relative;
     }
@@ -80,7 +80,7 @@
       margin-bottom: 6px;
     }
     .subgroup-title {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--primary);
     }
@@ -98,12 +98,12 @@
       background: none;
       border: 1px dashed var(--border);
       border-radius: 4px;
-      padding: 8px;
+      padding: 10px;
       width: 100%;
       cursor: pointer;
       color: var(--muted);
-      font-size: 12px;
-      margin-top: 8px;
+      font-size: 14px;
+      margin-top: 10px;
     }
     .add-row-btn:hover { color: var(--primary); border-color: var(--primary); }
 
@@ -116,12 +116,12 @@
     }
     .date-row input[type="text"] {
       flex: 1;
-      padding: 4px 6px;
-      font-size: 12px;
+      padding: 6px 8px;
+      font-size: 14px;
       margin: 0;
     }
     .date-row span {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--muted);
       white-space: nowrap;
     }
@@ -134,10 +134,10 @@
       margin-top: 2px;
     }
     .sg-chip {
-      padding: 4px 8px;
+      padding: 6px 10px;
       border: 1px solid var(--border);
-      border-radius: 12px;
-      font-size: 11px;
+      border-radius: 14px;
+      font-size: 13px;
       cursor: pointer;
       user-select: none;
       background: #fff;
@@ -162,14 +162,15 @@
       margin: 0;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
       color: var(--danger);
       font-weight: 500;
+      font-size: 14px;
       cursor: pointer;
     }
     .cancel-inline input[type="checkbox"] {
-      width: 14px;
-      height: 14px;
+      width: 16px;
+      height: 16px;
       accent-color: var(--danger);
     }
 
@@ -196,42 +197,42 @@
     }
     button.primary {
       flex: 1;
-      padding: 10px;
+      padding: 12px;
       background: var(--primary);
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 500;
     }
     button.primary:hover:not(:disabled) { background: var(--primary-hover); }
     button.primary:disabled { background: #ccc; cursor: not-allowed; }
     button.secondary {
-      padding: 10px 12px;
+      padding: 12px 14px;
       background: #fff;
       color: var(--muted);
       border: 1px solid var(--border);
       border-radius: 4px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 15px;
     }
     button.secondary:hover { background: #f1f3f4; }
     .status {
       margin-top: 10px;
-      padding: 6px 8px;
+      padding: 8px 10px;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: 14px;
       display: none;
     }
     .status.ok { background: #e6f4ea; color: #137333; display: block; }
     .status.err { background: var(--danger-bg); color: var(--danger); display: block; }
     .cell-info {
       background: var(--bg-active);
-      padding: 6px 8px;
+      padding: 8px 10px;
       border-radius: 4px;
-      font-size: 11px;
-      margin-bottom: 8px;
+      font-size: 13px;
+      margin-bottom: 10px;
       color: var(--muted);
     }
     .cell-info b { color: var(--primary); }
@@ -680,6 +681,7 @@
     const teachers = lines.filter(l => /^(доц\.|проф\.|ст\.\s*пр\.|пр\.\s*ст\.|ст\.пр\.|пр\.|асс\.)/i.test(l));
     if (rooms.length <= 1 && teachers.length <= 1) {
       // Simple: one subgroup
+      document.getElementById('subgroup-list').innerHTML = '';
       const dateInfo = parseDateStr(parsed.notes || '');
       addSubgroupRow({
         subject: parsed.subject || '',
