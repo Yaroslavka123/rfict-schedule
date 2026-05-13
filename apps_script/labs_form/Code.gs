@@ -94,6 +94,17 @@ function getActiveCellInfo() {
 
   const parsed = parseCellContent_(value, richText, background);
 
+  // Определяем количество объединённых строк
+  let spanRows = 1;
+  const mergedRanges = sheet.getRange(row, col, 3, 1).getMergedRanges();
+  for (let i = 0; i < mergedRanges.length; i++) {
+    const mr = mergedRanges[i];
+    if (mr.getRow() === row && mr.getColumn() === col) {
+      spanRows = mr.getNumRows();
+      break;
+    }
+  }
+
   return {
     sheet: sheet.getName(),
     row: row,
@@ -104,6 +115,7 @@ function getActiveCellInfo() {
     parsed: parsed,
     types: LESSON_TYPES,
     dicts: dicts,
+    spanRows: spanRows,
   };
 }
 
@@ -218,8 +230,10 @@ function applyRichTextToCell_(cell, text, styleRanges, bgColor) {
 
 /**
  * Записывает занятие в активную ячейку.
- * Для лабы: объединяет 2 ячейки (текущая + ниже), все подгруппы в одной.
- * Аудитории — в отдельных ячейках справа.
+ * Поддерживает:
+ *   - Лабу на 2-3 пары (merge N ячеек, аудитории справа)
+ *   - Лекцию/практику с несколькими предметами (всё в одной ячейке)
+ *   - Обычное занятие (одна ячейка)
  */
 function applyLesson(data) {
   const sheet = SpreadsheetApp.getActiveSheet();
@@ -231,47 +245,57 @@ function applyLesson(data) {
   const type = LESSON_TYPES.find(t => t.code === data.lesson_type);
   if (!type) throw new Error('Неизвестный тип занятия: ' + data.lesson_type);
 
-  const isLab = data.lesson_type === 'lab' && data.teachers_by_subgroup && data.teachers_by_subgroup.length > 0;
+  const hasSubs = data.teachers_by_subgroup && data.teachers_by_subgroup.length > 0;
+  const isMulti = hasSubs && data.teachers_by_subgroup.some(sg => sg.subject && sg.subject.trim());
 
-  if (isLab) {
-    const hasSubj = data.teachers_by_subgroup.some(sg => sg.subject && sg.subject.trim());
-    if (!hasSubj) throw new Error('Не указан предмет.');
-
+  if (isMulti) {
     const sgs = data.teachers_by_subgroup;
     const content = buildCellContent_(sgs);
+    const spanRows = Math.max(1, Math.min(data.span_rows || 2, 3));
 
-    // Разъединяем ячейки если они были объединены ранее
-    const mergeRange = sheet.getRange(row, col, 2, 1);
-    mergeRange.breakApart();
+    // Разъединяем ячейки (до 3 строк)
+    const maxBreak = sheet.getRange(row, col, 3, 1);
+    try { maxBreak.breakApart(); } catch (_) {}
+    const maxBreakRoom = sheet.getRange(row, col + 1, 3, 1);
+    try { maxBreakRoom.breakApart(); } catch (_) {}
 
     // Записываем контент в верхнюю ячейку
     const topCell = sheet.getRange(row, col);
     applyRichTextToCell_(topCell, content.text, content.styleRanges, type.color);
 
-    // Очищаем нижнюю и объединяем 2 ячейки
-    const bottomCell = sheet.getRange(row + 1, col);
-    bottomCell.clearContent();
-    bottomCell.setBackground(type.color);
-    mergeRange.merge();
+    // Очищаем нижние и объединяем N ячеек
+    for (let r = 1; r < spanRows; r++) {
+      const c = sheet.getRange(row + r, col);
+      c.clearContent();
+      c.setBackground(type.color);
+    }
+    // Очищаем ячейки, которые были частью старого merge, но теперь не нужны
+    for (let r = spanRows; r < 3; r++) {
+      try { sheet.getRange(row + r, col).clearContent(); } catch (_) {}
+    }
+    if (spanRows > 1) {
+      sheet.getRange(row, col, spanRows, 1).merge();
+    }
 
-    // Аудитории: объединяем 2 ячейки справа, разделяем линией
-    const roomRange = sheet.getRange(row, col + 1, 2, 1);
-    roomRange.breakApart();
+    // Аудитории: объединяем N ячеек справа, разделяем линией
     const roomLines = content.roomLines.filter(r => r.trim());
-    const roomCell = sheet.getRange(row, col + 1);
-    const roomCell2 = sheet.getRange(row + 1, col + 1);
     if (roomLines.length === 0) {
-      roomCell.clearContent();
-      roomCell2.clearContent();
+      for (let r = 0; r < spanRows; r++) {
+        sheet.getRange(row + r, col + 1).clearContent();
+      }
     } else {
       const roomText = roomLines.join('\n───\n');
-      roomCell2.clearContent();
-      roomRange.merge();
-      setRoomCell_(roomCell, roomText);
+      for (let r = 1; r < spanRows; r++) {
+        sheet.getRange(row + r, col + 1).clearContent();
+      }
+      if (spanRows > 1) {
+        sheet.getRange(row, col + 1, spanRows, 1).merge();
+      }
+      setRoomCell_(sheet.getRange(row, col + 1), roomText);
     }
 
   } else {
-    // Не лаба — одна ячейка
+    // Одна ячейка — обычное занятие
     if (!data.subject || !data.subject.trim()) throw new Error('Не указан предмет.');
 
     const lines = [];
@@ -298,7 +322,7 @@ function applyLesson(data) {
 
   // Справочник
   appendToDictionary_({
-    subject: isLab ? (data.teachers_by_subgroup[0] || {}).subject : data.subject,
+    subject: isMulti ? (data.teachers_by_subgroup[0] || {}).subject : data.subject,
     teachers: collectTeachers_(data),
     rooms: collectRooms_(data),
   });
@@ -327,8 +351,7 @@ function applyLessonAndMoveDown(data) {
   const sheet = SpreadsheetApp.getActiveSheet();
   const cell = sheet.getCurrentCell();
   if (cell) {
-    // Лаба занимает 2 ячейки — сдвигаемся на 2 вниз
-    const offset = data.lesson_type === 'lab' ? 2 : 1;
+    const offset = Math.max(1, data.span_rows || 1);
     const next = sheet.getRange(cell.getRow() + offset, cell.getColumn());
     sheet.setCurrentCell(next);
   }
@@ -609,9 +632,9 @@ function parseCellContent_(value, richText, background) {
   const notes = noteLines.join('; ');
   const comment = commentLines.join('; ');
 
-  // Попытка разобрать multi-subject лабы
+  // Попытка разобрать multi-subject (лабы и не только)
   let labSubgroups = null;
-  if (lessonType === 'lab' && subjectLines.length > 1) {
+  if (subjectLines.length > 1) {
     labSubgroups = parseMultiSubjectLab_(lines, subjectLines);
   }
 

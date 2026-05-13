@@ -330,12 +330,19 @@
     <div class="cancel-inline" style="margin-top:8px">
       <label><input type="checkbox" id="cancel-check"> ОТМЕНА</label>
     </div>
+    <button type="button" class="add-row-btn" id="add-subject-btn" onclick="switchToMulti()">+ ещё предмет</button>
   </div>
 
-  <!-- Лаба: сразу подгруппы -->
+  <!-- Несколько предметов / подгрупп -->
   <div id="multi-block" class="hidden">
+    <label>Количество пар (строк)</label>
+    <div class="span-row" style="display:flex;gap:6px;margin-bottom:8px;">
+      <span class="sg-chip active" data-span="1">1</span>
+      <span class="sg-chip" data-span="2">2</span>
+      <span class="sg-chip" data-span="3">3</span>
+    </div>
     <div id="subgroup-list"></div>
-    <button type="button" class="add-row-btn" id="add-subgroup">+ ещё подгруппа</button>
+    <button type="button" class="add-row-btn" id="add-subgroup">+ ещё предмет/подгруппа</button>
   </div>
 
   <div class="actions">
@@ -351,6 +358,8 @@
     types: [],
     lesson_type: null,
     cell: null,
+    span_rows: 1,
+    use_multi: false,
   };
 
   function el(tag, attrs, ...children) {
@@ -386,13 +395,38 @@
       b.classList.toggle('active', b.dataset.code === code);
     });
     const isLab = code === 'lab';
-    document.getElementById('single-block').classList.toggle('hidden', isLab);
-    document.getElementById('multi-block').classList.toggle('hidden', !isLab);
-    if (isLab && document.querySelectorAll('.subgroup-block').length === 0) {
+    const useMulti = isLab || state.use_multi;
+    document.getElementById('single-block').classList.toggle('hidden', useMulti);
+    document.getElementById('multi-block').classList.toggle('hidden', !useMulti);
+    if (isLab) {
+      setSpanRows(2);
+    }
+    if (useMulti && document.querySelectorAll('.subgroup-block').length === 0) {
       addSubgroupRow();
     }
     validate();
-    if (!isLab) setTimeout(() => document.getElementById('subject').focus(), 50);
+    if (!useMulti) setTimeout(() => document.getElementById('subject').focus(), 50);
+  }
+
+  function switchToMulti() {
+    state.use_multi = true;
+    // Перенести данные из single-block в первый subgroup
+    const subj = document.getElementById('subject').value;
+    const teacher = document.getElementById('teacher').value;
+    const room = document.getElementById('room').value;
+    document.getElementById('single-block').classList.add('hidden');
+    document.getElementById('multi-block').classList.remove('hidden');
+    if (document.querySelectorAll('.subgroup-block').length === 0) {
+      addSubgroupRow({subject: subj, teacher: teacher, room: room});
+    }
+    validate();
+  }
+
+  function setSpanRows(n) {
+    state.span_rows = n;
+    document.querySelectorAll('.span-row .sg-chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.span === String(n));
+    });
   }
 
   // ─── Subgroup block for labs ─────────────────────────────────────────
@@ -562,11 +596,11 @@
   }
 
   function collectData() {
-    if (state.lesson_type === 'lab') {
+    const useMulti = state.lesson_type === 'lab' || state.use_multi;
+    if (useMulti) {
       const subgroups = collectSubgroups();
       let subject = '';
       if (subgroups.length > 0) subject = subgroups[0].subject || '';
-      // Add date notes as string for each subgroup
       subgroups.forEach(sg => {
         sg.notes = buildDateNotes(sg.date_from, sg.date_to);
       });
@@ -579,6 +613,7 @@
         notes: '',
         cancelled: false,
         teachers_by_subgroup: subgroups,
+        span_rows: state.span_rows,
       };
     }
 
@@ -594,13 +629,15 @@
       comment: document.getElementById('comment').value.trim(),
       cancelled: document.getElementById('cancel-check').checked,
       teachers_by_subgroup: [],
+      span_rows: 1,
     };
   }
 
   function validate() {
     let ok = false;
     if (state.lesson_type) {
-      if (state.lesson_type === 'lab') {
+      const useMulti = state.lesson_type === 'lab' || state.use_multi;
+      if (useMulti) {
         const subs = [...document.querySelectorAll('.sg-subject')].map(el => el.value.trim());
         ok = subs.length > 0 && subs.every(s => s);
       } else {
@@ -748,8 +785,17 @@
     const parsed = info.parsed || {};
     if (parsed.lesson_type) selectType(parsed.lesson_type);
 
+    // Восстановить количество пар
+    if (info.spanRows && info.spanRows > 1) {
+      setSpanRows(info.spanRows);
+    }
+
     if (parsed.lesson_type === 'lab') {
-      // Fill lab subgroups
+      tryFillLabSubgroups(info);
+    } else if (parsed.lab_subgroups && parsed.lab_subgroups.length > 1) {
+      // Multi-subject non-lab (e.g. lecture for 2 groups)
+      switchToMulti();
+      setSpanRows(info.spanRows || 1);
       tryFillLabSubgroups(info);
     } else {
       // Single mode
@@ -910,6 +956,8 @@
 
   function resetForm() {
     state.lesson_type = null;
+    state.use_multi = false;
+    state.span_rows = 1;
     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('subject').value = '';
     document.getElementById('teacher').value = '';
@@ -923,6 +971,7 @@
     document.getElementById('subgroup-list').innerHTML = '';
     document.getElementById('single-block').classList.remove('hidden');
     document.getElementById('multi-block').classList.add('hidden');
+    setSpanRows(1);
     document.getElementById('submit').disabled = true;
     document.getElementById('next-cell').disabled = true;
   }
@@ -990,6 +1039,11 @@
   });
 
   document.getElementById('add-subgroup').onclick = () => addSubgroupRow();
+
+  // ─── Span rows selector ──────────────────────────────────────────
+  document.querySelectorAll('.span-row .sg-chip').forEach(chip => {
+    chip.onclick = () => setSpanRows(parseInt(chip.dataset.span));
+  });
 
   // ─── Init autocomplete for single-block fields ──────────────────────
   setupAutocomplete('subject', 'ac-subjects', () => dictData.subjects);
