@@ -253,55 +253,31 @@ function applyLesson(data) {
     const content = buildCellContent_(sgs);
     const spanRows = Math.max(1, Math.min(data.span_rows || 2, 3));
 
-    // Определяем старый размер merge (чтобы очистить только те ячейки, которые были частью)
-    let oldSpan = 1;
-    let oldRoomSpan = 1;
-    try {
-      const merges = sheet.getRange(row, col, 3, 1).getMergedRanges();
-      for (let i = 0; i < merges.length; i++) {
-        if (merges[i].getRow() === row && merges[i].getColumn() === col) {
-          oldSpan = merges[i].getNumRows();
-          break;
-        }
-      }
-    } catch (_) {}
-    try {
-      const roomMerges = sheet.getRange(row, col + 1, 3, 1).getMergedRanges();
-      for (let i = 0; i < roomMerges.length; i++) {
-        if (roomMerges[i].getRow() === row && roomMerges[i].getColumn() === col + 1) {
-          oldRoomSpan = roomMerges[i].getNumRows();
-          break;
-        }
-      }
-    } catch (_) {}
-
-    // Разъединяем старые merge
-    if (oldSpan > 1) {
-      try { sheet.getRange(row, col, oldSpan, 1).breakApart(); } catch (_) {}
-    }
-    if (oldRoomSpan > 1) {
-      try { sheet.getRange(row, col + 1, oldRoomSpan, 1).breakApart(); } catch (_) {}
+    // Разъединяем ВСЕ merge в целевых строках (и только в них), чтобы не задеть соседние ячейки
+    // Сначала сохраняем содержимое ячеек, которые не входят в наш span, чтобы restore после breakApart
+    for (let r = 0; r < spanRows; r++) {
+      try {
+        const targetRange = sheet.getRange(row + r, col, 1, 2);
+        const mergedRanges = targetRange.getMergedRanges();
+        mergedRanges.forEach(mr => { try { mr.breakApart(); } catch (_) {} });
+      } catch (_) {}
     }
 
     // Записываем контент в верхнюю ячейку
     const topCell = sheet.getRange(row, col);
     applyRichTextToCell_(topCell, content.text, content.styleRanges, type.color);
 
-    // Очищаем нижние и объединяем N ячеек
+    // Очищаем ТОЛЬКО ячейки внутри нашего span (row+1 .. row+spanRows-1)
     for (let r = 1; r < spanRows; r++) {
       const c = sheet.getRange(row + r, col);
       c.clearContent();
       c.setBackground(type.color);
     }
-    // Очищаем только ячейки, которые были частью СТАРОГО merge, но теперь не нужны
-    for (let r = spanRows; r < oldSpan; r++) {
-      try { sheet.getRange(row + r, col).clearContent(); } catch (_) {}
-    }
     if (spanRows > 1) {
       sheet.getRange(row, col, spanRows, 1).merge();
     }
 
-    // Аудитории: объединяем N ячеек справа, разделяем линией
+    // Аудитории: записываем и объединяем только в пределах span
     const roomLines = content.roomLines.filter(r => r.trim());
     if (roomLines.length === 0) {
       for (let r = 0; r < spanRows; r++) {
@@ -316,10 +292,6 @@ function applyLesson(data) {
         sheet.getRange(row, col + 1, spanRows, 1).merge();
       }
       setRoomCell_(sheet.getRange(row, col + 1), roomText);
-    }
-    // Очищаем аудитории только из СТАРОГО merge
-    for (let r = spanRows; r < oldRoomSpan; r++) {
-      try { sheet.getRange(row + r, col + 1).clearContent(); } catch (_) {}
     }
 
   } else {
@@ -629,9 +601,7 @@ function parseCellContent_(value, richText, background) {
   }
 
   // Склеиваем последовательные жирные строки без teacher/subgroup между ними в один предмет
-  // "Цифровая обработка\nсигнала" (обе bold, рядом) → один предмет
-  // "МЭТМиНЭ\n...\nОсн Сенс" (жирные, но с преподом/подгруппой между) → два предмета
-  // subjectFirstLines: первая оригинальная строка каждого объединённого предмета (для parseMultiSubjectLab_)
+  const rawBoldLines = new Set(subjectLines.map(s => s.trim()));
   const subjectFirstLines = [];
   if (subjectLines.length > 1) {
     const merged = [subjectLines[0]];
@@ -664,11 +634,9 @@ function parseCellContent_(value, richText, background) {
   // Позиционный парсинг: порядок в ячейке — notes, subject, subgroup, teacher, comment, ОТМЕНА
   // notes = строки ДО предмета (дата-пометки «с/по/до»)
   // comment = красные строки ПОСЛЕ преподавателя (не subgroup, не ОТМЕНА)
-  // subjectIdx: позиция первого жирного слова в lines (до merge subjectLines могли быть склеены)
   let subjectIdx = -1;
-  if (subjectLines.length) {
-    const firstWord = subjectLines[0].split(' ')[0];
-    subjectIdx = lines.findIndex(l => l.startsWith(firstWord));
+  if (subjectFirstLines.length) {
+    subjectIdx = lines.indexOf(subjectFirstLines[0]);
   }
   const teacher = nonSubjectLines.find(looksLikeTeacher_) || '';
   const teacherIdx = teacher ? lines.indexOf(teacher) : subjectIdx;
@@ -698,7 +666,7 @@ function parseCellContent_(value, richText, background) {
   // Попытка разобрать multi-subject (лабы и не только)
   let labSubgroups = null;
   if (subjectLines.length > 1) {
-    labSubgroups = parseMultiSubjectLab_(lines, subjectLines, subjectFirstLines);
+    labSubgroups = parseMultiSubjectLab_(lines, subjectLines, subjectFirstLines, rawBoldLines);
   }
 
   const subject = subjectLines.length > 1 ? subjectLines[0] : subjectLines.join(' ');
@@ -719,22 +687,21 @@ function parseCellContent_(value, richText, background) {
  * Парсит сложную ячейку с несколькими предметами.
  * subjectLines — объединённые названия (могут не совпадать с allLines)
  * firstLines — первая строка каждого объединённого предмета (для поиска в allLines)
+ * rawBoldSet — Set всех оригинальных жирных строк (до merge) для пропуска продолжений
  */
-function parseMultiSubjectLab_(allLines, subjectLines, firstLines) {
-  // Карта: первая строка оригинала → объединённый предмет
+function parseMultiSubjectLab_(allLines, subjectLines, firstLines, rawBoldSet) {
   const firstLineToSubject = {};
+  const firstLineSet = new Set();
   for (let i = 0; i < (firstLines || subjectLines).length; i++) {
-    firstLineToSubject[(firstLines || subjectLines)[i].trim()] = subjectLines[i].trim();
+    const fl = (firstLines || subjectLines)[i].trim();
+    firstLineToSubject[fl] = subjectLines[i].trim();
+    firstLineSet.add(fl);
   }
-  // Собираем все оригинальные жирные строки (для пропуска продолжений многострочных предметов)
-  const allBoldLines = new Set();
-  subjectLines.forEach(s => {
-    s.split(' ').forEach(word => {
-      allLines.forEach(l => {
-        if (l.trim() === word || s.includes(l.trim())) allBoldLines.add(l.trim());
-      });
-    });
-  });
+  // Строки-продолжения: жирные строки, которые не являются первой строкой предмета
+  const continuationLines = new Set();
+  if (rawBoldSet) {
+    rawBoldSet.forEach(bl => { if (!firstLineSet.has(bl)) continuationLines.add(bl); });
+  }
 
   const groups = [];
   let current = null;
@@ -746,10 +713,7 @@ function parseMultiSubjectLab_(allLines, subjectLines, firstLines) {
       current = { subject: firstLineToSubject[trimmed], subgroup: '', teacher: '', notes: '', comment: '', cancelled: false };
       groups.push(current);
     } else if (current) {
-      // Пропускаем продолжения многострочного предмета (bold строки, не первые)
-      if (current.subject.includes(trimmed) && !looksLikeTeacher_(trimmed) && !looksLikeSubgroup_(trimmed)) {
-        return;
-      }
+      if (continuationLines.has(trimmed)) return;
       if (looksLikeTeacher_(trimmed) && !current.teacher) {
         current.teacher = trimmed;
       } else if (looksLikeSubgroup_(trimmed) && !current.subgroup) {
