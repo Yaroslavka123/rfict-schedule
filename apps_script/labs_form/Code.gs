@@ -1046,12 +1046,14 @@ function parseWeekSheet_(sheet, groups) {
   var lastCol = sheet.getLastColumn();
   if (lastRow < 6 || lastCol < 4) return [];
 
-  var allValues = sheet.getRange(1, 1, lastRow, lastCol).getValues();
-  var allBgs = sheet.getRange(1, 1, lastRow, lastCol).getBackgrounds();
+  var dataRange = sheet.getRange(1, 1, lastRow, lastCol);
+  var allValues = dataRange.getValues();
+  var allBgs = dataRange.getBackgrounds();
+  var allRichTexts = dataRange.getRichTextValues();
 
   // Карта merged-ячеек: mergeMap[row][col] = {startRow, numRows}
   var mergeMap = {};
-  var mergedRanges = sheet.getRange(1, 1, lastRow, lastCol).getMergedRanges();
+  var mergedRanges = dataRange.getMergedRanges();
   for (var m = 0; m < mergedRanges.length; m++) {
     var mr = mergedRanges[m];
     var startR = mr.getRow();
@@ -1102,7 +1104,8 @@ function parseWeekSheet_(sheet, groups) {
         duration = mergeMap[row1based][col1based];
       }
 
-      var parsed = parseLessonCell_(cellValue, roomValue);
+      var richText = allRichTexts[r][colIdx];
+      var parsed = parseRichLessonCell_(richText, roomValue);
       for (var p = 0; p < parsed.length; p++) {
         var entry = parsed[p];
         lessons.push({
@@ -1118,7 +1121,8 @@ function parseWeekSheet_(sheet, groups) {
           room: entry.room,
           subgroup: entry.subgroup || null,
           frequency: entry.frequency || null,
-          notes: entry.notes || null,
+          period_start: entry.period_start || null,
+          period_end: entry.period_end || null,
           comment: entry.comment || null,
           cancelled: entry.cancelled || false,
         });
@@ -1129,121 +1133,147 @@ function parseWeekSheet_(sheet, groups) {
 }
 
 /**
- * Парсит содержимое одной ячейки занятия.
- * Разделяет по ─── на отдельные подгруппы/предметы.
- * Также детектирует несколько предметов без разделителя
- * (новый предмет после преподавателя).
+ * Парсит ячейку занятия используя RichText (стили текста).
+ * Формат ячейки (создаётся buildCellContent_ / applyLesson):
+ *   [даты]       — RED: "с 03.03 по 26.05"
+ *   предмет      — BOLD BLACK
+ *   [подгруппа]  — RED: "1ПГ/2ПГ нечет/чет"
+ *   [преподаватель] — NORMAL BLACK
+ *   [комментарий] — RED
+ *   [ОТМЕНА]      — BOLD RED
+ * Блоки разделены ───────────────
  */
-function parseLessonCell_(cellValue, roomValue) {
-  var blocks = cellValue.split(/\n?─{3,}\n?/);
+function parseRichLessonCell_(richText, roomValue) {
+  if (!richText) return [];
+  var text = richText.getText();
+  if (!text || !text.trim()) return [];
+
   var rooms = (roomValue || '').split('\n')
     .map(function(s) { return s.trim(); })
     .filter(function(s) { return s && !/^[─━\-]+$/.test(s); });
-
   rooms = rooms.map(function(r) { return r.replace(/\.0$/, ''); });
 
+  // Получаем стили из RichText runs
+  var runs = richText.getRuns();
+  var styleMap = buildStyleMap_(runs);
+
+  var lines = text.split('\n');
   var allEntries = [];
-  for (var i = 0; i < blocks.length; i++) {
-    var block = blocks[i].trim();
-    if (!block) continue;
+  var current = newParseEntry_();
+  var foundSubject = false;
+  var foundTeacher = false;
+  var charPos = 0;
 
-    var lines = block.split('\n')
-      .map(function(s) { return s.trim(); })
-      .filter(function(s) { return s.length > 0; });
+  for (var i = 0; i < lines.length; i++) {
+    var rawLine = lines[i];
+    var line = rawLine.trim();
 
-    var subEntries = splitIntoSubEntries_(lines);
-    for (var j = 0; j < subEntries.length; j++) {
-      allEntries.push(parseEntryLines_(subEntries[j]));
+    if (!line || /^─{3,}$/.test(line)) {
+      if (current.subject) allEntries.push(current);
+      current = newParseEntry_();
+      foundSubject = false;
+      foundTeacher = false;
+      charPos += rawLine.length + 1;
+      continue;
     }
-  }
 
+    // Определяем стиль первого значимого символа строки
+    var firstCharPos = charPos;
+    for (var j = 0; j < rawLine.length; j++) {
+      if (rawLine[j] !== ' ') { firstCharPos = charPos + j; break; }
+    }
+    var charStyle = styleMap[firstCharPos] || {bold: false, red: false};
+    var isBold = charStyle.bold;
+    var isRed = charStyle.red;
+
+    if (/^\s*ОТМЕНА\s*$/i.test(line)) {
+      current.cancelled = true;
+    } else if (isBold && !isRed) {
+      // BOLD BLACK = предмет (может быть на несколько строк)
+      current.subject = current.subject ? current.subject + ' ' + line : line;
+      foundSubject = true;
+    } else if (isRed && !foundSubject) {
+      // RED перед предметом = даты (период)
+      extractPeriod_(line, current);
+    } else if (isRed && foundSubject && !foundTeacher) {
+      // RED после предмета, до преподавателя = подгруппа
+      current.subgroup = line;
+      if (/нечет\/чет|чет\/нечет/.test(line)) current.frequency = line.match(/нечет\/чет|чет\/нечет/)[0];
+      else if (/\bнечет\b/i.test(line)) current.frequency = 'нечет';
+      else if (/\bчет\b/i.test(line)) current.frequency = 'чет';
+      else if (/еженедел/i.test(line)) current.frequency = 'еженедельно';
+    } else if (!isBold && !isRed && foundSubject) {
+      // NORMAL BLACK после предмета = преподаватель
+      current.teacher = current.teacher ? current.teacher + ', ' + line : line;
+      foundTeacher = true;
+    } else if (isRed && foundTeacher) {
+      // RED после преподавателя = комментарий
+      current.comment = current.comment ? current.comment + '; ' + line : line;
+    } else if (!foundSubject) {
+      // Fallback: нестилизованный текст до предмета → предмет
+      current.subject = current.subject ? current.subject + ' ' + line : line;
+      foundSubject = true;
+    } else {
+      current.comment = current.comment ? current.comment + '; ' + line : line;
+    }
+
+    charPos += rawLine.length + 1;
+  }
+  if (current.subject) allEntries.push(current);
+
+  // Назначаем аудитории
   for (var e = 0; e < allEntries.length; e++) {
     allEntries[e].room = rooms[e] !== undefined ? rooms[e] : (rooms[0] || '');
+    allEntries[e].subject = allEntries[e].subject.replace(/\\/g, ' ').replace(/\s+/g, ' ').trim();
   }
-  // Убираем записи без предмета (напр. строки с одними числами)
   allEntries = allEntries.filter(function(e) { return e.subject; });
   return allEntries;
 }
 
-/**
- * Разбивает строки блока на под-записи.
- * Новый предмет начинается после преподавателя, если строка
- * не является преподом, подгруппой, датой или ОТМЕНА.
- */
-function splitIntoSubEntries_(lines) {
-  var entries = [];
-  var current = [];
-  var hasTeacher = false;
-
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i];
-    var isTeacher = looksLikeTeacher_(line);
-    var isSubgroup = looksLikeSubgroup_(line);
-    var isNotes = looksLikeNotes_(line);
-    var isCancel = /^\s*ОТМЕНА\s*$/i.test(line);
-
-    if (hasTeacher && !isTeacher && !isSubgroup && !isNotes && !isCancel && current.length > 0) {
-      entries.push(current);
-      current = [];
-      hasTeacher = false;
-    }
-
-    current.push(line);
-    if (isTeacher) hasTeacher = true;
-  }
-  if (current.length > 0) entries.push(current);
-  return entries;
+function newParseEntry_() {
+  return {
+    subject: '', teacher: '', room: '', subgroup: '',
+    frequency: '', period_start: '', period_end: '',
+    comment: '', cancelled: false,
+  };
 }
 
-function parseEntryLines_(lines) {
-  var subject = '';
-  var teacher = '';
-  var subgroup = '';
-  var frequency = '';
-  var notes = '';
-  var comment = '';
-  var cancelled = false;
-  var foundTeacherOrSubgroup = false;
-
-  for (var k = 0; k < lines.length; k++) {
-    var line = lines[k];
-    if (/^\s*ОТМЕНА\s*$/i.test(line)) {
-      cancelled = true;
-    } else if (/^\d+(\/\d+)*$/.test(line.trim())) {
-      // Распределение часов (12/6/8/6, 24/8) — пропускаем
-      continue;
-    } else if (looksLikeTeacher_(line)) {
-      teacher = teacher ? teacher + ', ' + line : line;
-      foundTeacherOrSubgroup = true;
-    } else if (looksLikeSubgroup_(line)) {
-      subgroup = line;
-      if (/нечет\/чет|чет\/нечет/.test(line)) frequency = line.match(/нечет\/чет|чет\/нечет/)[0];
-      else if (/\bнечет\b/i.test(line)) frequency = 'нечет';
-      else if (/\bчет\b/i.test(line)) frequency = 'чет';
-      else if (/еженедел/i.test(line)) frequency = 'еженедельно';
-      foundTeacherOrSubgroup = true;
-    } else if (looksLikeNotes_(line)) {
-      notes = notes ? notes + '; ' + line : line;
-    } else if (!foundTeacherOrSubgroup) {
-      subject = subject ? subject + ' ' + line : line;
-    } else {
-      comment = comment ? comment + '; ' + line : line;
+/** Строит карту: charIndex → {bold, red} из RichText runs */
+function buildStyleMap_(runs) {
+  var map = {};
+  for (var r = 0; r < runs.length; r++) {
+    var run = runs[r];
+    var style = run.getTextStyle();
+    var start = run.getStartIndex();
+    var end = run.getEndIndex();
+    var info = {
+      bold: !!style.isBold(),
+      red: (style.getForegroundColor() || '').toLowerCase() === '#ff0000',
+    };
+    for (var c = start; c < end; c++) {
+      map[c] = info;
     }
   }
+  return map;
+}
 
-  // Нормализация предмета: убираем бэкслеш, лишние пробелы
-  subject = subject.replace(/\\/g, ' ').replace(/\s+/g, ' ').trim();
-
-  return {
-    subject: subject,
-    teacher: teacher,
-    room: '',
-    subgroup: subgroup,
-    frequency: frequency,
-    notes: notes,
-    comment: comment,
-    cancelled: cancelled,
-  };
+/** Извлекает даты периода из строки в поля period_start / period_end */
+function extractPeriod_(line, entry) {
+  var combined = line.match(/с\s+(\d{1,2}\.\d{2})\s+по\s+(\d{1,2}\.\d{2})/);
+  if (combined) {
+    entry.period_start = combined[1];
+    entry.period_end = combined[2];
+    return;
+  }
+  var endMatch = line.match(/по\s+(\d{1,2}\.\d{2})/);
+  if (endMatch) { entry.period_end = endMatch[1]; return; }
+  var startMatch = line.match(/с\s+(\d{1,2}\.\d{2})/);
+  if (startMatch) { entry.period_start = startMatch[1]; return; }
+  // Месяцы: "с апреля", "по мая"
+  var monthStart = line.match(/с\s+(январ\S*|феврал\S*|март\S*|апрел\S*|ма\S*|июн\S*|июл\S*|август\S*|сентябр\S*|октябр\S*|ноябр\S*|декабр\S*)/i);
+  if (monthStart) { entry.period_start = monthStart[1]; return; }
+  // Остальное — в комментарий
+  entry.comment = entry.comment ? entry.comment + '; ' + line : line;
 }
 
 // ──────────────────────────────────────────────────────────────────────────

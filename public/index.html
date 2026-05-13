@@ -500,7 +500,8 @@
                  (l.teacher || '').toLowerCase().indexOf(search) !== -1 ||
                  (l.room || '').toLowerCase().indexOf(search) !== -1 ||
                  (l.subgroup || '').toLowerCase().indexOf(search) !== -1 ||
-                 (l.notes || '').toLowerCase().indexOf(search) !== -1 ||
+                 (l.period_start || '').toLowerCase().indexOf(search) !== -1 ||
+                 (l.period_end || '').toLowerCase().indexOf(search) !== -1 ||
                  (l.comment || '').toLowerCase().indexOf(search) !== -1;
         });
       }
@@ -551,7 +552,7 @@
 
       var html = '<table class="schedule-table"><thead><tr>';
       html += '<th>Пара</th><th>Время</th><th>Тип</th><th>Предмет</th>';
-      html += '<th>Преподаватель</th><th>Ауд.</th><th>Группа</th><th>Подгруппа</th><th>Инфо</th>';
+      html += '<th>Преподаватель</th><th>Ауд.</th><th>Группа</th><th>Подгруппа</th><th>Период</th><th>Инфо</th>';
       html += '</tr></thead><tbody>';
 
       DAY_ORDER.forEach(function(day) {
@@ -562,15 +563,20 @@
           return (a.pair || 0) - (b.pair || 0) || (a.group || '').localeCompare(b.group || '');
         });
 
-        html += '<tr class="day-header"><td colspan="9">' + day + '</td></tr>';
+        html += '<tr class="day-header"><td colspan="10">' + day + '</td></tr>';
 
         dayLessons.forEach(function(l) {
           var cls = l.cancelled ? ' cancelled' : '';
           var typeClass = 'type-' + (l.type || 'unknown');
           var info = [];
-          if (l.notes) info.push(l.notes);
           if (l.comment) info.push(l.comment);
-          if (l.frequency) info.push(l.frequency);
+          if (l.frequency && !l.subgroup) info.push(l.frequency);
+          var period = '';
+          if (l.period_start && l.period_end) period = 'с ' + l.period_start + ' по ' + l.period_end;
+          else if (l.period_end) period = 'по ' + l.period_end;
+          else if (l.period_start) period = 'с ' + l.period_start;
+          // Fallback: notes поле (для обратной совместимости)
+          if (!period && l.notes) period = l.notes;
 
           var weekData = allData.find(function(w) { return w.week_number === currentWeek; });
           var groupName = l.group;
@@ -590,6 +596,7 @@
           html += '<td class="room-cell">' + esc(l.room || '') + '</td>';
           html += '<td>' + esc(groupName) + '</td>';
           html += '<td class="subgroup-cell">' + esc(l.subgroup || '') + '</td>';
+          html += '<td class="period-cell">' + esc(period) + '</td>';
           html += '<td class="notes-cell">' + esc(info.join('; ')) + '</td>';
           html += '</tr>';
         });
