@@ -44,6 +44,33 @@
       margin-top: 3px;
     }
     input:focus, select:focus { outline: none; border-color: var(--primary); }
+
+    /* Custom autocomplete dropdown */
+    .ac-wrap { position: relative; }
+    .ac-list {
+      position: absolute;
+      left: 0; right: 0;
+      top: 100%;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      max-height: 180px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,.12);
+    }
+    .ac-list.open { display: block; }
+    .ac-item {
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 14px;
+      border-bottom: 1px solid #f1f3f4;
+    }
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:hover, .ac-item.selected { background: var(--bg-active); }
+    .ac-item b { color: var(--primary); }
     .types {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -259,16 +286,22 @@
   <!-- Не-лаба: один предмет, один препод -->
   <div id="single-block">
     <label>Предмет *</label>
-    <input type="text" id="subject" list="subjects-list" placeholder="Начни печатать..." />
-    <datalist id="subjects-list"></datalist>
+    <div class="ac-wrap">
+      <input type="text" id="subject" placeholder="Начни печатать..." autocomplete="off" />
+      <div class="ac-list" id="ac-subjects"></div>
+    </div>
 
     <label>Преподаватель</label>
-    <input type="text" id="teacher" list="teachers-list" placeholder="ст.пр. ИвановИ.И." />
-    <datalist id="teachers-list"></datalist>
+    <div class="ac-wrap">
+      <input type="text" id="teacher" placeholder="ст.пр. ИвановИ.И." autocomplete="off" />
+      <div class="ac-list" id="ac-teachers"></div>
+    </div>
 
     <label>Аудитория</label>
-    <input type="text" id="room" list="rooms-list" placeholder="117а" />
-    <datalist id="rooms-list"></datalist>
+    <div class="ac-wrap">
+      <input type="text" id="room" placeholder="117а" autocomplete="off" />
+      <div class="ac-list" id="ac-rooms"></div>
+    </div>
 
     <label>Подгруппа</label>
     <div class="checkbox-row">
@@ -377,7 +410,7 @@
     block.appendChild(header);
 
     // Subject
-    const subjInput = el('input', {type: 'text', list: 'subjects-list', placeholder: 'Предмет *', 'class': 'sg-subject'});
+    const subjInput = el('input', {type: 'text', placeholder: 'Предмет *', 'class': 'sg-subject', autocomplete: 'off'});
     subjInput.value = (prefill && prefill.subject) || '';
     subjInput.oninput = validate;
     block.appendChild(el('label', null, 'Предмет'));
@@ -407,14 +440,14 @@
     block.appendChild(sgText);
 
     // Teacher
-    const teacherInput = el('input', {type: 'text', list: 'teachers-list', placeholder: 'доц. ИвановИ.И.', 'class': 'sg-teacher'});
+    const teacherInput = el('input', {type: 'text', placeholder: 'доц. ИвановИ.И.', 'class': 'sg-teacher', autocomplete: 'off'});
     teacherInput.value = (prefill && prefill.teacher) || '';
     teacherInput.oninput = validate;
     block.appendChild(el('label', null, 'Преподаватель'));
     block.appendChild(teacherInput);
 
     // Room
-    const roomInput = el('input', {type: 'text', list: 'rooms-list', placeholder: '703', 'class': 'sg-room'});
+    const roomInput = el('input', {type: 'text', placeholder: '703', 'class': 'sg-room', autocomplete: 'off'});
     roomInput.value = (prefill && prefill.room) || '';
     roomInput.oninput = validate;
     block.appendChild(el('label', null, 'Аудитория'));
@@ -451,6 +484,7 @@
     block.appendChild(cancelRow);
 
     list.appendChild(block);
+    setupSubgroupAutocomplete(block);
 
     // Prefill subgroup chips if provided
     if (prefill && prefill.subgroup) {
@@ -575,21 +609,118 @@
     document.getElementById('next-cell').disabled = !ok;
   }
 
-  // ─── Dicts & cell info ───────────────────────────────────────────────
+  // ─── Autocomplete ────────────────────────────────────────────────────
+  const dictData = { subjects: [], teachers: [], rooms: [] };
+
   function loadDicts(d) {
-    fillList('subjects-list', d.subjects || []);
-    fillList('teachers-list', d.teachers || []);
-    fillList('rooms-list', d.rooms || []);
+    dictData.subjects = d.subjects || [];
+    dictData.teachers = d.teachers || [];
+    dictData.rooms = d.rooms || [];
   }
 
-  function fillList(id, items) {
-    const dl = document.getElementById(id);
-    dl.innerHTML = '';
-    items.forEach(v => {
-      const o = document.createElement('option');
-      o.value = v;
-      dl.appendChild(o);
+  function setupAutocomplete(inputId, listId, getItems) {
+    const inp = document.getElementById(inputId);
+    const list = document.getElementById(listId);
+    let selectedIdx = -1;
+
+    function render(query) {
+      const q = (query || '').toLowerCase();
+      const items = getItems();
+      const filtered = q ? items.filter(v => v.toLowerCase().includes(q)) : items;
+      list.innerHTML = '';
+      selectedIdx = -1;
+      if (!filtered.length) { list.classList.remove('open'); return; }
+      filtered.slice(0, 15).forEach((v, i) => {
+        const div = document.createElement('div');
+        div.className = 'ac-item';
+        if (q) {
+          const idx = v.toLowerCase().indexOf(q);
+          div.innerHTML = esc(v.substring(0, idx)) + '<b>' + esc(v.substring(idx, idx + q.length)) + '</b>' + esc(v.substring(idx + q.length));
+        } else {
+          div.textContent = v;
+        }
+        div.onmousedown = (e) => { e.preventDefault(); inp.value = v; list.classList.remove('open'); validate(); };
+        list.appendChild(div);
+      });
+      list.classList.add('open');
+    }
+
+    inp.addEventListener('input', () => { render(inp.value); validate(); });
+    inp.addEventListener('focus', () => render(inp.value));
+    inp.addEventListener('blur', () => setTimeout(() => list.classList.remove('open'), 150));
+    inp.addEventListener('keydown', (e) => {
+      const items = list.querySelectorAll('.ac-item');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); selectedIdx = Math.min(selectedIdx + 1, items.length - 1); updateSelected(items); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); selectedIdx = Math.max(selectedIdx - 1, 0); updateSelected(items); }
+      else if (e.key === 'Enter' && selectedIdx >= 0) { e.preventDefault(); e.stopPropagation(); inp.value = items[selectedIdx].textContent; list.classList.remove('open'); validate(); }
+      else if (e.key === 'Escape') { list.classList.remove('open'); }
     });
+
+    function updateSelected(items) {
+      items.forEach((it, i) => it.classList.toggle('selected', i === selectedIdx));
+      if (items[selectedIdx]) items[selectedIdx].scrollIntoView({block: 'nearest'});
+    }
+  }
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function setupSubgroupAutocomplete(block) {
+    setupAcForElement(block.querySelector('.sg-subject'), () => dictData.subjects);
+    setupAcForElement(block.querySelector('.sg-teacher'), () => dictData.teachers);
+    setupAcForElement(block.querySelector('.sg-room'), () => dictData.rooms);
+  }
+
+  function setupAcForElement(inp, getItems) {
+    if (!inp || inp._acDone) return;
+    inp._acDone = true;
+    const wrap = document.createElement('div');
+    wrap.className = 'ac-wrap';
+    inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+    const list = document.createElement('div');
+    list.className = 'ac-list';
+    wrap.appendChild(list);
+    let selectedIdx = -1;
+
+    function render(query) {
+      const q = (query || '').toLowerCase();
+      const items = getItems();
+      const filtered = q ? items.filter(v => v.toLowerCase().includes(q)) : items;
+      list.innerHTML = '';
+      selectedIdx = -1;
+      if (!filtered.length) { list.classList.remove('open'); return; }
+      filtered.slice(0, 15).forEach((v) => {
+        const div = document.createElement('div');
+        div.className = 'ac-item';
+        if (q) {
+          const idx = v.toLowerCase().indexOf(q);
+          div.innerHTML = esc(v.substring(0, idx)) + '<b>' + esc(v.substring(idx, idx + q.length)) + '</b>' + esc(v.substring(idx + q.length));
+        } else {
+          div.textContent = v;
+        }
+        div.onmousedown = (e) => { e.preventDefault(); inp.value = v; list.classList.remove('open'); validate(); };
+        list.appendChild(div);
+      });
+      list.classList.add('open');
+    }
+
+    inp.addEventListener('input', () => { render(inp.value); validate(); });
+    inp.addEventListener('focus', () => render(inp.value));
+    inp.addEventListener('blur', () => setTimeout(() => list.classList.remove('open'), 150));
+    inp.addEventListener('keydown', (e) => {
+      const items = list.querySelectorAll('.ac-item');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); selectedIdx = Math.min(selectedIdx + 1, items.length - 1); updateSel(items); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); selectedIdx = Math.max(selectedIdx - 1, 0); updateSel(items); }
+      else if (e.key === 'Enter' && selectedIdx >= 0) { e.preventDefault(); e.stopPropagation(); inp.value = items[selectedIdx].textContent; list.classList.remove('open'); validate(); }
+      else if (e.key === 'Escape') { list.classList.remove('open'); }
+    });
+
+    function updateSel(items) {
+      items.forEach((it, i) => it.classList.toggle('selected', i === selectedIdx));
+      if (items[selectedIdx]) items[selectedIdx].scrollIntoView({block: 'nearest'});
+    }
   }
 
   function loadCellInfo(info) {
@@ -762,7 +893,10 @@
   function refreshCellInfo() {
     document.getElementById('cell-loading').style.display = '';
     document.getElementById('cell-addr').style.display = 'none';
-    google.script.run.withSuccessHandler(loadCellInfo)
+    google.script.run.withSuccessHandler(info => {
+      if (info.dicts) loadDicts(info.dicts);
+      loadCellInfo(info);
+    })
       .withFailureHandler(err => {
         document.getElementById('cell-loading').textContent = 'Ошибка: ' + err.message;
       })
@@ -819,13 +953,17 @@
   });
 
   document.getElementById('add-subgroup').onclick = () => addSubgroupRow();
-  document.getElementById('subject').addEventListener('input', validate);
 
-  // ─── Init: load dicts + cell info (no polling) ──────────────────────
-  google.script.run.withSuccessHandler(loadDicts)
-    .withFailureHandler(err => console.error('dict error:', err))
-    .getDictionaries();
-  google.script.run.withSuccessHandler(loadCellInfo)
+  // ─── Init autocomplete for single-block fields ──────────────────────
+  setupAutocomplete('subject', 'ac-subjects', () => dictData.subjects);
+  setupAutocomplete('teacher', 'ac-teachers', () => dictData.teachers);
+  setupAutocomplete('room', 'ac-rooms', () => dictData.rooms);
+
+  // ─── Init: one call for cell info + dicts ────────────────────────────
+  google.script.run.withSuccessHandler(info => {
+    if (info.dicts) loadDicts(info.dicts);
+    loadCellInfo(info);
+  })
     .withFailureHandler(err => {
       document.getElementById('cell-loading').textContent = 'Ошибка: ' + err.message;
     })
