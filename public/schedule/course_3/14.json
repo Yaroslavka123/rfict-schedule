@@ -1,6 +1,6 @@
 {
   "name": "11.05-16.05(14-я неделя)",
-  "generated_at": "2026-05-13T22:58:31.678Z",
+  "generated_at": "2026-05-13T23:01:42.327Z",
   "course": 3,
   "semester": 6,
   "week_number": 14,
@@ -4451,7 +4451,7 @@
       "frequency": "чет/нечет",
       "period_start": null,
       "period_end": "30.05",
-      "comment": "по 30.05",
+      "comment": null,
       "cancelled": false
     },
     {
@@ -4469,7 +4469,7 @@
       "frequency": "чет/нечет",
       "period_start": null,
       "period_end": "30.05",
-      "comment": "с 16.05",
+      "comment": null,
       "cancelled": false
     },
     {
@@ -4485,7 +4485,7 @@
       "room": "707",
       "subgroup": "3ПГ/4ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "period_start": null,
+      "period_start": "16.05",
       "period_end": null,
       "comment": null,
       "cancelled": false
