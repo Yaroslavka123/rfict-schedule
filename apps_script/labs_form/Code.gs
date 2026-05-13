@@ -30,7 +30,7 @@ const DICT_SHEET_NAME = 'Справочники';
 
 const GH_REPO_OWNER = 'Yaroslavka123';
 const GH_REPO_NAME  = 'rfict-schedule';
-const SCHEDULE_JSON_PATH = 'public/schedule.json';
+const SCHEDULE_DIR  = 'public/schedule/';
 
 // Минимальный интервал между экспортами (мс).
 const DISPATCH_COOLDOWN_MS = 30 * 1000; // 30 сек
@@ -361,7 +361,7 @@ function manualDispatch() {
 
 function dispatchResultMessage_(result) {
   if (!result) return 'Экспорт не выполнен (неизвестная ошибка).';
-  if (result.sent) return 'schedule.json обновлён и запушен в GitHub.';
+  if (result.sent) return 'Расписание экспортировано и запушено в GitHub.';
   switch (result.reason) {
     case 'no_token':
       return 'GITHUB_TOKEN не задан в Script Properties.\nНастрой токен: ⚙ Project Settings → Script Properties → GITHUB_TOKEN.';
@@ -836,7 +836,7 @@ function onSheetEdit(e) {
 }
 
 /**
- * Собрать schedule.json из всех листов и запушить в GitHub.
+ * Собрать JSON для каждого листа и запушить в GitHub (1 файл = 1 лист).
  * source — откуда вызов ('form:applyLesson', 'onEdit', 'manual-menu').
  * detail — доп. информация (адрес ячейки, и т.п.).
  */
@@ -860,10 +860,8 @@ function dispatchScheduleUpdate_(source, detail) {
 
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const json = buildScheduleJSON_(ss);
-    const content = JSON.stringify(json, null, 2);
-    pushFileToGitHub_(SCHEDULE_JSON_PATH, content, token);
-    console.log('schedule.json pushed (' + source + ', ' + detail + ')');
+    exportAllSheets_(ss, token);
+    console.log('schedule pushed (' + source + ', ' + detail + ')');
     return {sent: true};
   } catch (err) {
     console.error('export error: ' + err.message);
@@ -886,51 +884,51 @@ const COLOR_TO_TYPE_MAP_ = {
 
 const DAY_NAMES_ = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
-function buildScheduleJSON_(ss) {
-  const sheets = ss.getSheets();
-  const weekSheets = sheets.filter(function(s) {
+/**
+ * Экспорт всех листов — каждый лист = отдельный JSON файл.
+ */
+function exportAllSheets_(ss, token) {
+  var sheets = ss.getSheets();
+  var weekSheets = sheets.filter(function(s) {
     var name = s.getName();
     return /неделя\)?\s*$/.test(name) && !/черновик/i.test(name);
   });
   if (!weekSheets.length) throw new Error('Не найдены листы расписания');
 
-  // Мета-информация из первого листа
   var firstSheet = weekSheets[0];
   var course = firstSheet.getRange('A2').getValue();
   var semesterMatch = String(firstSheet.getRange('D1').getValue() || '').match(/(\d+)\s*семестр/);
   var semester = semesterMatch ? parseInt(semesterMatch[1], 10) : null;
-
-  // Группы (одинаковые на всех листах)
   var groups = discoverGroups_(firstSheet);
+  var groupsMeta = groups.map(function(g) {
+    return {id: g.id, name: g.name, specialty: g.specialty, department: g.department};
+  });
 
-  // Парсим каждый лист
-  var allLessons = [];
   for (var i = 0; i < weekSheets.length; i++) {
     var ws = weekSheets[i];
-    var weekName = ws.getName().trim();
-    var weekMatch = weekName.match(/(\d+)-я неделя/);
+    var sheetName = ws.getName().trim();
+    var weekMatch = sheetName.match(/(\d+)-я неделя/);
     var weekNumber = weekMatch ? parseInt(weekMatch[1], 10) : i + 1;
-    var dateMatch = weekName.match(/^([\d.]+\s*-\s*[\d.]+)/);
+    var dateMatch = sheetName.match(/^([\d.]+\s*-\s*[\d.]+)/);
     var dateRange = dateMatch ? dateMatch[1] : '';
 
     var lessons = parseWeekSheet_(ws, groups);
-    for (var j = 0; j < lessons.length; j++) {
-      lessons[j].week = weekName;
-      lessons[j].week_number = weekNumber;
-      lessons[j].date_range = dateRange;
-    }
-    allLessons = allLessons.concat(lessons);
-  }
 
-  return {
-    generated_at: new Date().toISOString(),
-    course: typeof course === 'number' ? course : parseInt(course, 10) || null,
-    semester: semester,
-    groups: groups.map(function(g) {
-      return {id: g.id, name: g.name, specialty: g.specialty, department: g.department};
-    }),
-    lessons: allLessons,
-  };
+    var json = {
+      name: sheetName,
+      generated_at: new Date().toISOString(),
+      course: typeof course === 'number' ? course : parseInt(course, 10) || null,
+      semester: semester,
+      week_number: weekNumber,
+      date_range: dateRange,
+      groups: groupsMeta,
+      lessons: lessons,
+    };
+
+    var fileName = sheetName.replace(/[\s/\\:*?"<>|]/g, '_') + '.json';
+    var filePath = SCHEDULE_DIR + fileName;
+    pushFileToGitHub_(filePath, JSON.stringify(json, null, 2), token);
+  }
 }
 
 /**
