@@ -231,11 +231,21 @@ function applyLessonAndMoveDown(data) {
 }
 
 function manualDispatch() {
-  dispatchScheduleUpdate_('manual-menu', '');
-  SpreadsheetApp.getUi().alert(
-    'Запрос на обновление расписания отправлен в GitHub Actions.\n'
-    + 'schedule.json обновится через ~30-40 секунд.'
-  );
+  const result = dispatchScheduleUpdate_('manual-menu', '');
+  SpreadsheetApp.getUi().alert(dispatchResultMessage_(result));
+}
+
+function dispatchResultMessage_(result) {
+  if (!result) return 'Dispatch не выполнен (неизвестная ошибка).';
+  if (result.sent) return 'Запрос отправлен в GitHub Actions.\nschedule.json обновится через ~30-40 сек.';
+  switch (result.reason) {
+    case 'no_token':
+      return 'GITHUB_TOKEN не задан в Script Properties.\nНастрой токен: ⚙ Project Settings → Script Properties → GITHUB_TOKEN.';
+    case 'cooldown':
+      return 'Cooldown: предыдущий dispatch был < 30 сек назад.\nПодожди немного и попробуй снова.';
+    default:
+      return 'Dispatch не удался: ' + (result.message || result.reason) + '.';
+  }
 }
 
 function clearActiveCell() {
@@ -534,7 +544,7 @@ function dispatchScheduleUpdate_(source, detail) {
   const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
   if (!token) {
     console.warn('GITHUB_TOKEN not set in Script Properties — dispatch skipped');
-    return;
+    return {sent: false, reason: 'no_token'};
   }
 
   // Cooldown: не шлём dispatch чаще чем раз в DISPATCH_COOLDOWN_MS
@@ -543,7 +553,7 @@ function dispatchScheduleUpdate_(source, detail) {
   const now = Date.now();
   if (now - lastDispatch < DISPATCH_COOLDOWN_MS) {
     console.log('dispatch cooldown, skipping (' + source + ')');
-    return;
+    return {sent: false, reason: 'cooldown'};
   }
   props.setProperty('_lastDispatchMs', String(now));
 
@@ -574,16 +584,18 @@ function dispatchScheduleUpdate_(source, detail) {
     const code = resp.getResponseCode();
     if (code >= 300) {
       console.error('dispatch failed: ' + code + ' ' + resp.getContentText());
-    } else {
-      console.log('dispatch OK (' + source + ')');
+      return {sent: false, reason: 'http_' + code};
     }
+    console.log('dispatch OK (' + source + ')');
+    return {sent: true};
   } catch (err) {
     console.error('dispatch error: ' + err.message);
+    return {sent: false, reason: 'error', message: err.message};
   }
 }
 
 /** Ручной тест dispatch — можно запустить из редактора Apps Script. */
 function testDispatch() {
-  dispatchScheduleUpdate_('manual-test', 'A1');
-  SpreadsheetApp.getUi().alert('Dispatch отправлен. Проверь GitHub Actions.');
+  const result = dispatchScheduleUpdate_('manual-test', 'A1');
+  SpreadsheetApp.getUi().alert(dispatchResultMessage_(result));
 }

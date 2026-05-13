@@ -237,7 +237,7 @@
 
   <div class="actions">
     <button class="primary" id="submit" disabled>✓ Применить</button>
-    <button class="secondary" id="next-cell" title="Применить и перейти вниз">↓ След.</button>
+    <button class="secondary" id="next-cell" title="Применить и перейти вниз" disabled>↓ След.</button>
     <button class="secondary" id="clear" title="Очистить ячейку">🗑</button>
   </div>
 
@@ -343,6 +343,7 @@
   function validate() {
     const ok = state.lesson_type && document.getElementById('subject').value.trim();
     document.getElementById('submit').disabled = !ok;
+    document.getElementById('next-cell').disabled = !ok;
   }
 
   function loadDicts(d) {
@@ -488,12 +489,17 @@
     };
   }
 
+  function setSubmitEnabled(enabled) {
+    document.getElementById('submit').disabled = !enabled;
+    document.getElementById('next-cell').disabled = !enabled;
+  }
+
   function submitForm(andMoveDown) {
     const data = collectData();
-    document.getElementById('submit').disabled = true;
+    setSubmitEnabled(false);
     const runner = google.script.run
       .withSuccessHandler(res => {
-        document.getElementById('submit').disabled = false;
+        setSubmitEnabled(true);
         showStatus('✓ ' + res.cell, false);
         if (andMoveDown) {
           resetForm();
@@ -501,7 +507,7 @@
         }
       })
       .withFailureHandler(err => {
-        document.getElementById('submit').disabled = false;
+        setSubmitEnabled(true);
         showStatus('Ошибка: ' + err.message, true);
       });
     if (andMoveDown) {
