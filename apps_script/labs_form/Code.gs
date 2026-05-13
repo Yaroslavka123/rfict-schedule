@@ -293,6 +293,10 @@ function applyLesson(data) {
       }
       setRoomCell_(sheet.getRange(row, col + 1), roomText);
     }
+    // Очищаем аудитории за пределами нового span
+    for (let r = spanRows; r < 3; r++) {
+      try { sheet.getRange(row + r, col + 1).clearContent(); } catch (_) {}
+    }
 
   } else {
     // Одна ячейка — обычное занятие
@@ -351,7 +355,7 @@ function applyLessonAndMoveDown(data) {
   const sheet = SpreadsheetApp.getActiveSheet();
   const cell = sheet.getCurrentCell();
   if (cell) {
-    const offset = Math.max(1, data.span_rows || 1);
+    const offset = Math.max(1, Math.min(data.span_rows || 2, 3));
     const next = sheet.getRange(cell.getRow() + offset, cell.getColumn());
     sheet.setCurrentCell(next);
   }
