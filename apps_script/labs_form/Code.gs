@@ -738,7 +738,7 @@ function parseMultiSubjectLab_(allLines, subjectLines, firstLines, rawBoldSet) {
     if (!trimmed || /^[─━\-]+$/.test(trimmed)) return;
     if (nextFirstIdx < firstLinePositions.length && idx === firstLinePositions[nextFirstIdx].pos) {
       current = { subject: firstLinePositions[nextFirstIdx].subject, subgroup: '', teacher: '', notes: '', comment: '', cancelled: false };
-      if (pendingNotes && groups.length === 0) {
+      if (pendingNotes) {
         current.notes = pendingNotes;
         pendingNotes = '';
       }
@@ -754,10 +754,13 @@ function parseMultiSubjectLab_(allLines, subjectLines, firstLines, rawBoldSet) {
         current.cancelled = true;
       } else if (looksLikeNotes_(trimmed) && !current.notes && !current.teacher) {
         current.notes = trimmed;
+      } else if (looksLikeNotes_(trimmed) && current.teacher) {
+        // Дата после преподавателя → для следующего предмета
+        pendingNotes = trimmed;
       } else if (!current.comment) {
         current.comment = trimmed;
       }
-    } else if (!current && looksLikeNotes_(trimmed)) {
+    } else if (looksLikeNotes_(trimmed)) {
       pendingNotes = pendingNotes ? pendingNotes + '; ' + trimmed : trimmed;
     }
   });
