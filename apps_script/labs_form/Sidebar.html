@@ -875,8 +875,9 @@
       if (v.length > 5) v = v.substring(0, 5);
       // Limit day 01-31, month 01-12
       if (parts[0] && parseInt(parts[0]) > 31) v = '31' + v.substring(2);
-      if (parts.length > 1 && parts[1].length === 2 && parseInt(parts[1]) > 12) {
-        v = parts[0] + '.12';
+      const p2 = v.split('.');
+      if (p2.length > 1 && p2[1].length === 2 && parseInt(p2[1]) > 12) {
+        v = p2[0] + '.12';
       }
       input.value = v;
     });
