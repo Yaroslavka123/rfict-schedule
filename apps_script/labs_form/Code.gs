@@ -105,16 +105,6 @@ function getActiveCellInfo() {
 }
 
 /**
- * Лёгкая проверка: возвращает только адрес текущей ячейки (для polling в sidebar).
- */
-function getActiveCellAddress() {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const cell = sheet.getCurrentCell();
-  if (!cell) return null;
-  return { row: cell.getRow(), col: cell.getColumn(), sheet: sheet.getName() };
-}
-
-/**
  * Возвращает словари для autocomplete.
  */
 function getDictionaries() {
@@ -165,7 +155,15 @@ function applyLesson(data) {
 
   const type = LESSON_TYPES.find(t => t.code === data.lesson_type);
   if (!type) throw new Error('Неизвестный тип занятия: ' + data.lesson_type);
-  if (!data.subject || !data.subject.trim()) throw new Error('Не указан предмет.');
+
+  // Для лабы предмет в подгруппах, для остального — в data.subject
+  const isLabMode = data.lesson_type === 'lab' && data.teachers_by_subgroup && data.teachers_by_subgroup.length > 0;
+  if (isLabMode) {
+    const hasSubj = data.teachers_by_subgroup.some(sg => sg.subject && sg.subject.trim());
+    if (!hasSubj && (!data.subject || !data.subject.trim())) throw new Error('Не указан предмет.');
+  } else {
+    if (!data.subject || !data.subject.trim()) throw new Error('Не указан предмет.');
+  }
 
   // Сборка многострочного текста
   const lines = [];
@@ -178,57 +176,36 @@ function applyLesson(data) {
   let roomLines = [];
   const isLab = data.lesson_type === 'lab' && data.teachers_by_subgroup && data.teachers_by_subgroup.length > 0;
 
+  // Хелпер: добавить строку и запомнить стиль
+  function pushStyled(line, style) {
+    const start = lines.join('\n').length + (lines.length ? 1 : 0);
+    lines.push(line);
+    styleRanges.push({start: start, end: start + line.length, style: style});
+  }
+
   if (isLab) {
-    const hasPerSubjectSubgroups = data.teachers_by_subgroup.some(
-      sg => sg.subject && sg.subject.trim() && sg.subject.trim() !== data.subject.trim()
-    );
-    if (hasPerSubjectSubgroups) {
-      // Multi-subject: каждая подгруппа — свой предмет
-      data.teachers_by_subgroup.forEach(sg => {
-        if (sg.notes && sg.notes.trim()) {
-          const nStart = lines.join('\n').length + (lines.length ? 1 : 0);
-          lines.push(sg.notes.trim());
-          styleRanges.push({start: nStart, end: nStart + sg.notes.trim().length, style: 'italic'});
-        }
-        const subj = (sg.subject && sg.subject.trim()) || data.subject.trim();
-        const subjStart = lines.join('\n').length + (lines.length ? 1 : 0);
-        lines.push(subj);
-        styleRanges.push({start: subjStart, end: subjStart + subj.length, style: 'bold'});
-        if (sg.subgroup) lines.push(sg.subgroup);
-        if (sg.teacher)  lines.push(sg.teacher);
-        roomLines.push(sg.room || '');
-      });
-    } else {
-      // Single subject: общий предмет жирным, потом подгруппы
-      lines.push(data.subject.trim());
-      data.teachers_by_subgroup.forEach(sg => {
-        if (sg.notes && sg.notes.trim()) {
-          const nStart = lines.join('\n').length + (lines.length ? 1 : 0);
-          lines.push(sg.notes.trim());
-          styleRanges.push({start: nStart, end: nStart + sg.notes.trim().length, style: 'italic'});
-        }
-        if (sg.subgroup) lines.push(sg.subgroup);
-        if (sg.teacher)  lines.push(sg.teacher);
-        roomLines.push(sg.room || '');
-      });
-    }
+    // Лабы: каждая подгруппа — блок со своим предметом
+    data.teachers_by_subgroup.forEach(sg => {
+      if (sg.notes && sg.notes.trim()) pushStyled(sg.notes.trim(), 'italic');
+      const subj = (sg.subject && sg.subject.trim()) || data.subject.trim();
+      pushStyled(subj, 'bold');
+      if (sg.subgroup) lines.push(sg.subgroup);
+      if (sg.teacher)  lines.push(sg.teacher);
+      if (sg.cancelled) pushStyled('ОТМЕНА', 'cancel');
+      roomLines.push(sg.room || '');
+    });
   } else {
     lines.push(data.subject.trim());
     if (data.subgroup && data.subgroup.trim()) lines.push(data.subgroup.trim());
     if (data.teacher && data.teacher.trim()) lines.push(data.teacher.trim());
     if (data.room && data.room.trim()) roomLines.push(data.room.trim());
-  }
-
-  // ОТМЕНА — добавляем последней строкой
-  if (data.cancelled) {
-    lines.push('ОТМЕНА');
+    if (data.cancelled) pushStyled('ОТМЕНА', 'cancel');
   }
 
   const text = lines.join('\n');
 
-  // Вычисляем позицию предмета для bold (если не multi-subject)
-  const hasMultiSubjectBold = styleRanges.some(r => r.style === 'bold');
-  if (!hasMultiSubjectBold) {
+  // Позиция предмета для bold (не-лаба)
+  if (!isLab) {
     const subjectStartLine = data.notes && data.notes.trim() ? 1 : 0;
     const subjectStartIdx = lines.slice(0, subjectStartLine).join('\n').length + (subjectStartLine ? 1 : 0);
     const subjectEndIdx = subjectStartIdx + data.subject.trim().length;
@@ -238,13 +215,6 @@ function applyLesson(data) {
   // Глобальные даты — курсив
   if (data.notes && data.notes.trim()) {
     styleRanges.push({start: 0, end: data.notes.trim().length, style: 'italic'});
-  }
-
-  // ОТМЕНА — красный жирный
-  if (data.cancelled) {
-    const cancelText = 'ОТМЕНА';
-    const cancelStart = text.length - cancelText.length;
-    styleRanges.push({start: cancelStart, end: text.length, style: 'cancel'});
   }
 
   // Строим RichText
