@@ -133,8 +133,8 @@ function getDictionaries() {
 // Применение формы → запись в ячейку
 // ──────────────────────────────────────────────────────────────────────────
 
-// Цвета для преподов/кабинетов разных подгрупп в одной ячейке
-const SG_COLORS = ['#1a73e8', '#e8710a'];
+// Красный для подгрупп, дат, комментариев
+const RED = '#cc0000';
 
 /**
  * Собрать содержимое одной ячейки из массива подгрупп.
@@ -153,26 +153,13 @@ function buildCellContent_(subgroups) {
     styleRanges.push(r);
   }
 
-  subgroups.forEach((sg, sgIdx) => {
-    if (sg.notes && sg.notes.trim()) pushStyled(sg.notes.trim(), 'italic');
+  subgroups.forEach((sg) => {
+    if (sg.notes && sg.notes.trim()) pushStyled(sg.notes.trim(), 'red');
     const subj = (sg.subject && sg.subject.trim()) || '';
     if (subj) pushStyled(subj, 'subject_bold');
-    const sgColor = subgroups.length > 1 ? SG_COLORS[sgIdx % SG_COLORS.length] : null;
-    if (sg.subgroup) {
-      if (sgColor) {
-        pushStyled(sg.subgroup, 'color', {color: sgColor});
-      } else {
-        lines.push(sg.subgroup);
-      }
-    }
-    if (sg.teacher) {
-      if (sgColor) {
-        pushStyled(sg.teacher, 'color', {color: sgColor});
-      } else {
-        lines.push(sg.teacher);
-      }
-    }
-    if (sg.comment && sg.comment.trim()) pushStyled(sg.comment.trim(), 'italic');
+    if (sg.subgroup) pushStyled(sg.subgroup, 'red');
+    if (sg.teacher) lines.push(sg.teacher);
+    if (sg.comment && sg.comment.trim()) pushStyled(sg.comment.trim(), 'red');
     if (sg.cancelled) pushStyled('ОТМЕНА', 'cancel');
     roomLines.push(sg.room || '');
   });
@@ -194,6 +181,7 @@ function applyRichTextToCell_(cell, text, styleRanges, bgColor) {
   const normalStyle = SpreadsheetApp.newTextStyle()
     .setBold(false).setItalic(false)
     .setForegroundColor('#000000')
+    .setFontFamily('Arial')
     .setFontSize(12)
     .build();
   builder.setTextStyle(0, text.length, normalStyle);
@@ -202,19 +190,16 @@ function applyRichTextToCell_(cell, text, styleRanges, bgColor) {
     if (r.start >= r.end || r.start < 0 || r.end > text.length) return;
     if (r.style === 'subject_bold') {
       builder.setTextStyle(r.start, r.end,
-        SpreadsheetApp.newTextStyle().setBold(true).setFontSize(12).setForegroundColor('#000000').build());
+        SpreadsheetApp.newTextStyle().setBold(true).setFontFamily('Arial').setFontSize(12).setForegroundColor('#000000').build());
     } else if (r.style === 'bold') {
       builder.setTextStyle(r.start, r.end,
-        SpreadsheetApp.newTextStyle().setBold(true).setForegroundColor('#000000').build());
-    } else if (r.style === 'italic') {
+        SpreadsheetApp.newTextStyle().setBold(true).setFontFamily('Arial').setForegroundColor('#000000').build());
+    } else if (r.style === 'red') {
       builder.setTextStyle(r.start, r.end,
-        SpreadsheetApp.newTextStyle().setItalic(true).setForegroundColor('#000000').build());
+        SpreadsheetApp.newTextStyle().setFontFamily('Arial').setForegroundColor(RED).build());
     } else if (r.style === 'cancel') {
       builder.setTextStyle(r.start, r.end,
-        SpreadsheetApp.newTextStyle().setBold(true).setForegroundColor('#cc0000').build());
-    } else if (r.style === 'color') {
-      builder.setTextStyle(r.start, r.end,
-        SpreadsheetApp.newTextStyle().setForegroundColor(r.color).build());
+        SpreadsheetApp.newTextStyle().setBold(true).setFontFamily('Arial').setForegroundColor(RED).build());
     }
   });
 
@@ -295,11 +280,11 @@ function applyLesson(data) {
       styleRanges.push({start: start, end: start + line.length, style: style});
     }
 
-    if (data.notes && data.notes.trim()) pushStyled(data.notes.trim(), 'italic');
+    if (data.notes && data.notes.trim()) pushStyled(data.notes.trim(), 'red');
     pushStyled(data.subject.trim(), 'subject_bold');
-    if (data.subgroup && data.subgroup.trim()) lines.push(data.subgroup.trim());
+    if (data.subgroup && data.subgroup.trim()) pushStyled(data.subgroup.trim(), 'red');
     if (data.teacher && data.teacher.trim()) lines.push(data.teacher.trim());
-    if (data.comment && data.comment.trim()) pushStyled(data.comment.trim(), 'italic');
+    if (data.comment && data.comment.trim()) pushStyled(data.comment.trim(), 'red');
     if (data.cancelled) pushStyled('ОТМЕНА', 'cancel');
 
     const text = lines.join('\n');
@@ -320,11 +305,12 @@ function applyLesson(data) {
   return {ok: true, cell: cellAddress_(row, col)};
 }
 
-/** Аудитория: жирный, 12pt, по центру */
+/** Аудитория: жирный, Arial 12pt, по центру */
 function setRoomCell_(cell, text) {
   const val = (text || '').trim();
   if (!val) { cell.clearContent(); return; }
   cell.setValue(val);
+  cell.setFontFamily('Arial');
   cell.setFontWeight('bold');
   cell.setFontSize(12);
   cell.setVerticalAlignment('middle');
