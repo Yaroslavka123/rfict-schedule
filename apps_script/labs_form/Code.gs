@@ -934,7 +934,7 @@ function pushSheet_(ws, meta, token) {
   };
 
   var courseDir = 'course_' + (meta.course || 'unknown');
-  var fileName = weekNumber + '.json';
+  var fileName = (weekNumber || sheetName.replace(/[\s/\\:*?"<>|]/g, '_')) + '.json';
   var filePath = SCHEDULE_DIR + courseDir + '/' + fileName;
   var content = JSON.stringify(json, null, 2);
   pushFileToGitHub_(filePath, content, token);
