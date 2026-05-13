@@ -806,7 +806,7 @@ function looksLikeRoom_(s) {
 
 function looksLikeSubgroup_(s) {
   if (!s) return false;
-  return /\dПГ|\b(нечет|чет|нечёт|чёт)\b/i.test(s);
+  return /\d\s*ПГ|\b(нечет|чет|нечёт|чёт|еженедел)\b/i.test(s);
 }
 
 function looksLikeNotes_(s) {
