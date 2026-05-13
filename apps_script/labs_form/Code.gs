@@ -80,11 +80,15 @@ function getActiveCellInfo() {
   const row = cell.getRow();
   const col = cell.getColumn();
 
-  const value = cell.getValue();
+  // Batch read: читаем 2 ячейки сразу (ячейка + аудитория справа)
+  const range = sheet.getRange(row, col, 1, 2);
+  const values = range.getValues();
+  const bgs = range.getBackgrounds();
   const richText = cell.getRichTextValue();
-  const background = (cell.getBackground() || '').toLowerCase();
-  const roomCell = sheet.getRange(row, col + 1);
-  const roomValue = roomCell.getValue();
+
+  const value = values[0][0];
+  const roomValue = values[0][1];
+  const background = (bgs[0][0] || '').toLowerCase();
 
   const parsed = parseCellContent_(value, richText, background);
 
@@ -98,6 +102,16 @@ function getActiveCellInfo() {
     parsed: parsed,
     types: LESSON_TYPES,
   };
+}
+
+/**
+ * Лёгкая проверка: возвращает только адрес текущей ячейки (для polling в sidebar).
+ */
+function getActiveCellAddress() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const cell = sheet.getCurrentCell();
+  if (!cell) return null;
+  return { row: cell.getRow(), col: cell.getColumn(), sheet: sheet.getName() };
 }
 
 /**
@@ -200,6 +214,10 @@ function applyLesson(data) {
   const subjectEndIdx = subjectStartIdx + subjectLines.join('\n').length;
 
   const builder = SpreadsheetApp.newRichTextValue().setText(text);
+  // Сначала сбрасываем все стили на обычный текст
+  const normalStyle = SpreadsheetApp.newTextStyle().setBold(false).setItalic(false).build();
+  if (text.length > 0) builder.setTextStyle(0, text.length, normalStyle);
+  // Затем выборочно применяем жирный только к предмету
   const boldStyle = SpreadsheetApp.newTextStyle().setBold(true).build();
   if (boldRanges.length > 0) {
     boldRanges.forEach(r => builder.setTextStyle(r.start, r.end, boldStyle));
@@ -210,7 +228,7 @@ function applyLesson(data) {
   if (data.notes && data.notes.trim()) {
     builder.setTextStyle(
       0, data.notes.trim().length,
-      SpreadsheetApp.newTextStyle().setItalic(true).build()
+      SpreadsheetApp.newTextStyle().setItalic(true).setBold(false).build()
     );
   }
 
@@ -226,7 +244,6 @@ function applyLesson(data) {
     roomCell.clearContent();
   } else {
     roomCell.setValue(roomLines.join('\n'));
-    roomCell.setBackground(type.color);
     roomCell.setVerticalAlignment('middle');
     roomCell.setHorizontalAlignment('center');
     roomCell.setWrap(true);

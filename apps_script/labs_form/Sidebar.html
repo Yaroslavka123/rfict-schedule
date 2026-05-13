@@ -589,13 +589,41 @@
   document.getElementById('add-subgroup').onclick = () => addSubgroupRow();
   document.getElementById('subject').addEventListener('input', validate);
 
+  // Polling: каждые 2 сек проверяем — если ячейка сменилась, перечитываем
+  let lastCellKey = '';
+  let polling = true;
+
+  function pollCell() {
+    if (!polling) return;
+    google.script.run
+      .withSuccessHandler(addr => {
+        if (!addr) { setTimeout(pollCell, 2000); return; }
+        const key = addr.sheet + '!' + addr.col + ':' + addr.row;
+        if (key !== lastCellKey) {
+          lastCellKey = key;
+          resetForm();
+          refreshCellInfo();
+        }
+        setTimeout(pollCell, 2000);
+      })
+      .withFailureHandler(() => setTimeout(pollCell, 3000))
+      .getActiveCellAddress();
+  }
+
   // Старт: загружаем словари и данные ячейки параллельно
   google.script.run.withSuccessHandler(loadDicts)
     .withFailureHandler(err => console.error('dict error:', err))
     .getDictionaries();
-  google.script.run.withSuccessHandler(loadCellInfo)
+  google.script.run.withSuccessHandler(info => {
+      loadCellInfo(info);
+      if (info && !info.error) {
+        lastCellKey = info.sheet + '!' + info.col + ':' + info.row;
+      }
+      setTimeout(pollCell, 2000);
+    })
     .withFailureHandler(err => {
       document.getElementById('cell-loading').textContent = 'Ошибка: ' + err.message;
+      setTimeout(pollCell, 2000);
     })
     .getActiveCellInfo();
 </script>
