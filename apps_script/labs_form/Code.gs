@@ -756,7 +756,7 @@ function parseMultiSubjectLab_(allLines, subjectLines, firstLines, rawBoldSet) {
         current.notes = trimmed;
       } else if (looksLikeNotes_(trimmed) && current.teacher) {
         // Дата после преподавателя → для следующего предмета
-        pendingNotes = trimmed;
+        pendingNotes = pendingNotes ? pendingNotes + '; ' + trimmed : trimmed;
       } else if (!current.comment) {
         current.comment = trimmed;
       }
@@ -764,6 +764,12 @@ function parseMultiSubjectLab_(allLines, subjectLines, firstLines, rawBoldSet) {
       pendingNotes = pendingNotes ? pendingNotes + '; ' + trimmed : trimmed;
     }
   });
+
+  // Оставшиеся pendingNotes → notes последней группы
+  if (pendingNotes && groups.length > 0) {
+    const last = groups[groups.length - 1];
+    last.notes = last.notes ? last.notes + '; ' + pendingNotes : pendingNotes;
+  }
 
   return groups.length > 1 ? groups : null;
 }
