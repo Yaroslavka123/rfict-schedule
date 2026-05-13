@@ -133,18 +133,89 @@ function getDictionaries() {
 // Применение формы → запись в ячейку
 // ──────────────────────────────────────────────────────────────────────────
 
+// Цвета для преподов/кабинетов разных подгрупп в одной ячейке
+const SG_COLORS = ['#1a73e8', '#e8710a'];
+
+/**
+ * Собрать содержимое одной ячейки из массива подгрупп.
+ * Возвращает {text, styleRanges, roomText}.
+ */
+function buildCellContent_(subgroups) {
+  const lines = [];
+  const styleRanges = [];
+  const roomLines = [];
+
+  function pushStyled(line, style) {
+    const start = lines.join('\n').length + (lines.length ? 1 : 0);
+    lines.push(line);
+    styleRanges.push({start: start, end: start + line.length, style: style});
+  }
+
+  subgroups.forEach((sg, sgIdx) => {
+    if (sg.notes && sg.notes.trim()) pushStyled(sg.notes.trim(), 'italic');
+    const subj = (sg.subject && sg.subject.trim()) || '';
+    if (subj) pushStyled(subj, 'bold');
+    if (sg.subgroup) lines.push(sg.subgroup);
+    // Если несколько подгрупп в одной ячейке — цвет для препода
+    if (sg.teacher) {
+      if (subgroups.length > 1) {
+        const color = SG_COLORS[sgIdx % SG_COLORS.length];
+        const start = lines.join('\n').length + (lines.length ? 1 : 0);
+        lines.push(sg.teacher);
+        styleRanges.push({start: start, end: start + sg.teacher.length, style: 'color', color: color});
+      } else {
+        lines.push(sg.teacher);
+      }
+    }
+    if (sg.comment && sg.comment.trim()) pushStyled(sg.comment.trim(), 'italic');
+    if (sg.cancelled) pushStyled('ОТМЕНА', 'cancel');
+    roomLines.push(sg.room || '');
+  });
+
+  return {
+    text: lines.join('\n'),
+    styleRanges: styleRanges,
+    roomText: roomLines.join('\n'),
+  };
+}
+
+/**
+ * Применяет RichText и форматирование к ячейке.
+ */
+function applyRichTextToCell_(cell, text, styleRanges, bgColor) {
+  if (!text) { cell.clearContent(); cell.setBackground(bgColor); return; }
+  const builder = SpreadsheetApp.newRichTextValue().setText(text);
+  const normalStyle = SpreadsheetApp.newTextStyle().setBold(false).setItalic(false).setForegroundColor('#000000').build();
+  builder.setTextStyle(0, text.length, normalStyle);
+
+  styleRanges.forEach(r => {
+    if (r.start >= r.end || r.start < 0 || r.end > text.length) return;
+    if (r.style === 'bold') {
+      builder.setTextStyle(r.start, r.end, SpreadsheetApp.newTextStyle().setBold(true).setForegroundColor('#000000').build());
+    } else if (r.style === 'italic') {
+      builder.setTextStyle(r.start, r.end, SpreadsheetApp.newTextStyle().setItalic(true).setForegroundColor('#000000').build());
+    } else if (r.style === 'cancel') {
+      builder.setTextStyle(r.start, r.end,
+        SpreadsheetApp.newTextStyle().setBold(true).setForegroundColor('#cc0000').build()
+      );
+    } else if (r.style === 'color') {
+      builder.setTextStyle(r.start, r.end,
+        SpreadsheetApp.newTextStyle().setForegroundColor(r.color).build()
+      );
+    }
+  });
+
+  cell.setRichTextValue(builder.build());
+  cell.setBackground(bgColor);
+  cell.setVerticalAlignment('middle');
+  cell.setHorizontalAlignment('center');
+  cell.setWrap(true);
+}
+
 /**
  * Записывает занятие в активную ячейку.
- * data: {
- *   lesson_type: 'lecture'|'lab'|'practice'|'seminar'|'curator_hour'|'additional',
- *   subject: string,
- *   lab_number: string | null,
- *   teacher: string,           // основной преподаватель (если один)
- *   teachers_by_subgroup: [{subgroup: '1ПГ', teacher: '…', room: '…'}],  // для лабы
- *   subgroup: string,          // '1ПГ нечет' и т.п. (для не-лабы)
- *   room: string,
- *   notes: string,
- * }
+ * Для лабы: пишет в 2 ячейки (текущая + ниже).
+ * Если 2 подгруппы — каждая в своей ячейке.
  */
 function applyLesson(data) {
   const sheet = SpreadsheetApp.getActiveSheet();
@@ -156,112 +227,80 @@ function applyLesson(data) {
   const type = LESSON_TYPES.find(t => t.code === data.lesson_type);
   if (!type) throw new Error('Неизвестный тип занятия: ' + data.lesson_type);
 
-  // Для лабы предмет в подгруппах, для остального — в data.subject
-  const isLabMode = data.lesson_type === 'lab' && data.teachers_by_subgroup && data.teachers_by_subgroup.length > 0;
-  if (isLabMode) {
-    const hasSubj = data.teachers_by_subgroup.some(sg => sg.subject && sg.subject.trim());
-    if (!hasSubj && (!data.subject || !data.subject.trim())) throw new Error('Не указан предмет.');
-  } else {
-    if (!data.subject || !data.subject.trim()) throw new Error('Не указан предмет.');
-  }
-
-  // Сборка многострочного текста
-  const lines = [];
-  const styleRanges = []; // [{start, end, style: 'bold'|'italic'|'cancel'}]
-
-  // Глобальные даты/примечания — первая строка курсивом
-  if (data.notes && data.notes.trim()) lines.push(data.notes.trim());
-
-  // Для лабы — собираем по подгруппам, для остального — обычный путь
-  let roomLines = [];
   const isLab = data.lesson_type === 'lab' && data.teachers_by_subgroup && data.teachers_by_subgroup.length > 0;
 
-  // Хелпер: добавить строку и запомнить стиль
-  function pushStyled(line, style) {
-    const start = lines.join('\n').length + (lines.length ? 1 : 0);
-    lines.push(line);
-    styleRanges.push({start: start, end: start + line.length, style: style});
-  }
-
   if (isLab) {
-    // Лабы: каждая подгруппа — блок со своим предметом
-    data.teachers_by_subgroup.forEach(sg => {
-      if (sg.notes && sg.notes.trim()) pushStyled(sg.notes.trim(), 'italic');
-      const subj = (sg.subject && sg.subject.trim()) || data.subject.trim();
-      pushStyled(subj, 'bold');
-      if (sg.subgroup) lines.push(sg.subgroup);
-      if (sg.teacher)  lines.push(sg.teacher);
-      if (sg.cancelled) pushStyled('ОТМЕНА', 'cancel');
-      roomLines.push(sg.room || '');
-    });
+    const hasSubj = data.teachers_by_subgroup.some(sg => sg.subject && sg.subject.trim());
+    if (!hasSubj) throw new Error('Не указан предмет.');
+
+    // Лаба = 2 ячейки: если 2 подгруппы → каждая в своей строке
+    const sgs = data.teachers_by_subgroup;
+    let cell1Sgs, cell2Sgs;
+    if (sgs.length === 2) {
+      cell1Sgs = [sgs[0]];
+      cell2Sgs = [sgs[1]];
+    } else {
+      cell1Sgs = sgs;
+      cell2Sgs = sgs;
+    }
+
+    // Ячейка 1 (текущая)
+    const c1 = buildCellContent_(cell1Sgs);
+    const cell1 = sheet.getRange(row, col);
+    applyRichTextToCell_(cell1, c1.text, c1.styleRanges, type.color);
+    const room1 = sheet.getRange(row, col + 1);
+    if (c1.roomText.trim()) {
+      room1.setValue(c1.roomText);
+      room1.setVerticalAlignment('middle'); room1.setHorizontalAlignment('center'); room1.setWrap(true);
+    } else { room1.clearContent(); }
+
+    // Ячейка 2 (ниже)
+    const c2 = buildCellContent_(cell2Sgs);
+    const cell2 = sheet.getRange(row + 1, col);
+    applyRichTextToCell_(cell2, c2.text, c2.styleRanges, type.color);
+    const room2 = sheet.getRange(row + 1, col + 1);
+    if (c2.roomText.trim()) {
+      room2.setValue(c2.roomText);
+      room2.setVerticalAlignment('middle'); room2.setHorizontalAlignment('center'); room2.setWrap(true);
+    } else { room2.clearContent(); }
+
   } else {
-    lines.push(data.subject.trim());
+    // Не лаба — одна ячейка
+    if (!data.subject || !data.subject.trim()) throw new Error('Не указан предмет.');
+
+    const lines = [];
+    const styleRanges = [];
+    function pushStyled(line, style) {
+      const start = lines.join('\n').length + (lines.length ? 1 : 0);
+      lines.push(line);
+      styleRanges.push({start: start, end: start + line.length, style: style});
+    }
+
+    if (data.notes && data.notes.trim()) pushStyled(data.notes.trim(), 'italic');
+    pushStyled(data.subject.trim(), 'bold');
     if (data.subgroup && data.subgroup.trim()) lines.push(data.subgroup.trim());
     if (data.teacher && data.teacher.trim()) lines.push(data.teacher.trim());
-    if (data.room && data.room.trim()) roomLines.push(data.room.trim());
+    if (data.comment && data.comment.trim()) pushStyled(data.comment.trim(), 'italic');
     if (data.cancelled) pushStyled('ОТМЕНА', 'cancel');
+
+    const text = lines.join('\n');
+    applyRichTextToCell_(cell, text, styleRanges, type.color);
+
+    const roomCell = sheet.getRange(row, col + 1);
+    if (data.room && data.room.trim()) {
+      roomCell.setValue(data.room.trim());
+      roomCell.setVerticalAlignment('middle'); roomCell.setHorizontalAlignment('center'); roomCell.setWrap(true);
+    } else { roomCell.clearContent(); }
   }
 
-  const text = lines.join('\n');
-
-  // Позиция предмета для bold (не-лаба)
-  if (!isLab) {
-    const subjectStartLine = data.notes && data.notes.trim() ? 1 : 0;
-    const subjectStartIdx = lines.slice(0, subjectStartLine).join('\n').length + (subjectStartLine ? 1 : 0);
-    const subjectEndIdx = subjectStartIdx + data.subject.trim().length;
-    styleRanges.push({start: subjectStartIdx, end: subjectEndIdx, style: 'bold'});
-  }
-
-  // Глобальные даты — курсив
-  if (data.notes && data.notes.trim()) {
-    styleRanges.push({start: 0, end: data.notes.trim().length, style: 'italic'});
-  }
-
-  // Строим RichText
-  const builder = SpreadsheetApp.newRichTextValue().setText(text);
-  const normalStyle = SpreadsheetApp.newTextStyle().setBold(false).setItalic(false).build();
-  if (text.length > 0) builder.setTextStyle(0, text.length, normalStyle);
-
-  styleRanges.forEach(r => {
-    if (r.start >= r.end || r.start < 0 || r.end > text.length) return;
-    if (r.style === 'bold') {
-      builder.setTextStyle(r.start, r.end, SpreadsheetApp.newTextStyle().setBold(true).build());
-    } else if (r.style === 'italic') {
-      builder.setTextStyle(r.start, r.end, SpreadsheetApp.newTextStyle().setItalic(true).build());
-    } else if (r.style === 'cancel') {
-      builder.setTextStyle(r.start, r.end,
-        SpreadsheetApp.newTextStyle().setBold(true).setForegroundColor('#cc0000').build()
-      );
-    }
-  });
-
-  cell.setRichTextValue(builder.build());
-  cell.setBackground(type.color);
-  cell.setVerticalAlignment('middle');
-  cell.setHorizontalAlignment('center');
-  cell.setWrap(true);
-
-  // Аудитория — в соседнюю клетку справа
-  const roomCell = sheet.getRange(row, col + 1);
-  if (roomLines.length === 0) {
-    roomCell.clearContent();
-  } else {
-    roomCell.setValue(roomLines.join('\n'));
-    roomCell.setVerticalAlignment('middle');
-    roomCell.setHorizontalAlignment('center');
-    roomCell.setWrap(true);
-  }
-
-  // Сохраняем введённые значения в справочник (если их там ещё нет)
+  // Справочник
   appendToDictionary_({
-    subject: data.subject,
+    subject: isLab ? (data.teachers_by_subgroup[0] || {}).subject : data.subject,
     teachers: collectTeachers_(data),
     rooms: collectRooms_(data),
   });
 
-  // Dispatch GitHub Action для обновления schedule.json
   dispatchScheduleUpdate_('form:applyLesson', cellAddress_(row, col));
-
   return {ok: true, cell: cellAddress_(row, col)};
 }
 
@@ -273,7 +312,9 @@ function applyLessonAndMoveDown(data) {
   const sheet = SpreadsheetApp.getActiveSheet();
   const cell = sheet.getCurrentCell();
   if (cell) {
-    const next = sheet.getRange(cell.getRow() + 1, cell.getColumn());
+    // Лаба занимает 2 ячейки — сдвигаемся на 2 вниз
+    const offset = data.lesson_type === 'lab' ? 2 : 1;
+    const next = sheet.getRange(cell.getRow() + offset, cell.getColumn());
     sheet.setCurrentCell(next);
   }
   return result;

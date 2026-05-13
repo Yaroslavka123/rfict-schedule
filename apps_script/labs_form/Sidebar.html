@@ -286,6 +286,9 @@
       <input type="text" id="date-to" placeholder="26.05" />
     </div>
 
+    <label>Комментарий</label>
+    <input type="text" id="comment" placeholder="дополнительная информация" />
+
     <div class="cancel-inline" style="margin-top:8px">
       <label><input type="checkbox" id="cancel-check"> ОТМЕНА</label>
     </div>
@@ -425,6 +428,12 @@
     dateRow.appendChild(dtInput);
     block.appendChild(dateRow);
 
+    // Comment
+    const commentInput = el('input', {type: 'text', placeholder: 'комментарий', 'class': 'sg-comment'});
+    commentInput.value = (prefill && prefill.comment) || '';
+    block.appendChild(el('label', null, 'Комментарий'));
+    block.appendChild(commentInput);
+
     // Cancel
     const cancelRow = el('div', {class: 'cancel-inline'});
     const cancelLabel = el('label');
@@ -491,6 +500,7 @@
         room: block.querySelector('.sg-room').value.trim(),
         date_from: block.querySelector('.sg-date-from').value.trim(),
         date_to: block.querySelector('.sg-date-to').value.trim(),
+        comment: block.querySelector('.sg-comment').value.trim(),
         cancelled: block.querySelector('.sg-cancel').checked,
       };
     }).filter(sg => sg.subgroup || sg.teacher || sg.room || sg.subject);
@@ -540,6 +550,7 @@
       room: document.getElementById('room').value.trim(),
       subgroup: collectSubgroupSingle(),
       notes: buildDateNotes(dateFrom, dateTo),
+      comment: document.getElementById('comment').value.trim(),
       cancelled: document.getElementById('cancel-check').checked,
       teachers_by_subgroup: [],
     };
@@ -731,6 +742,7 @@
     document.getElementById('room').value = '';
     document.getElementById('date-from').value = '';
     document.getElementById('date-to').value = '';
+    document.getElementById('comment').value = '';
     document.getElementById('cancel-check').checked = false;
     document.querySelectorAll('input[name="sg"]').forEach(c => c.checked = false);
     document.getElementById('cycle').value = '';
