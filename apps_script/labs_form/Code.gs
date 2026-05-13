@@ -23,6 +23,18 @@ const LESSON_TYPES = [
 ];
 
 const DICT_SHEET_NAME = 'Справочники';
+
+// ──────────────────────────────────────────────────────────────────────────
+// GitHub Actions dispatch (обновление schedule.json по событию)
+// ──────────────────────────────────────────────────────────────────────────
+
+const GH_REPO_OWNER = 'Yaroslavka123';
+const GH_REPO_NAME  = 'rfict-schedule';
+const GH_EVENT_TYPE = 'sheets-edited';
+
+// Минимальный интервал между dispatch-запросами (мс).
+// Защита от спама при быстрых последовательных правках.
+const DISPATCH_COOLDOWN_MS = 30 * 1000; // 30 сек
 const SUBJECT_COL = 1; // A
 const TEACHER_COL = 2; // B
 const ROOM_COL = 3;    // C
@@ -39,6 +51,8 @@ function onOpen() {
     .addSeparator()
     .addItem('📋 Открыть справочник', 'openDictionarySheet')
     .addItem('🔄 Пересоздать справочник из таблицы', 'rebuildDictionaryFromSheet')
+    .addSeparator()
+    .addItem('⚡ Обновить расписание сейчас', 'manualDispatch')
     .addToUi();
 }
 
@@ -194,7 +208,18 @@ function applyLesson(data) {
     rooms: collectRooms_(data),
   });
 
+  // Dispatch GitHub Action для обновления schedule.json
+  dispatchScheduleUpdate_('form:applyLesson', cellAddress_(row, col));
+
   return {ok: true, cell: cellAddress_(row, col)};
+}
+
+function manualDispatch() {
+  dispatchScheduleUpdate_('manual-menu', '');
+  SpreadsheetApp.getUi().alert(
+    'Запрос на обновление расписания отправлен в GitHub Actions.\n'
+    + 'schedule.json обновится через ~30-40 секунд.'
+  );
 }
 
 function clearActiveCell() {
@@ -459,4 +484,89 @@ function looksLikeSubgroup_(s) {
 function looksLikeNotes_(s) {
   if (!s) return false;
   return /^(по|с|до)\s+\d/i.test(s) || /\d{1,2}\.\d{1,2}/.test(s);
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// GitHub Actions dispatch — обновление schedule.json по событию
+// ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * Installable trigger: вешается на событие «On edit» (любая правка ячейки).
+ *
+ * Установка (один раз):
+ *   Triggers (часы слева) → Add Trigger → onSheetEdit
+ *     Event source: From spreadsheet
+ *     Event type:   On edit
+ */
+function onSheetEdit(e) {
+  // Не срабатывать на правки в листе «Справочники»
+  if (e && e.source && e.range) {
+    const sheetName = e.range.getSheet().getName();
+    if (sheetName === DICT_SHEET_NAME) return;
+  }
+  const rangeStr = (e && e.range) ? e.range.getA1Notation() : '';
+  dispatchScheduleUpdate_('onEdit', rangeStr);
+}
+
+/**
+ * Отправить repository_dispatch в GitHub Actions.
+ * source — откуда вызов ('form:applyLesson', 'onEdit', 'manual-test').
+ * detail — доп. информация (адрес ячейки, и т.п.).
+ */
+function dispatchScheduleUpdate_(source, detail) {
+  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  if (!token) {
+    console.warn('GITHUB_TOKEN not set in Script Properties — dispatch skipped');
+    return;
+  }
+
+  // Cooldown: не шлём dispatch чаще чем раз в DISPATCH_COOLDOWN_MS
+  const props = PropertiesService.getScriptProperties();
+  const lastDispatch = parseInt(props.getProperty('_lastDispatchMs') || '0', 10);
+  const now = Date.now();
+  if (now - lastDispatch < DISPATCH_COOLDOWN_MS) {
+    console.log('dispatch cooldown, skipping (' + source + ')');
+    return;
+  }
+  props.setProperty('_lastDispatchMs', String(now));
+
+  const url = 'https://api.github.com/repos/' + GH_REPO_OWNER + '/' + GH_REPO_NAME + '/dispatches';
+  const payload = {
+    event_type: GH_EVENT_TYPE,
+    client_payload: {
+      source: source,
+      detail: detail || '',
+      sheet: SpreadsheetApp.getActiveSpreadsheet().getName(),
+      user: Session.getEffectiveUser().getEmail(),
+      at: new Date().toISOString(),
+    },
+  };
+
+  try {
+    const resp = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': 'Bearer ' + token,
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,
+    });
+    const code = resp.getResponseCode();
+    if (code >= 300) {
+      console.error('dispatch failed: ' + code + ' ' + resp.getContentText());
+    } else {
+      console.log('dispatch OK (' + source + ')');
+    }
+  } catch (err) {
+    console.error('dispatch error: ' + err.message);
+  }
+}
+
+/** Ручной тест dispatch — можно запустить из редактора Apps Script. */
+function testDispatch() {
+  dispatchScheduleUpdate_('manual-test', 'A1');
+  SpreadsheetApp.getUi().alert('Dispatch отправлен. Проверь GitHub Actions.');
 }
