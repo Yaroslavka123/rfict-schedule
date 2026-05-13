@@ -153,7 +153,11 @@ function buildCellContent_(subgroups) {
     styleRanges.push(r);
   }
 
-  subgroups.forEach((sg) => {
+  subgroups.forEach((sg, sgIdx) => {
+    // Разделитель между подгруппами
+    if (sgIdx > 0 && subgroups.length > 1) {
+      lines.push('───────────────');
+    }
     if (sg.notes && sg.notes.trim()) pushStyled(sg.notes.trim(), 'red');
     const subj = (sg.subject && sg.subject.trim()) || '';
     if (subj) pushStyled(subj, 'subject_bold');
@@ -249,6 +253,8 @@ function applyLesson(data) {
     mergeRange.merge();
 
     // Аудитории: распределяем по 2 ячейкам справа
+    const roomRange = sheet.getRange(row, col + 1, 2, 1);
+    roomRange.breakApart();
     const roomLines = content.roomLines.filter(r => r.trim());
     const room1 = sheet.getRange(row, col + 1);
     const room2 = sheet.getRange(row + 1, col + 1);
