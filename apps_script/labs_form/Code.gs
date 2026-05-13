@@ -252,26 +252,20 @@ function applyLesson(data) {
     bottomCell.setBackground(type.color);
     mergeRange.merge();
 
-    // Аудитории: распределяем по 2 ячейкам справа
+    // Аудитории: объединяем 2 ячейки справа, разделяем линией
     const roomRange = sheet.getRange(row, col + 1, 2, 1);
     roomRange.breakApart();
     const roomLines = content.roomLines.filter(r => r.trim());
-    const room1 = sheet.getRange(row, col + 1);
-    const room2 = sheet.getRange(row + 1, col + 1);
+    const roomCell = sheet.getRange(row, col + 1);
+    const roomCell2 = sheet.getRange(row + 1, col + 1);
     if (roomLines.length === 0) {
-      room1.clearContent();
-      room2.clearContent();
-    } else if (roomLines.length === 1) {
-      setRoomCell_(room1, roomLines[0]);
-      room2.clearContent();
-    } else if (roomLines.length === 2) {
-      setRoomCell_(room1, roomLines[0]);
-      setRoomCell_(room2, roomLines[1]);
+      roomCell.clearContent();
+      roomCell2.clearContent();
     } else {
-      // 3+ аудиторий: первая половина сверху, вторая снизу
-      const mid = Math.ceil(roomLines.length / 2);
-      setRoomCell_(room1, roomLines.slice(0, mid).join('\n'));
-      setRoomCell_(room2, roomLines.slice(mid).join('\n'));
+      const roomText = roomLines.join('\n───\n');
+      roomCell2.clearContent();
+      roomRange.merge();
+      setRoomCell_(roomCell, roomText);
     }
 
   } else {
