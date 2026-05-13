@@ -1,6 +1,6 @@
 {
   "name": "11.05-16.05(14-я неделя)",
-  "generated_at": "2026-05-13T22:54:18.670Z",
+  "generated_at": "2026-05-13T22:57:03.869Z",
   "course": 3,
   "semester": 6,
   "week_number": 14,
@@ -2989,11 +2989,11 @@
       "subject": "ЧМПМиНЭ",
       "teacher": "доц. ЛеонтьевА.В.",
       "room": "64/К1",
-      "subgroup": "1ПГ чет",
+      "subgroup": "1ПГ/3ПГ",
       "frequency": null,
       "period_start": null,
       "period_end": null,
-      "comment": "3ПГ еженедельно",
+      "comment": null,
       "cancelled": false
     },
     {
