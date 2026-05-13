@@ -74,8 +74,10 @@ function showSidebar() {
  * Используется при открытии sidebar — чтобы форма знала, добавлять или редактировать.
  */
 function getActiveCellInfo() {
-  const cell = SpreadsheetApp.getActiveCell();
-  const sheet = cell.getSheet();
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const cell = sheet.getCurrentCell();
+  if (!cell) return { error: 'Не выбрана ячейка', types: LESSON_TYPES };
+
   const row = cell.getRow();
   const col = cell.getColumn();
 
@@ -85,7 +87,6 @@ function getActiveCellInfo() {
   const roomCell = sheet.getRange(row, col + 1);
   const roomValue = roomCell.getValue();
 
-  // Попытка распознать существующее занятие, чтобы редактировать без потери данных.
   const parsed = parseCellContent_(value, richText, background);
 
   return {
@@ -134,8 +135,9 @@ function getDictionaries() {
  * }
  */
 function applyLesson(data) {
-  const cell = SpreadsheetApp.getActiveCell();
-  const sheet = cell.getSheet();
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const cell = sheet.getCurrentCell();
+  if (!cell) throw new Error('Не выбрана ячейка. Кликни на ячейку в таблице.');
   const row = cell.getRow();
   const col = cell.getColumn();
 
@@ -214,6 +216,20 @@ function applyLesson(data) {
   return {ok: true, cell: cellAddress_(row, col)};
 }
 
+/**
+ * Записывает занятие и переводит курсор на следующую строку.
+ */
+function applyLessonAndMoveDown(data) {
+  const result = applyLesson(data);
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const cell = sheet.getCurrentCell();
+  if (cell) {
+    const next = sheet.getRange(cell.getRow() + 1, cell.getColumn());
+    sheet.setCurrentCell(next);
+  }
+  return result;
+}
+
 function manualDispatch() {
   dispatchScheduleUpdate_('manual-menu', '');
   SpreadsheetApp.getUi().alert(
@@ -223,8 +239,9 @@ function manualDispatch() {
 }
 
 function clearActiveCell() {
-  const cell = SpreadsheetApp.getActiveCell();
-  const sheet = cell.getSheet();
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const cell = sheet.getCurrentCell();
+  if (!cell) throw new Error('Не выбрана ячейка.');
   const roomCell = sheet.getRange(cell.getRow(), cell.getColumn() + 1);
   cell.clearContent();
   cell.setBackground(null);
@@ -536,8 +553,8 @@ function dispatchScheduleUpdate_(source, detail) {
     client_payload: {
       source: source,
       detail: detail || '',
-      sheet: SpreadsheetApp.getActiveSpreadsheet().getName(),
-      user: Session.getEffectiveUser().getEmail(),
+      sheet: (SpreadsheetApp.getActiveSpreadsheet() || {getName: () => 'unknown'}).getName(),
+      user: (Session.getEffectiveUser() || {getEmail: () => ''}).getEmail(),
       at: new Date().toISOString(),
     },
   };

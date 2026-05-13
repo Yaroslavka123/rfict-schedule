@@ -187,9 +187,13 @@
 </head>
 <body>
   <h2>Занятие</h2>
-  <div class="hint">Выбери ячейку в таблице → заполни форму → жми «Применить».</div>
+  <div class="hint">Выбери ячейку → заполни → «Применить» (Ctrl+Enter).</div>
 
-  <div class="cell-info" id="cell-info">Загрузка…</div>
+  <div class="cell-info" id="cell-info">
+    <span id="cell-loading">⏳ Читаю ячейку…</span>
+    <span id="cell-addr" style="display:none"></span>
+    <button type="button" class="icon-btn" id="refresh-cell" title="Перечитать ячейку" style="float:right;font-size:16px;display:none">↻</button>
+  </div>
 
   <label>Тип занятия *</label>
   <div class="types" id="types"></div>
@@ -232,7 +236,8 @@
   </details>
 
   <div class="actions">
-    <button class="primary" id="submit" disabled>Применить</button>
+    <button class="primary" id="submit" disabled>✓ Применить</button>
+    <button class="secondary" id="next-cell" title="Применить и перейти вниз">↓ След.</button>
     <button class="secondary" id="clear" title="Очистить ячейку">🗑</button>
   </div>
 
@@ -277,7 +282,6 @@
     document.querySelectorAll('.type-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.code === code);
     });
-    // Лаба → multi-блок, иначе single
     const isLab = code === 'lab';
     document.getElementById('single-block').classList.toggle('hidden', isLab);
     document.getElementById('multi-block').classList.toggle('hidden', !isLab);
@@ -285,6 +289,8 @@
       addSubgroupRow();
     }
     validate();
+    // Автофокус на поле предмета после выбора типа
+    setTimeout(() => document.getElementById('subject').focus(), 50);
   }
 
   function addSubgroupRow(prefill) {
@@ -360,8 +366,20 @@
     state.types = info.types || [];
     renderTypes();
 
-    document.getElementById('cell-info').innerHTML =
-      'Ячейка: <b>' + colLetter(info.col) + info.row + '</b> на листе «' + info.sheet + '»';
+    document.getElementById('cell-loading').style.display = 'none';
+    const addrEl = document.getElementById('cell-addr');
+    const refreshBtn = document.getElementById('refresh-cell');
+
+    if (info.error) {
+      addrEl.innerHTML = '⚠️ ' + info.error;
+      addrEl.style.display = '';
+      refreshBtn.style.display = '';
+      return;
+    }
+
+    addrEl.innerHTML = 'Ячейка: <b>' + colLetter(info.col) + info.row + '</b> · «' + info.sheet + '»';
+    addrEl.style.display = '';
+    refreshBtn.style.display = '';
 
     // Если ячейка уже заполнена, подставляем поля
     const parsed = info.parsed || {};
@@ -430,11 +448,36 @@
     const s = document.getElementById('status');
     s.textContent = msg;
     s.className = 'status ' + (isError ? 'err' : 'ok');
-    setTimeout(() => { s.className = 'status'; }, 3500);
+    setTimeout(() => { s.className = 'status'; }, 4000);
   }
 
-  document.getElementById('submit').onclick = () => {
-    const data = {
+  function resetForm() {
+    state.lesson_type = null;
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('subject').value = '';
+    document.getElementById('teacher').value = '';
+    document.getElementById('room').value = '';
+    document.getElementById('notes').value = '';
+    document.querySelectorAll('input[name="sg"]').forEach(c => c.checked = false);
+    document.getElementById('cycle').value = '';
+    document.getElementById('subgroup-list').innerHTML = '';
+    document.getElementById('single-block').classList.remove('hidden');
+    document.getElementById('multi-block').classList.add('hidden');
+    document.getElementById('submit').disabled = true;
+  }
+
+  function refreshCellInfo() {
+    document.getElementById('cell-loading').style.display = '';
+    document.getElementById('cell-addr').style.display = 'none';
+    google.script.run.withSuccessHandler(loadCellInfo)
+      .withFailureHandler(err => {
+        document.getElementById('cell-loading').textContent = 'Ошибка: ' + err.message;
+      })
+      .getActiveCellInfo();
+  }
+
+  function collectData() {
+    return {
       lesson_type: state.lesson_type,
       subject: document.getElementById('subject').value.trim(),
       teacher: document.getElementById('teacher').value.trim(),
@@ -443,33 +486,68 @@
       notes: document.getElementById('notes').value.trim(),
       teachers_by_subgroup: state.lesson_type === 'lab' ? collectSubgroups() : [],
     };
+  }
+
+  function submitForm(andMoveDown) {
+    const data = collectData();
     document.getElementById('submit').disabled = true;
-    google.script.run
+    const runner = google.script.run
       .withSuccessHandler(res => {
         document.getElementById('submit').disabled = false;
-        showStatus('Записано в ячейку ' + res.cell + '.', false);
+        showStatus('✓ ' + res.cell, false);
+        if (andMoveDown) {
+          resetForm();
+          refreshCellInfo();
+        }
       })
       .withFailureHandler(err => {
         document.getElementById('submit').disabled = false;
         showStatus('Ошибка: ' + err.message, true);
-      })
-      .applyLesson(data);
-  };
+      });
+    if (andMoveDown) {
+      runner.applyLessonAndMoveDown(data);
+    } else {
+      runner.applyLesson(data);
+    }
+  }
+
+  document.getElementById('submit').onclick = () => submitForm(false);
+
+  document.getElementById('next-cell').onclick = () => submitForm(true);
 
   document.getElementById('clear').onclick = () => {
     if (!confirm('Очистить ячейку и аудиторию справа?')) return;
     google.script.run
-      .withSuccessHandler(() => showStatus('Очищено.', false))
+      .withSuccessHandler(() => { showStatus('Очищено.', false); resetForm(); })
       .withFailureHandler(err => showStatus('Ошибка: ' + err.message, true))
       .clearActiveCell();
   };
 
+  document.getElementById('refresh-cell').onclick = () => {
+    resetForm();
+    refreshCellInfo();
+  };
+
+  // Ctrl+Enter = submit
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      if (!document.getElementById('submit').disabled) submitForm(false);
+    }
+  });
+
   document.getElementById('add-subgroup').onclick = () => addSubgroupRow();
   document.getElementById('subject').addEventListener('input', validate);
 
-  // Старт
-  google.script.run.withSuccessHandler(loadDicts).getDictionaries();
-  google.script.run.withSuccessHandler(loadCellInfo).getActiveCellInfo();
+  // Старт: загружаем словари и данные ячейки параллельно
+  google.script.run.withSuccessHandler(loadDicts)
+    .withFailureHandler(err => console.error('dict error:', err))
+    .getDictionaries();
+  google.script.run.withSuccessHandler(loadCellInfo)
+    .withFailureHandler(err => {
+      document.getElementById('cell-loading').textContent = 'Ошибка: ' + err.message;
+    })
+    .getActiveCellInfo();
 </script>
 </body>
 </html>
