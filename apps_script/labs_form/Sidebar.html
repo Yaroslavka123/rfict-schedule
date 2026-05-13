@@ -10,6 +10,8 @@
       --primary-hover: #1765cc;
       --muted: #5f6368;
       --bg-active: #e8f0fe;
+      --danger: #c5221f;
+      --danger-bg: #fce8e6;
     }
     * { box-sizing: border-box; }
     body {
@@ -19,37 +21,25 @@
       color: #202124;
       margin: 0;
     }
-    h2 {
-      font-size: 14px;
-      font-weight: 600;
-      margin: 0 0 4px 0;
-    }
-    .hint {
-      color: var(--muted);
-      font-size: 11px;
-      margin-bottom: 12px;
-    }
+    h2 { font-size: 14px; font-weight: 600; margin: 0 0 4px 0; }
+    .hint { color: var(--muted); font-size: 11px; margin-bottom: 12px; }
     label {
       display: block;
-      margin-top: 12px;
+      margin-top: 8px;
       font-size: 12px;
       font-weight: 500;
       color: var(--muted);
     }
-    input[type="text"], select, textarea {
+    input[type="text"], select {
       width: 100%;
       padding: 6px 8px;
       border: 1px solid var(--border);
       border-radius: 4px;
       font-size: 13px;
       font-family: inherit;
-      margin-top: 4px;
+      margin-top: 2px;
     }
-    textarea { resize: vertical; min-height: 36px; }
-    input:focus, select:focus, textarea:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
+    input:focus, select:focus { outline: none; border-color: var(--primary); }
     .types {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -67,43 +57,34 @@
       user-select: none;
       transition: border-color 0.1s;
     }
-    .type-btn.active {
-      border-color: var(--primary);
-    }
-    .type-btn:hover {
-      filter: brightness(0.96);
-    }
-    .checkbox-row {
-      display: flex;
-      gap: 12px;
-      margin-top: 6px;
-    }
-    .checkbox-row label {
-      margin-top: 0;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-weight: 400;
-      color: #202124;
-    }
+    .type-btn.active { border-color: var(--primary); }
+    .type-btn:hover { filter: brightness(0.96); }
+
+    /* Subgroup blocks */
     .subgroup-block {
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 8px;
-      margin-top: 6px;
+      border-left: 3px solid var(--primary);
+      border-radius: 0 6px 6px 0;
+      padding: 10px;
+      margin-top: 8px;
       background: #f8f9fa;
+      position: relative;
     }
-    .subgroup-block + .subgroup-block {
-      margin-top: 6px;
+    .subgroup-block.cancelled-block {
+      border-left-color: var(--danger);
+      background: #fef7f6;
     }
     .subgroup-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 11px;
-      color: var(--muted);
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
+    .subgroup-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .subgroup-block.cancelled-block .subgroup-title { color: var(--danger); }
     .icon-btn {
       background: none;
       border: none;
@@ -117,14 +98,97 @@
       background: none;
       border: 1px dashed var(--border);
       border-radius: 4px;
-      padding: 6px;
+      padding: 8px;
       width: 100%;
       cursor: pointer;
       color: var(--muted);
       font-size: 12px;
-      margin-top: 6px;
+      margin-top: 8px;
     }
     .add-row-btn:hover { color: var(--primary); border-color: var(--primary); }
+
+    /* Inline date row */
+    .date-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-top: 2px;
+    }
+    .date-row input[type="text"] {
+      flex: 1;
+      padding: 4px 6px;
+      font-size: 12px;
+      margin: 0;
+    }
+    .date-row span {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* Subgroup selector row */
+    .sg-selector {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 2px;
+    }
+    .sg-chip {
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 11px;
+      cursor: pointer;
+      user-select: none;
+      background: #fff;
+      transition: all 0.15s;
+    }
+    .sg-chip.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .sg-chip:hover { border-color: var(--primary); }
+
+    /* Cancel checkbox inside subgroup */
+    .cancel-inline {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      font-size: 12px;
+    }
+    .cancel-inline label {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--danger);
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .cancel-inline input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--danger);
+    }
+
+    /* Single-block fields */
+    .checkbox-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .checkbox-row label {
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 400;
+      color: #202124;
+    }
+
+    /* Actions */
     .actions {
       display: flex;
       gap: 8px;
@@ -141,13 +205,8 @@
       font-size: 13px;
       font-weight: 500;
     }
-    button.primary:hover:not(:disabled) {
-      background: var(--primary-hover);
-    }
-    button.primary:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
+    button.primary:hover:not(:disabled) { background: var(--primary-hover); }
+    button.primary:disabled { background: #ccc; cursor: not-allowed; }
     button.secondary {
       padding: 10px 12px;
       background: #fff;
@@ -166,7 +225,7 @@
       display: none;
     }
     .status.ok { background: #e6f4ea; color: #137333; display: block; }
-    .status.err { background: #fce8e6; color: #c5221f; display: block; }
+    .status.err { background: var(--danger-bg); color: var(--danger); display: block; }
     .cell-info {
       background: var(--bg-active);
       padding: 6px 8px;
@@ -176,44 +235,7 @@
       color: var(--muted);
     }
     .cell-info b { color: var(--primary); }
-    details summary {
-      cursor: pointer;
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 12px;
-    }
     .hidden { display: none !important; }
-    .cancel-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 10px;
-      padding: 6px 8px;
-      border-radius: 4px;
-      background: #fce8e6;
-    }
-    .cancel-row label {
-      margin: 0;
-      font-weight: 500;
-      color: #c5221f;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .cancel-row input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      accent-color: #c5221f;
-    }
-    .sg-notes {
-      font-size: 12px;
-      padding: 4px 6px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      width: 100%;
-      margin-top: 4px;
-    }
   </style>
 </head>
 <body>
@@ -221,7 +243,7 @@
   <div class="hint">Выбери ячейку → заполни → «Применить» (Ctrl+Enter).</div>
 
   <div class="cell-info" id="cell-info">
-    <span id="cell-loading">⏳ Читаю ячейку…</span>
+    <span id="cell-loading">Читаю ячейку…</span>
     <span id="cell-addr" style="display:none"></span>
     <button type="button" class="icon-btn" id="refresh-cell" title="Перечитать ячейку" style="float:right;font-size:16px;display:none">↻</button>
   </div>
@@ -229,11 +251,12 @@
   <label>Тип занятия *</label>
   <div class="types" id="types"></div>
 
-  <label>Предмет *</label>
-  <input type="text" id="subject" list="subjects-list" placeholder="Начни печатать..." />
-  <datalist id="subjects-list"></datalist>
-
+  <!-- Не-лаба: один предмет, один препод -->
   <div id="single-block">
+    <label>Предмет *</label>
+    <input type="text" id="subject" list="subjects-list" placeholder="Начни печатать..." />
+    <datalist id="subjects-list"></datalist>
+
     <label>Преподаватель</label>
     <input type="text" id="teacher" list="teachers-list" placeholder="ст.пр. ИвановИ.И." />
     <datalist id="teachers-list"></datalist>
@@ -247,31 +270,37 @@
       <label><input type="checkbox" name="sg" value="1ПГ"> 1ПГ</label>
       <label><input type="checkbox" name="sg" value="2ПГ"> 2ПГ</label>
       <label><input type="checkbox" name="sg" value="3ПГ"> 3ПГ</label>
+      <label><input type="checkbox" name="sg" value="4ПГ"> 4ПГ</label>
     </div>
     <select id="cycle">
       <option value="">каждую неделю</option>
       <option value="нечет">нечётные</option>
       <option value="чет">чётные</option>
     </select>
+
+    <label>Период</label>
+    <div class="date-row">
+      <span>с</span>
+      <input type="text" id="date-from" placeholder="03.03" />
+      <span>по</span>
+      <input type="text" id="date-to" placeholder="26.05" />
+    </div>
+
+    <div class="cancel-inline" style="margin-top:8px">
+      <label><input type="checkbox" id="cancel-check"> ОТМЕНА</label>
+    </div>
   </div>
 
+  <!-- Лаба: сразу подгруппы -->
   <div id="multi-block" class="hidden">
-    <label>Подгруппы (для лабы — у каждой свой препод и аудитория)</label>
     <div id="subgroup-list"></div>
     <button type="button" class="add-row-btn" id="add-subgroup">+ ещё подгруппа</button>
   </div>
 
-  <label>Даты / период</label>
-  <input type="text" id="notes" placeholder="по 01.06 / с 03.03 по 26.05 / на 11.05" />
-
-  <div class="cancel-row">
-    <label><input type="checkbox" id="cancel-check"> ОТМЕНА</label>
-  </div>
-
   <div class="actions">
-    <button class="primary" id="submit" disabled>✓ Применить</button>
+    <button class="primary" id="submit" disabled>Применить</button>
     <button class="secondary" id="next-cell" title="Применить и перейти вниз" disabled>↓ След.</button>
-    <button class="secondary" id="clear" title="Очистить ячейку">🗑</button>
+    <button class="secondary" id="clear" title="Очистить ячейку и форму">Очистить</button>
   </div>
 
   <div class="status" id="status"></div>
@@ -322,61 +351,149 @@
       addSubgroupRow();
     }
     validate();
-    // Автофокус на поле предмета после выбора типа
-    setTimeout(() => document.getElementById('subject').focus(), 50);
+    if (!isLab) setTimeout(() => document.getElementById('subject').focus(), 50);
   }
 
+  // ─── Subgroup block for labs ─────────────────────────────────────────
   function addSubgroupRow(prefill) {
     const list = document.getElementById('subgroup-list');
     const idx = list.children.length;
     const block = el('div', {class: 'subgroup-block'});
+
+    // Header
     const header = el('div', {class: 'subgroup-header'});
-    header.innerHTML = '<span>Подгруппа #' + (idx + 1) + '</span>';
-    const removeBtn = el('button', {type: 'button', class: 'icon-btn', onclick: () => block.remove()}, '✕');
+    const title = el('span', {class: 'subgroup-title'}, 'Подгруппа #' + (idx + 1));
+    header.appendChild(title);
+    const removeBtn = el('button', {type: 'button', class: 'icon-btn', onclick: () => { block.remove(); renumberSubgroups(); validate(); }}, '✕');
     header.appendChild(removeBtn);
     block.appendChild(header);
 
-    const subjInput = el('input', {type: 'text', list: 'subjects-list', placeholder: 'Если отличается от основного', 'class': 'sg-subject'});
+    // Subject
+    const subjInput = el('input', {type: 'text', list: 'subjects-list', placeholder: 'Предмет *', 'class': 'sg-subject'});
     subjInput.value = (prefill && prefill.subject) || '';
     subjInput.oninput = validate;
     block.appendChild(el('label', null, 'Предмет'));
     block.appendChild(subjInput);
 
-    const sgInput = el('input', {type: 'text', placeholder: '1ПГ нечет / 2ПГ / ...', 'class': 'sg-name'});
-    sgInput.value = (prefill && prefill.subgroup) || '';
-    sgInput.oninput = validate;
+    // Subgroup selector: chips for NПГ
     block.appendChild(el('label', null, 'Подгруппа'));
-    block.appendChild(sgInput);
+    const sgRow = el('div', {class: 'sg-selector'});
+    ['1ПГ', '2ПГ', '3ПГ', '4ПГ'].forEach(pg => {
+      const chip = el('span', {class: 'sg-chip', 'data-pg': pg}, pg);
+      chip.onclick = () => { chip.classList.toggle('active'); buildSubgroupText(block); validate(); };
+      sgRow.appendChild(chip);
+    });
+    block.appendChild(sgRow);
 
+    // Cycle select
+    const cycleSelect = el('select', {class: 'sg-cycle'});
+    [['', 'еженедельно'], ['нечет/чет', 'нечет/чет'], ['чет/нечет', 'чет/нечет'], ['нечет', 'нечет'], ['чет', 'чет']].forEach(([val, txt]) => {
+      const opt = el('option', {value: val}, txt);
+      cycleSelect.appendChild(opt);
+    });
+    cycleSelect.onchange = () => { buildSubgroupText(block); };
+    block.appendChild(cycleSelect);
+
+    // Hidden text field for the assembled subgroup text
+    const sgText = el('input', {type: 'hidden', 'class': 'sg-name'});
+    block.appendChild(sgText);
+
+    // Teacher
     const teacherInput = el('input', {type: 'text', list: 'teachers-list', placeholder: 'доц. ИвановИ.И.', 'class': 'sg-teacher'});
     teacherInput.value = (prefill && prefill.teacher) || '';
     teacherInput.oninput = validate;
     block.appendChild(el('label', null, 'Преподаватель'));
     block.appendChild(teacherInput);
 
+    // Room
     const roomInput = el('input', {type: 'text', list: 'rooms-list', placeholder: '703', 'class': 'sg-room'});
     roomInput.value = (prefill && prefill.room) || '';
     roomInput.oninput = validate;
     block.appendChild(el('label', null, 'Аудитория'));
     block.appendChild(roomInput);
 
-    const notesInput = el('input', {type: 'text', placeholder: 'по 01.06 / с 03.03 по 26.05', 'class': 'sg-notes'});
-    notesInput.value = (prefill && prefill.notes) || '';
-    block.appendChild(el('label', null, 'Даты'));
-    block.appendChild(notesInput);
+    // Dates: с ... по ...
+    block.appendChild(el('label', null, 'Период'));
+    const dateRow = el('div', {class: 'date-row'});
+    dateRow.appendChild(el('span', null, 'с'));
+    const dfInput = el('input', {type: 'text', placeholder: '03.03', 'class': 'sg-date-from'});
+    dfInput.value = (prefill && prefill.date_from) || '';
+    dateRow.appendChild(dfInput);
+    dateRow.appendChild(el('span', null, 'по'));
+    const dtInput = el('input', {type: 'text', placeholder: '26.05', 'class': 'sg-date-to'});
+    dtInput.value = (prefill && prefill.date_to) || '';
+    dateRow.appendChild(dtInput);
+    block.appendChild(dateRow);
+
+    // Cancel
+    const cancelRow = el('div', {class: 'cancel-inline'});
+    const cancelLabel = el('label');
+    const cancelCb = el('input', {type: 'checkbox', 'class': 'sg-cancel'});
+    cancelCb.checked = (prefill && prefill.cancelled) || false;
+    cancelCb.onchange = () => block.classList.toggle('cancelled-block', cancelCb.checked);
+    cancelLabel.appendChild(cancelCb);
+    cancelLabel.appendChild(document.createTextNode(' ОТМЕНА'));
+    cancelRow.appendChild(cancelLabel);
+    block.appendChild(cancelRow);
 
     list.appendChild(block);
+
+    // Prefill subgroup chips if provided
+    if (prefill && prefill.subgroup) {
+      prefillSubgroupChips(block, prefill.subgroup);
+    }
+
     validate();
+    if (!prefill) setTimeout(() => subjInput.focus(), 50);
   }
 
+  function renumberSubgroups() {
+    document.querySelectorAll('.subgroup-block').forEach((block, i) => {
+      const title = block.querySelector('.subgroup-title');
+      if (title) title.textContent = 'Подгруппа #' + (i + 1);
+    });
+  }
+
+  function buildSubgroupText(block) {
+    const chips = [...block.querySelectorAll('.sg-chip.active')].map(c => c.dataset.pg);
+    const cycle = block.querySelector('.sg-cycle').value;
+    const hidden = block.querySelector('.sg-name');
+    if (!chips.length) { hidden.value = ''; return; }
+    let text = chips.join('/');
+    if (cycle) text += ' ' + cycle;
+    hidden.value = text;
+  }
+
+  function prefillSubgroupChips(block, subgroupStr) {
+    // Parse "1ПГ/2ПГ нечет/чет" or "3ПГ чет" etc.
+    const pgMatches = subgroupStr.match(/\d\s*ПГ/gi) || [];
+    pgMatches.forEach(pg => {
+      const num = pg.replace(/\s/g, '');
+      const chip = block.querySelector('.sg-chip[data-pg="' + num + '"]');
+      if (chip) chip.classList.add('active');
+    });
+    const cycleSelect = block.querySelector('.sg-cycle');
+    if (/нечет\/чет|нечёт\/чёт/i.test(subgroupStr)) cycleSelect.value = 'нечет/чет';
+    else if (/чет\/нечет|чёт\/нечёт/i.test(subgroupStr)) cycleSelect.value = 'чет/нечет';
+    else if (/нечет|нечёт/i.test(subgroupStr)) cycleSelect.value = 'нечет';
+    else if (/чет|чёт/i.test(subgroupStr)) cycleSelect.value = 'чет';
+    buildSubgroupText(block);
+  }
+
+  // ─── Collect data ────────────────────────────────────────────────────
   function collectSubgroups() {
-    return [...document.querySelectorAll('.subgroup-block')].map(block => ({
-      subject: block.querySelector('.sg-subject').value.trim(),
-      subgroup: block.querySelector('.sg-name').value.trim(),
-      teacher: block.querySelector('.sg-teacher').value.trim(),
-      room: block.querySelector('.sg-room').value.trim(),
-      notes: block.querySelector('.sg-notes').value.trim(),
-    })).filter(sg => sg.subgroup || sg.teacher || sg.room || sg.subject);
+    return [...document.querySelectorAll('.subgroup-block')].map(block => {
+      buildSubgroupText(block);
+      return {
+        subject: block.querySelector('.sg-subject').value.trim(),
+        subgroup: block.querySelector('.sg-name').value.trim(),
+        teacher: block.querySelector('.sg-teacher').value.trim(),
+        room: block.querySelector('.sg-room').value.trim(),
+        date_from: block.querySelector('.sg-date-from').value.trim(),
+        date_to: block.querySelector('.sg-date-to').value.trim(),
+        cancelled: block.querySelector('.sg-cancel').checked,
+      };
+    }).filter(sg => sg.subgroup || sg.teacher || sg.room || sg.subject);
   }
 
   function collectSubgroupSingle() {
@@ -386,22 +503,63 @@
     return sgs.join('/') + (cycle ? ' ' + cycle : '');
   }
 
+  function buildDateNotes(dateFrom, dateTo) {
+    if (dateFrom && dateTo) return 'с ' + dateFrom + ' по ' + dateTo;
+    if (dateTo) return 'по ' + dateTo;
+    if (dateFrom) return 'с ' + dateFrom;
+    return '';
+  }
+
+  function collectData() {
+    if (state.lesson_type === 'lab') {
+      const subgroups = collectSubgroups();
+      let subject = '';
+      if (subgroups.length > 0) subject = subgroups[0].subject || '';
+      // Add date notes as string for each subgroup
+      subgroups.forEach(sg => {
+        sg.notes = buildDateNotes(sg.date_from, sg.date_to);
+      });
+      return {
+        lesson_type: state.lesson_type,
+        subject: subject,
+        teacher: '',
+        room: '',
+        subgroup: '',
+        notes: '',
+        cancelled: false,
+        teachers_by_subgroup: subgroups,
+      };
+    }
+
+    const dateFrom = document.getElementById('date-from').value.trim();
+    const dateTo = document.getElementById('date-to').value.trim();
+    return {
+      lesson_type: state.lesson_type,
+      subject: document.getElementById('subject').value.trim(),
+      teacher: document.getElementById('teacher').value.trim(),
+      room: document.getElementById('room').value.trim(),
+      subgroup: collectSubgroupSingle(),
+      notes: buildDateNotes(dateFrom, dateTo),
+      cancelled: document.getElementById('cancel-check').checked,
+      teachers_by_subgroup: [],
+    };
+  }
+
   function validate() {
     let ok = false;
     if (state.lesson_type) {
-      const mainSubj = document.getElementById('subject').value.trim();
       if (state.lesson_type === 'lab') {
-        // Для лабы: достаточно либо основного предмета, либо предмета в каждой подгруппе
-        const sgSubjects = [...document.querySelectorAll('.sg-subject')].map(el => el.value.trim());
-        ok = mainSubj || (sgSubjects.length > 0 && sgSubjects.every(s => s));
+        const subs = [...document.querySelectorAll('.sg-subject')].map(el => el.value.trim());
+        ok = subs.length > 0 && subs.every(s => s);
       } else {
-        ok = !!mainSubj;
+        ok = !!document.getElementById('subject').value.trim();
       }
     }
     document.getElementById('submit').disabled = !ok;
     document.getElementById('next-cell').disabled = !ok;
   }
 
+  // ─── Dicts & cell info ───────────────────────────────────────────────
   function loadDicts(d) {
     fillList('subjects-list', d.subjects || []);
     fillList('teachers-list', d.teachers || []);
@@ -428,7 +586,7 @@
     const refreshBtn = document.getElementById('refresh-cell');
 
     if (info.error) {
-      addrEl.innerHTML = '⚠️ ' + info.error;
+      addrEl.innerHTML = info.error;
       addrEl.style.display = '';
       refreshBtn.style.display = '';
       return;
@@ -438,33 +596,40 @@
     addrEl.style.display = '';
     refreshBtn.style.display = '';
 
-    // Если ячейка уже заполнена, подставляем поля
     const parsed = info.parsed || {};
     if (parsed.lesson_type) selectType(parsed.lesson_type);
-    if (parsed.subject) document.getElementById('subject').value = parsed.subject;
-    if (parsed.teacher) document.getElementById('teacher').value = parsed.teacher;
-    if (info.roomValue) document.getElementById('room').value = info.roomValue.split('\n')[0];
-    if (parsed.subgroup) prefillSubgroup(parsed.subgroup);
-    if (parsed.notes) {
-      document.getElementById('notes').value = parsed.notes;
-    }
-    if (parsed.cancelled) {
-      document.getElementById('cancel-check').checked = true;
-    }
 
-    // Для лабы — если в ячейке было несколько строк препода/аудитории, разбираем как подгруппы
     if (parsed.lesson_type === 'lab') {
+      // Fill lab subgroups
       tryFillLabSubgroups(info);
-      // Если multi-subject — очищаем основной предмет (у каждой подгруппы свой)
-      if (parsed.lab_subgroups && parsed.lab_subgroups.length > 0) {
-        document.getElementById('subject').value = '';
-      }
+    } else {
+      // Single mode
+      if (parsed.subject) document.getElementById('subject').value = parsed.subject;
+      if (parsed.teacher) document.getElementById('teacher').value = parsed.teacher;
+      if (info.roomValue) document.getElementById('room').value = info.roomValue.split('\n')[0];
+      if (parsed.subgroup) prefillSubgroupSingle(parsed.subgroup);
+      if (parsed.notes) parseDateFields(parsed.notes);
+      if (parsed.cancelled) document.getElementById('cancel-check').checked = true;
     }
 
     validate();
   }
 
-  function prefillSubgroup(sub) {
+  function parseDateFields(notes) {
+    // Parse "с 03.03 по 26.05" or "по 01.06" or "с 04.05"
+    const mRange = notes.match(/с\s+(\d{1,2}\.\d{2})\s+по\s+(\d{1,2}\.\d{2})/);
+    if (mRange) {
+      document.getElementById('date-from').value = mRange[1];
+      document.getElementById('date-to').value = mRange[2];
+      return;
+    }
+    const mTo = notes.match(/по\s+(\d{1,2}\.\d{2})/);
+    if (mTo) { document.getElementById('date-to').value = mTo[1]; return; }
+    const mFrom = notes.match(/с\s+(\d{1,2}\.\d{2})/);
+    if (mFrom) { document.getElementById('date-from').value = mFrom[1]; }
+  }
+
+  function prefillSubgroupSingle(sub) {
     const ck = (val) => {
       const cb = document.querySelector('input[name="sg"][value="' + val + '"]');
       if (cb) cb.checked = true;
@@ -472,6 +637,7 @@
     if (/1ПГ/i.test(sub)) ck('1ПГ');
     if (/2ПГ/i.test(sub)) ck('2ПГ');
     if (/3ПГ/i.test(sub)) ck('3ПГ');
+    if (/4ПГ/i.test(sub)) ck('4ПГ');
     const cycleSel = document.getElementById('cycle');
     if (/нечет|нечёт/i.test(sub)) cycleSel.value = 'нечет';
     else if (/чет|чёт/i.test(sub)) cycleSel.value = 'чет';
@@ -479,38 +645,65 @@
 
   function tryFillLabSubgroups(info) {
     const parsed = info.parsed || {};
-
-    // 1) Если парсер разобрал multi-subject — используем его данные
     if (parsed.lab_subgroups && parsed.lab_subgroups.length > 0) {
       document.getElementById('subgroup-list').innerHTML = '';
       const rooms = (info.roomValue || '').split('\n').map(s => s.trim()).filter(Boolean);
       parsed.lab_subgroups.forEach((sg, i) => {
+        const dateInfo = parseDateStr(sg.notes || '');
         addSubgroupRow({
-          subject: sg.subject || '',
+          subject: sg.subject || parsed.subject || '',
           subgroup: sg.subgroup || '',
           teacher: sg.teacher || '',
           room: rooms[i] || '',
-          notes: sg.notes || '',
+          date_from: dateInfo.from,
+          date_to: dateInfo.to,
+          cancelled: sg.cancelled || false,
         });
       });
       return;
     }
 
-    // 2) Fallback: несколько аудиторий — парим преподов с аудиториями
+    // Fallback: single-subject lab
     const rooms = (info.roomValue || '').split('\n').map(s => s.trim()).filter(Boolean);
     const lines = (info.value || '').split('\n').map(s => s.trim()).filter(Boolean);
     const teachers = lines.filter(l => /^(доц\.|проф\.|ст\.\s*пр\.|пр\.\s*ст\.|ст\.пр\.|пр\.|асс\.)/i.test(l));
-    if (rooms.length <= 1 || teachers.length === 0) return;
+    if (rooms.length <= 1 && teachers.length <= 1) {
+      // Simple: one subgroup
+      const dateInfo = parseDateStr(parsed.notes || '');
+      addSubgroupRow({
+        subject: parsed.subject || '',
+        subgroup: parsed.subgroup || '',
+        teacher: parsed.teacher || teachers[0] || '',
+        room: rooms[0] || '',
+        date_from: dateInfo.from,
+        date_to: dateInfo.to,
+        cancelled: parsed.cancelled || false,
+      });
+      return;
+    }
     document.getElementById('subgroup-list').innerHTML = '';
     const subgroups = lines.filter(l => /\dПГ/i.test(l));
     const count = teachers.length;
     for (let i = 0; i < count; i++) {
       addSubgroupRow({
-        subgroup: subgroups[i] || ['1ПГ', '2ПГ', '3ПГ'][i] || '',
+        subject: parsed.subject || '',
+        subgroup: subgroups[i] || ['1ПГ', '2ПГ', '3ПГ', '4ПГ'][i] || '',
         teacher: teachers[i] || '',
         room: rooms[i] || '',
       });
     }
+  }
+
+  function parseDateStr(notes) {
+    const result = { from: '', to: '' };
+    if (!notes) return result;
+    const mRange = notes.match(/с\s+(\d{1,2}\.\d{2})\s+по\s+(\d{1,2}\.\d{2})/);
+    if (mRange) { result.from = mRange[1]; result.to = mRange[2]; return result; }
+    const mTo = notes.match(/по\s+(\d{1,2}\.\d{2})/);
+    if (mTo) { result.to = mTo[1]; return result; }
+    const mFrom = notes.match(/с\s+(\d{1,2}\.\d{2})/);
+    if (mFrom) { result.from = mFrom[1]; }
+    return result;
   }
 
   function colLetter(col) {
@@ -536,7 +729,8 @@
     document.getElementById('subject').value = '';
     document.getElementById('teacher').value = '';
     document.getElementById('room').value = '';
-    document.getElementById('notes').value = '';
+    document.getElementById('date-from').value = '';
+    document.getElementById('date-to').value = '';
     document.getElementById('cancel-check').checked = false;
     document.querySelectorAll('input[name="sg"]').forEach(c => c.checked = false);
     document.getElementById('cycle').value = '';
@@ -544,6 +738,7 @@
     document.getElementById('single-block').classList.remove('hidden');
     document.getElementById('multi-block').classList.add('hidden');
     document.getElementById('submit').disabled = true;
+    document.getElementById('next-cell').disabled = true;
   }
 
   function refreshCellInfo() {
@@ -554,25 +749,6 @@
         document.getElementById('cell-loading').textContent = 'Ошибка: ' + err.message;
       })
       .getActiveCellInfo();
-  }
-
-  function collectData() {
-    const subgroups = state.lesson_type === 'lab' ? collectSubgroups() : [];
-    let subject = document.getElementById('subject').value.trim();
-    // Если основной предмет пуст, но у подгрупп есть свои — берём первый
-    if (!subject && subgroups.length > 0) {
-      subject = subgroups.find(sg => sg.subject)?.subject || '';
-    }
-    return {
-      lesson_type: state.lesson_type,
-      subject: subject,
-      teacher: document.getElementById('teacher').value.trim(),
-      room: document.getElementById('room').value.trim(),
-      subgroup: collectSubgroupSingle(),
-      notes: document.getElementById('notes').value.trim(),
-      cancelled: document.getElementById('cancel-check').checked,
-      teachers_by_subgroup: subgroups,
-    };
   }
 
   function setSubmitEnabled(enabled) {
@@ -586,7 +762,7 @@
     const runner = google.script.run
       .withSuccessHandler(res => {
         setSubmitEnabled(true);
-        showStatus('✓ ' + res.cell, false);
+        showStatus(res.cell, false);
         if (andMoveDown) {
           resetForm();
           refreshCellInfo();
@@ -603,16 +779,13 @@
     }
   }
 
+  // ─── Event handlers ──────────────────────────────────────────────────
   document.getElementById('submit').onclick = () => submitForm(false);
-
   document.getElementById('next-cell').onclick = () => submitForm(true);
 
   document.getElementById('clear').onclick = () => {
-    if (!confirm('Очистить ячейку и аудиторию справа?')) return;
-    google.script.run
-      .withSuccessHandler(() => { showStatus('Очищено.', false); resetForm(); })
-      .withFailureHandler(err => showStatus('Ошибка: ' + err.message, true))
-      .clearActiveCell();
+    resetForm();
+    showStatus('Форма очищена', false);
   };
 
   document.getElementById('refresh-cell').onclick = () => {
@@ -620,7 +793,6 @@
     refreshCellInfo();
   };
 
-  // Ctrl+Enter = submit
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
@@ -631,41 +803,13 @@
   document.getElementById('add-subgroup').onclick = () => addSubgroupRow();
   document.getElementById('subject').addEventListener('input', validate);
 
-  // Polling: каждые 2 сек проверяем — если ячейка сменилась, перечитываем
-  let lastCellKey = '';
-  let polling = true;
-
-  function pollCell() {
-    if (!polling) return;
-    google.script.run
-      .withSuccessHandler(addr => {
-        if (!addr) { setTimeout(pollCell, 2000); return; }
-        const key = addr.sheet + '!' + addr.col + ':' + addr.row;
-        if (key !== lastCellKey) {
-          lastCellKey = key;
-          resetForm();
-          refreshCellInfo();
-        }
-        setTimeout(pollCell, 2000);
-      })
-      .withFailureHandler(() => setTimeout(pollCell, 3000))
-      .getActiveCellAddress();
-  }
-
-  // Старт: загружаем словари и данные ячейки параллельно
+  // ─── Init: load dicts + cell info (no polling) ──────────────────────
   google.script.run.withSuccessHandler(loadDicts)
     .withFailureHandler(err => console.error('dict error:', err))
     .getDictionaries();
-  google.script.run.withSuccessHandler(info => {
-      loadCellInfo(info);
-      if (info && !info.error) {
-        lastCellKey = info.sheet + '!' + info.col + ':' + info.row;
-      }
-      setTimeout(pollCell, 2000);
-    })
+  google.script.run.withSuccessHandler(loadCellInfo)
     .withFailureHandler(err => {
       document.getElementById('cell-loading').textContent = 'Ошибка: ' + err.message;
-      setTimeout(pollCell, 2000);
     })
     .getActiveCellInfo();
 </script>
