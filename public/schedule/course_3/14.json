@@ -1,6 +1,6 @@
 {
   "name": "11.05-16.05(14-я неделя)",
-  "generated_at": "2026-05-13T23:10:45.649Z",
+  "generated_at": "2026-05-13T23:16:29.766Z",
   "course": 3,
   "semester": 6,
   "week_number": 14,
@@ -4596,7 +4596,7 @@
       "period_start": null,
       "period_end": null,
       "comment": null,
-      "cancelled": true
+      "cancelled": false
     },
     {
       "day": "Сб",
