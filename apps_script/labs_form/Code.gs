@@ -69,18 +69,20 @@ function showSidebar() {
 // ──────────────────────────────────────────────────────────────────────────
 
 /**
- * Возвращает информацию об активной ячейке + содержимое (если уже заполнена).
- * Используется при открытии sidebar — чтобы форма знала, добавлять или редактировать.
+ * Возвращает всё за один вызов: ячейку + словари.
+ * Один roundtrip вместо двух — быстрее загрузка sidebar.
  */
 function getActiveCellInfo() {
   const sheet = SpreadsheetApp.getActiveSheet();
   const cell = sheet.getCurrentCell();
-  if (!cell) return { error: 'Не выбрана ячейка', types: LESSON_TYPES };
+  const dicts = getDictionaries_();
+
+  if (!cell) return { error: 'Не выбрана ячейка', types: LESSON_TYPES, dicts: dicts };
 
   const row = cell.getRow();
   const col = cell.getColumn();
 
-  // Batch read: читаем 2 ячейки сразу (ячейка + аудитория справа)
+  // Batch read: 2 ячейки сразу (ячейка + аудитория справа)
   const range = sheet.getRange(row, col, 1, 2);
   const values = range.getValues();
   const bgs = range.getBackgrounds();
@@ -101,14 +103,14 @@ function getActiveCellInfo() {
     roomValue: String(roomValue || ''),
     parsed: parsed,
     types: LESSON_TYPES,
+    dicts: dicts,
   };
 }
 
 /**
- * Возвращает словари для autocomplete.
+ * Словари для autocomplete (внутренняя). Кэш 60 сек.
  */
-function getDictionaries() {
-  // Кэш на 60 сек для быстрой повторной загрузки
+function getDictionaries_() {
   const cache = CacheService.getScriptCache();
   const cached = cache.get('dictionaries');
   if (cached) {
@@ -128,6 +130,9 @@ function getDictionaries() {
   try { cache.put('dictionaries', JSON.stringify(result), 60); } catch (_) { /* ignore */ }
   return result;
 }
+
+/** Обратная совместимость: старый вызов словарей */
+function getDictionaries() { return getDictionaries_(); }
 
 // ──────────────────────────────────────────────────────────────────────────
 // Применение формы → запись в ячейку
@@ -208,10 +213,7 @@ function applyRichTextToCell_(cell, text, styleRanges, bgColor) {
   });
 
   cell.setRichTextValue(builder.build());
-  cell.setBackground(bgColor);
-  cell.setVerticalAlignment('middle');
-  cell.setHorizontalAlignment('center');
-  cell.setWrap(true);
+  cell.setBackground(bgColor).setVerticalAlignment('middle').setHorizontalAlignment('center').setWrap(true);
 }
 
 /**
@@ -301,21 +303,20 @@ function applyLesson(data) {
     rooms: collectRooms_(data),
   });
 
+  SpreadsheetApp.flush();
   dispatchScheduleUpdate_('form:applyLesson', cellAddress_(row, col));
   return {ok: true, cell: cellAddress_(row, col)};
 }
 
-/** Аудитория: жирный, Arial 12pt, по центру */
+/** Аудитория: жирный, Arial 12pt, по центру (минимум вызовов API) */
 function setRoomCell_(cell, text) {
   const val = (text || '').trim();
   if (!val) { cell.clearContent(); return; }
-  cell.setValue(val);
-  cell.setFontFamily('Arial');
-  cell.setFontWeight('bold');
-  cell.setFontSize(12);
-  cell.setVerticalAlignment('middle');
-  cell.setHorizontalAlignment('center');
-  cell.setWrap(true);
+  const style = SpreadsheetApp.newTextStyle()
+    .setBold(true).setFontFamily('Arial').setFontSize(12).setForegroundColor('#000000').build();
+  const rv = SpreadsheetApp.newRichTextValue().setText(val).setTextStyle(0, val.length, style).build();
+  cell.setRichTextValue(rv);
+  cell.setVerticalAlignment('middle').setHorizontalAlignment('center').setWrap(true);
 }
 
 /**
@@ -546,7 +547,7 @@ function parseCellContent_(value, richText, background) {
     };
   }
 
-  const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+  const lines = text.split('\n').map(s => s.trim()).filter(s => s && !/^[─━\-]+$/.test(s));
 
   // Определяем жирные строки (это название предмета)
   let subjectLines = [];
@@ -556,7 +557,7 @@ function parseCellContent_(value, richText, background) {
     runs.forEach(run => {
       const ts = run.getTextStyle();
       const runText = run.getText();
-      const parts = runText.split('\n').map(s => s.trim()).filter(Boolean);
+      const parts = runText.split('\n').map(s => s.trim()).filter(s => s && !/^[─━\-]+$/.test(s));
       if (ts && ts.isBold()) {
         parts.forEach(p => {
           // «ОТМЕНА» и даты-пометки — не предмет, хоть и жирные
@@ -614,7 +615,7 @@ function parseMultiSubjectLab_(allLines, subjectLines) {
 
   allLines.forEach(line => {
     const trimmed = line.trim();
-    if (!trimmed) return;
+    if (!trimmed || /^[─━\-]+$/.test(trimmed)) return;
     if (subjectSet.has(trimmed)) {
       current = { subject: trimmed, subgroup: '', teacher: '', notes: '', cancelled: false };
       groups.push(current);
@@ -658,7 +659,11 @@ function looksLikeTeacher_(s) {
 
 function looksLikeRoom_(s) {
   if (!s) return false;
-  return /^[0-9]{2,4}[A-Za-zа-я\-/]?(\s*\([^)]+\))?$/.test(s.trim());
+  const t = s.trim();
+  if (/^[─━\-]+$/.test(t)) return false;
+  return /^[0-9]{2,4}[A-Za-zА-Яа-я\-/]?(\s*\([^)]+\))?$/.test(t)
+      || /^[КкKk]\s*\d+/i.test(t)
+      || /^\d+\/[КкKk]\d+/i.test(t);
 }
 
 function looksLikeSubgroup_(s) {
