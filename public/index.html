@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Расписание РФиИТ</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text2: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --orange: #d29922;
+      --red: #f85149;
+      --purple: #bc8cff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .filters {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .filter-group label {
+      font-size: 13px;
+      color: var(--text2);
+      white-space: nowrap;
+    }
+
+    select, input[type="text"] {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--accent);
+    }
+
+    .content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px 24px;
+    }
+
+    .stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      min-width: 120px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 2px;
+    }
+
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .schedule-table th {
+      background: #1c2128;
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text2);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 80px;
+      z-index: 10;
+    }
+
+    .schedule-table td {
+      padding: 8px 12px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .schedule-table tr:hover td {
+      background: #1c2128;
+    }
+
+    .day-header {
+      background: #1c2128 !important;
+    }
+
+    .day-header td {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--accent);
+      padding: 12px;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    .type-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .type-lecture { background: #1a3a1a; color: #3fb950; }
+    .type-lab { background: #3a2a1a; color: #d29922; }
+    .type-practice { background: #1a2a3a; color: #58a6ff; }
+    .type-seminar { background: #2a2a2a; color: #e6edf3; }
+    .type-curator_hour { background: #3a3a1a; color: #e3b341; }
+    .type-additional { background: #2a1a3a; color: #bc8cff; }
+    .type-unknown { background: #2a2a2a; color: #8b949e; }
+
+    .cancelled {
+      text-decoration: line-through;
+      opacity: 0.5;
+    }
+
+    .subject-cell {
+      font-weight: 600;
+      max-width: 250px;
+    }
+
+    .teacher-cell {
+      color: var(--text2);
+    }
+
+    .room-cell {
+      font-weight: 600;
+      color: var(--orange);
+    }
+
+    .subgroup-cell {
+      font-size: 12px;
+      color: var(--purple);
+    }
+
+    .notes-cell {
+      font-size: 12px;
+      color: var(--text2);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: var(--text2);
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error {
+      text-align: center;
+      padding: 40px;
+      color: var(--red);
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 40px;
+      color: var(--text2);
+    }
+
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+      background: var(--bg);
+      border-radius: 6px;
+      padding: 2px;
+      border: 1px solid var(--border);
+    }
+
+    .view-btn {
+      padding: 4px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text2);
+      font-size: 13px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .view-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .pair-time {
+      font-size: 12px;
+      color: var(--text2);
+      white-space: nowrap;
+    }
+
+    .week-nav {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .week-btn {
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text2);
+      font-size: 13px;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .week-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: #0d2744;
+    }
+
+    .week-btn:hover {
+      border-color: var(--text2);
+    }
+
+    @media (max-width: 768px) {
+      .filters { flex-direction: column; align-items: stretch; }
+      .header { padding: 12px 16px; }
+      .content { padding: 12px 16px; }
+      .schedule-table th, .schedule-table td { padding: 6px 8px; font-size: 13px; }
+      .stats { gap: 8px; }
+      .stat { min-width: 100px; padding: 8px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Расписание занятий</h1>
+    <div class="filters">
+      <div class="filter-group">
+        <label>Курс:</label>
+        <select id="courseFilter"></select>
+      </div>
+      <div class="filter-group">
+        <label>Группа:</label>
+        <select id="groupFilter"></select>
+      </div>
+      <div class="filter-group">
+        <label>Тип:</label>
+        <select id="typeFilter">
+          <option value="">Все</option>
+          <option value="lecture">Лекция</option>
+          <option value="lab">Лаба</option>
+          <option value="practice">Практика</option>
+          <option value="seminar">Семинар</option>
+          <option value="curator_hour">Кураторский час</option>
+          <option value="additional">Дополнительное</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Поиск:</label>
+        <input type="text" id="searchFilter" placeholder="Предмет, препод...">
+      </div>
+    </div>
+    <div class="week-nav" id="weekNav" style="margin-top: 12px;"></div>
+  </div>
+
+  <div class="content">
+    <div class="stats" id="stats"></div>
+    <div id="tableContainer">
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        <div>Загрузка расписания...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const REPO = 'Yaroslavka123/rfict-schedule';
+    const BRANCH = 'main';
+    const BASE_URL = 'https://api.github.com/repos/' + REPO + '/contents/public/schedule';
+
+    const TYPE_LABELS = {
+      lecture: 'Лекция',
+      lab: 'Лаба',
+      practice: 'Практика',
+      seminar: 'Семинар',
+      curator_hour: 'Куратор',
+      additional: 'ДО',
+      unknown: '?',
+    };
+
+    const DAY_ORDER = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+    let allData = [];
+    let currentWeek = null;
+    let currentCourse = null;
+
+    async function init() {
+      try {
+        const courses = await discoverCourses();
+        if (!courses.length) {
+          showError('Нет данных расписания');
+          return;
+        }
+        populateCourseFilter(courses);
+        currentCourse = courses[0];
+        await loadCourse(currentCourse);
+      } catch (err) {
+        showError('Ошибка загрузки: ' + err.message);
+      }
+    }
+
+    async function discoverCourses() {
+      const resp = await fetch(BASE_URL + '?ref=' + BRANCH);
+      if (!resp.ok) throw new Error('GitHub API: ' + resp.status);
+      const items = await resp.json();
+      return items
+        .filter(function(i) { return i.type === 'dir' && i.name.startsWith('course_'); })
+        .map(function(i) { return i.name; })
+        .sort();
+    }
+
+    async function loadCourse(courseDir) {
+      document.getElementById('tableContainer').innerHTML = '<div class="loading"><div class="loading-spinner"></div><div>Загрузка...</div></div>';
+
+      const resp = await fetch(BASE_URL + '/' + courseDir + '?ref=' + BRANCH);
+      if (!resp.ok) throw new Error('GitHub API: ' + resp.status);
+      const files = await resp.json();
+      const jsonFiles = files.filter(function(f) { return f.name.endsWith('.json'); });
+
+      allData = [];
+      const promises = jsonFiles.map(function(f) {
+        return fetch(f.download_url).then(function(r) { return r.json(); });
+      });
+      allData = await Promise.all(promises);
+      allData.sort(function(a, b) { return (a.week_number || 0) - (b.week_number || 0); });
+
+      populateWeekNav();
+      populateGroupFilter();
+      if (allData.length) currentWeek = allData[0].week_number;
+      render();
+    }
+
+    function populateCourseFilter(courses) {
+      var sel = document.getElementById('courseFilter');
+      sel.innerHTML = '';
+      courses.forEach(function(c) {
+        var num = c.replace('course_', '');
+        var opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = num + ' курс';
+        sel.appendChild(opt);
+      });
+      sel.addEventListener('change', function() {
+        currentCourse = sel.value;
+        loadCourse(currentCourse);
+      });
+    }
+
+    function populateWeekNav() {
+      var nav = document.getElementById('weekNav');
+      nav.innerHTML = '';
+      allData.forEach(function(w) {
+        var btn = document.createElement('button');
+        btn.className = 'week-btn' + (w.week_number === currentWeek ? ' active' : '');
+        btn.textContent = w.week_number + '-я';
+        btn.title = w.name;
+        btn.onclick = function() {
+          currentWeek = w.week_number;
+          document.querySelectorAll('.week-btn').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          render();
+        };
+        nav.appendChild(btn);
+      });
+    }
+
+    function populateGroupFilter() {
+      var sel = document.getElementById('groupFilter');
+      var prev = sel.value;
+      sel.innerHTML = '<option value="">Все группы</option>';
+      if (!allData.length) return;
+      var groups = allData[0].groups || [];
+      groups.forEach(function(g) {
+        var opt = document.createElement('option');
+        opt.value = g.id;
+        opt.textContent = g.name + ' (' + g.department + ')';
+        sel.appendChild(opt);
+      });
+      if (prev) sel.value = prev;
+    }
+
+    function getFilteredLessons() {
+      var weekData = allData.find(function(w) { return w.week_number === currentWeek; });
+      if (!weekData) return [];
+
+      var lessons = weekData.lessons;
+      var groupId = document.getElementById('groupFilter').value;
+      var typeVal = document.getElementById('typeFilter').value;
+      var search = document.getElementById('searchFilter').value.toLowerCase().trim();
+
+      if (groupId) lessons = lessons.filter(function(l) { return l.group === groupId; });
+      if (typeVal) lessons = lessons.filter(function(l) { return l.type === typeVal; });
+      if (search) {
+        lessons = lessons.filter(function(l) {
+          return (l.subject || '').toLowerCase().indexOf(search) !== -1 ||
+                 (l.teacher || '').toLowerCase().indexOf(search) !== -1 ||
+                 (l.room || '').toLowerCase().indexOf(search) !== -1;
+        });
+      }
+      return lessons;
+    }
+
+    function render() {
+      var lessons = getFilteredLessons();
+      renderStats(lessons);
+      renderTable(lessons);
+    }
+
+    function renderStats(lessons) {
+      var weekData = allData.find(function(w) { return w.week_number === currentWeek; });
+      var container = document.getElementById('stats');
+      if (!weekData) {
+        container.innerHTML = '';
+        return;
+      }
+
+      var types = {};
+      lessons.forEach(function(l) {
+        types[l.type] = (types[l.type] || 0) + 1;
+      });
+
+      container.innerHTML =
+        '<div class="stat"><div class="stat-value">' + lessons.length + '</div><div class="stat-label">Занятий</div></div>' +
+        '<div class="stat"><div class="stat-value">' + (weekData.groups || []).length + '</div><div class="stat-label">Групп</div></div>' +
+        '<div class="stat"><div class="stat-value">' + (types.lecture || 0) + '</div><div class="stat-label">Лекций</div></div>' +
+        '<div class="stat"><div class="stat-value">' + (types.lab || 0) + '</div><div class="stat-label">Лаб</div></div>' +
+        '<div class="stat"><div class="stat-value">' + (types.practice || 0) + '</div><div class="stat-label">Практик</div></div>';
+    }
+
+    function renderTable(lessons) {
+      var container = document.getElementById('tableContainer');
+
+      if (!lessons.length) {
+        container.innerHTML = '<div class="no-data">Нет занятий по выбранным фильтрам</div>';
+        return;
+      }
+
+      var byDay = {};
+      DAY_ORDER.forEach(function(d) { byDay[d] = []; });
+      lessons.forEach(function(l) {
+        if (byDay[l.day]) byDay[l.day].push(l);
+        else byDay[l.day] = [l];
+      });
+
+      var html = '<table class="schedule-table"><thead><tr>';
+      html += '<th>Пара</th><th>Время</th><th>Тип</th><th>Предмет</th>';
+      html += '<th>Преподаватель</th><th>Ауд.</th><th>Группа</th><th>Подгруппа</th><th>Инфо</th>';
+      html += '</tr></thead><tbody>';
+
+      DAY_ORDER.forEach(function(day) {
+        var dayLessons = byDay[day];
+        if (!dayLessons || !dayLessons.length) return;
+
+        dayLessons.sort(function(a, b) {
+          return (a.pair || 0) - (b.pair || 0) || (a.group || '').localeCompare(b.group || '');
+        });
+
+        html += '<tr class="day-header"><td colspan="9">' + day + '</td></tr>';
+
+        dayLessons.forEach(function(l) {
+          var cls = l.cancelled ? ' cancelled' : '';
+          var typeClass = 'type-' + (l.type || 'unknown');
+          var info = [];
+          if (l.notes) info.push(l.notes);
+          if (l.comment) info.push(l.comment);
+          if (l.frequency) info.push(l.frequency);
+
+          var weekData = allData.find(function(w) { return w.week_number === currentWeek; });
+          var groupName = l.group;
+          if (weekData && weekData.groups) {
+            var g = weekData.groups.find(function(g) { return g.id === l.group; });
+            if (g) groupName = g.name;
+          }
+
+          html += '<tr class="' + cls + '">';
+          html += '<td>' + (l.pair || '') + '</td>';
+          html += '<td class="pair-time">' + (l.time || '') + '</td>';
+          html += '<td><span class="type-badge ' + typeClass + '">' + (TYPE_LABELS[l.type] || l.type || '?') + '</span></td>';
+          html += '<td class="subject-cell">' + esc(l.subject || '') + (l.cancelled ? ' <span style="color:var(--red)">ОТМЕНА</span>' : '') + '</td>';
+          html += '<td class="teacher-cell">' + esc(l.teacher || '') + '</td>';
+          html += '<td class="room-cell">' + esc(l.room || '') + '</td>';
+          html += '<td>' + esc(groupName) + '</td>';
+          html += '<td class="subgroup-cell">' + esc(l.subgroup || '') + '</td>';
+          html += '<td class="notes-cell">' + esc(info.join('; ')) + '</td>';
+          html += '</tr>';
+        });
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    function esc(s) {
+      var d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function showError(msg) {
+      document.getElementById('tableContainer').innerHTML = '<div class="error">' + esc(msg) + '</div>';
+    }
+
+    document.getElementById('groupFilter').addEventListener('change', render);
+    document.getElementById('typeFilter').addEventListener('change', render);
+    document.getElementById('searchFilter').addEventListener('input', render);
+
+    init();
+  </script>
+</body>
+</html>
