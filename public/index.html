@@ -344,7 +344,9 @@
   <script>
     const REPO = 'Yaroslavka123/rfict-schedule';
     const BRANCH = 'main';
-    const BASE_URL = 'https://api.github.com/repos/' + REPO + '/contents/public/schedule';
+    const RAW_BASE = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/public/schedule';
+    const COURSES = ['course_1', 'course_2', 'course_3', 'course_4'];
+    const WEEKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 
     const TYPE_LABELS = {
       lecture: 'Лекция',
@@ -364,7 +366,7 @@
 
     async function init() {
       try {
-        const courses = await discoverCourses();
+        var courses = await discoverCourses();
         if (!courses.length) {
           showError('Нет данных расписания');
           return;
@@ -378,33 +380,33 @@
     }
 
     async function discoverCourses() {
-      const resp = await fetch(BASE_URL + '?ref=' + BRANCH);
-      if (!resp.ok) throw new Error('GitHub API: ' + resp.status);
-      const items = await resp.json();
-      return items
-        .filter(function(i) { return i.type === 'dir' && i.name.startsWith('course_'); })
-        .map(function(i) { return i.name; })
-        .sort();
+      var available = [];
+      var checks = COURSES.map(function(c) {
+        return fetch(RAW_BASE + '/' + c + '/1.json', { method: 'HEAD' })
+          .then(function(r) { if (r.ok) available.push(c); })
+          .catch(function() {});
+      });
+      await Promise.all(checks);
+      return available.sort();
     }
 
     async function loadCourse(courseDir) {
       document.getElementById('tableContainer').innerHTML = '<div class="loading"><div class="loading-spinner"></div><div>Загрузка...</div></div>';
 
-      const resp = await fetch(BASE_URL + '/' + courseDir + '?ref=' + BRANCH);
-      if (!resp.ok) throw new Error('GitHub API: ' + resp.status);
-      const files = await resp.json();
-      const jsonFiles = files.filter(function(f) { return f.name.endsWith('.json'); });
-
       allData = [];
-      const promises = jsonFiles.map(function(f) {
-        return fetch(f.download_url).then(function(r) { return r.json(); });
+      var promises = WEEKS.map(function(w) {
+        var url = RAW_BASE + '/' + courseDir + '/' + w + '.json';
+        return fetch(url)
+          .then(function(r) { return r.ok ? r.json() : null; })
+          .catch(function() { return null; });
       });
-      allData = await Promise.all(promises);
+      var results = await Promise.all(promises);
+      allData = results.filter(function(r) { return r !== null; });
       allData.sort(function(a, b) { return (a.week_number || 0) - (b.week_number || 0); });
 
       populateWeekNav();
       populateGroupFilter();
-      if (allData.length) currentWeek = allData[0].week_number;
+      selectBestWeek();
       render();
     }
 
@@ -457,6 +459,30 @@
       if (prev) sel.value = prev;
     }
 
+    function selectBestWeek() {
+      if (!allData.length) return;
+      var today = new Date();
+      var bestWeek = allData[allData.length - 1].week_number;
+      for (var i = 0; i < allData.length; i++) {
+        var dr = allData[i].date_range || '';
+        var parts = dr.split(/\s*-\s*/);
+        if (parts.length === 2) {
+          var endParts = parts[1].split('.');
+          if (endParts.length >= 2) {
+            var endDate = new Date(today.getFullYear(), parseInt(endParts[1], 10) - 1, parseInt(endParts[0], 10));
+            if (today <= endDate) {
+              bestWeek = allData[i].week_number;
+              break;
+            }
+          }
+        }
+      }
+      currentWeek = bestWeek;
+      document.querySelectorAll('.week-btn').forEach(function(b, idx) {
+        b.classList.toggle('active', allData[idx] && allData[idx].week_number === currentWeek);
+      });
+    }
+
     function getFilteredLessons() {
       var weekData = allData.find(function(w) { return w.week_number === currentWeek; });
       if (!weekData) return [];
@@ -472,7 +498,10 @@
         lessons = lessons.filter(function(l) {
           return (l.subject || '').toLowerCase().indexOf(search) !== -1 ||
                  (l.teacher || '').toLowerCase().indexOf(search) !== -1 ||
-                 (l.room || '').toLowerCase().indexOf(search) !== -1;
+                 (l.room || '').toLowerCase().indexOf(search) !== -1 ||
+                 (l.subgroup || '').toLowerCase().indexOf(search) !== -1 ||
+                 (l.notes || '').toLowerCase().indexOf(search) !== -1 ||
+                 (l.comment || '').toLowerCase().indexOf(search) !== -1;
         });
       }
       return lessons;

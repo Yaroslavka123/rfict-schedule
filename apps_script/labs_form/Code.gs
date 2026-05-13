@@ -811,7 +811,8 @@ function looksLikeSubgroup_(s) {
 
 function looksLikeNotes_(s) {
   if (!s) return false;
-  return /^(по|с|до)\s+\d/i.test(s) || /\d{1,2}\.\d{1,2}/.test(s);
+  return /^(по|с|до)\s+\d/i.test(s) || /\d{1,2}\.\d{1,2}/.test(s)
+      || /^(по|с|до)\s+(январ|феврал|март|апрел|ма[яй]|июн|июл|август|сентябр|октябр|ноябр|декабр)/i.test(s);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1159,7 +1160,9 @@ function parseLessonCell_(cellValue, roomValue) {
   for (var e = 0; e < allEntries.length; e++) {
     allEntries[e].room = rooms[e] !== undefined ? rooms[e] : (rooms[0] || '');
   }
-  return allEntries.length > 0 ? allEntries : [];
+  // Убираем записи без предмета (напр. строки с одними числами)
+  allEntries = allEntries.filter(function(e) { return e.subject; });
+  return allEntries;
 }
 
 /**
@@ -1200,31 +1203,36 @@ function parseEntryLines_(lines) {
   var notes = '';
   var comment = '';
   var cancelled = false;
-  var foundSubject = false;
+  var foundTeacherOrSubgroup = false;
 
   for (var k = 0; k < lines.length; k++) {
     var line = lines[k];
     if (/^\s*ОТМЕНА\s*$/i.test(line)) {
       cancelled = true;
-    } else if (!foundSubject && looksLikeNotes_(line)) {
-      notes = notes ? notes + '; ' + line : line;
+    } else if (/^\d+(\/\d+)*$/.test(line.trim())) {
+      // Распределение часов (12/6/8/6, 24/8) — пропускаем
+      continue;
     } else if (looksLikeTeacher_(line)) {
       teacher = teacher ? teacher + ', ' + line : line;
+      foundTeacherOrSubgroup = true;
     } else if (looksLikeSubgroup_(line)) {
       subgroup = line;
       if (/нечет\/чет|чет\/нечет/.test(line)) frequency = line.match(/нечет\/чет|чет\/нечет/)[0];
       else if (/\bнечет\b/i.test(line)) frequency = 'нечет';
       else if (/\bчет\b/i.test(line)) frequency = 'чет';
       else if (/еженедел/i.test(line)) frequency = 'еженедельно';
-    } else if (!foundSubject) {
-      subject = subject ? subject + ' ' + line : line;
-      foundSubject = true;
+      foundTeacherOrSubgroup = true;
     } else if (looksLikeNotes_(line)) {
       notes = notes ? notes + '; ' + line : line;
+    } else if (!foundTeacherOrSubgroup) {
+      subject = subject ? subject + ' ' + line : line;
     } else {
       comment = comment ? comment + '; ' + line : line;
     }
   }
+
+  // Нормализация предмета: убираем бэкслеш, лишние пробелы
+  subject = subject.replace(/\\/g, ' ').replace(/\s+/g, ' ').trim();
 
   return {
     subject: subject,
