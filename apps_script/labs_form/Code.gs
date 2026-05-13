@@ -253,8 +253,7 @@ function applyLesson(data) {
     const content = buildCellContent_(sgs);
     const spanRows = Math.max(1, Math.min(data.span_rows || 2, 3));
 
-    // Разъединяем ВСЕ merge в целевых строках (и только в них), чтобы не задеть соседние ячейки
-    // Сначала сохраняем содержимое ячеек, которые не входят в наш span, чтобы restore после breakApart
+    // 1. Разъединяем ВСЕ merge в целевых строках
     for (let r = 0; r < spanRows; r++) {
       try {
         const targetRange = sheet.getRange(row + r, col, 1, 2);
@@ -263,36 +262,34 @@ function applyLesson(data) {
       } catch (_) {}
     }
 
-    // Записываем контент в верхнюю ячейку
-    const topCell = sheet.getRange(row, col);
-    applyRichTextToCell_(topCell, content.text, content.styleRanges, type.color);
-
-    // Очищаем ТОЛЬКО ячейки внутри нашего span (row+1 .. row+spanRows-1)
+    // 2. Очищаем и объединяем СНАЧАЛА (до записи контента)
     for (let r = 1; r < spanRows; r++) {
-      const c = sheet.getRange(row + r, col);
-      c.clearContent();
-      c.setBackground(type.color);
+      sheet.getRange(row + r, col).clearContent().setBackground(type.color);
+      sheet.getRange(row + r, col + 1).clearContent();
     }
     if (spanRows > 1) {
       sheet.getRange(row, col, spanRows, 1).merge();
+      sheet.getRange(row, col + 1, spanRows, 1).merge();
     }
+    SpreadsheetApp.flush();
 
-    // Аудитории: записываем и объединяем только в пределах span
+    // 3. Записываем контент в уже объединённые ячейки
+    const topCell = sheet.getRange(row, col);
+    applyRichTextToCell_(topCell, content.text, content.styleRanges, type.color);
+
+    // 4. Аудитории
     const roomLines = content.roomLines.filter(r => r.trim());
     if (roomLines.length === 0) {
-      for (let r = 0; r < spanRows; r++) {
-        sheet.getRange(row + r, col + 1).clearContent();
-      }
+      sheet.getRange(row, col + 1).clearContent();
     } else {
       const roomText = roomLines.join('\n───\n');
-      for (let r = 1; r < spanRows; r++) {
-        sheet.getRange(row + r, col + 1).clearContent();
-      }
-      if (spanRows > 1) {
-        sheet.getRange(row, col + 1, spanRows, 1).merge();
-      }
       setRoomCell_(sheet.getRange(row, col + 1), roomText);
     }
+
+    // 5. Восстанавливаем вертикальную линию между колонками (breakApart может сбросить borders)
+    try {
+      sheet.getRange(row, col, spanRows, 2).setBorder(null, null, null, null, true, null);
+    } catch (_) {}
 
   } else {
     // Одна ячейка — обычное занятие
