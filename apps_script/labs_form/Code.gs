@@ -270,6 +270,9 @@ function applyLesson(data) {
       setRoomCell_(roomCell, roomText);
     }
 
+    // Автоподгонка высоты строк под контент
+    sheet.autoResizeRows(row, 2);
+
   } else {
     // Не лаба — одна ячейка
     if (!data.subject || !data.subject.trim()) throw new Error('Не указан предмет.');
