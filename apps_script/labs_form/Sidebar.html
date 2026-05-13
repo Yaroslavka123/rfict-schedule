@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --border: #dadce0;
+      --primary: #1a73e8;
+      --primary-hover: #1765cc;
+      --muted: #5f6368;
+      --bg-active: #e8f0fe;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      font-size: 13px;
+      padding: 12px;
+      color: #202124;
+      margin: 0;
+    }
+    h2 {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+    }
+    .hint {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    input[type="text"], select, textarea {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+      margin-top: 4px;
+    }
+    textarea { resize: vertical; min-height: 36px; }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .types {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .type-btn {
+      padding: 8px 6px;
+      border: 2px solid transparent;
+      border-radius: 4px;
+      cursor: pointer;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 500;
+      user-select: none;
+      transition: border-color 0.1s;
+    }
+    .type-btn.active {
+      border-color: var(--primary);
+    }
+    .type-btn:hover {
+      filter: brightness(0.96);
+    }
+    .checkbox-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 6px;
+    }
+    .checkbox-row label {
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 400;
+      color: #202124;
+    }
+    .subgroup-block {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px;
+      margin-top: 6px;
+      background: #f8f9fa;
+    }
+    .subgroup-block + .subgroup-block {
+      margin-top: 6px;
+    }
+    .subgroup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .icon-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 4px;
+    }
+    .icon-btn:hover { color: #d93025; }
+    .add-row-btn {
+      background: none;
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+      padding: 6px;
+      width: 100%;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    .add-row-btn:hover { color: var(--primary); border-color: var(--primary); }
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    button.primary {
+      flex: 1;
+      padding: 10px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    button.primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+    button.primary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    button.secondary {
+      padding: 10px 12px;
+      background: #fff;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button.secondary:hover { background: #f1f3f4; }
+    .status {
+      margin-top: 10px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: none;
+    }
+    .status.ok { background: #e6f4ea; color: #137333; display: block; }
+    .status.err { background: #fce8e6; color: #c5221f; display: block; }
+    .cell-info {
+      background: var(--bg-active);
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      margin-bottom: 8px;
+      color: var(--muted);
+    }
+    .cell-info b { color: var(--primary); }
+    details summary {
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 12px;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <h2>Занятие</h2>
+  <div class="hint">Выбери ячейку в таблице → заполни форму → жми «Применить».</div>
+
+  <div class="cell-info" id="cell-info">Загрузка…</div>
+
+  <label>Тип занятия *</label>
+  <div class="types" id="types"></div>
+
+  <label>Предмет *</label>
+  <input type="text" id="subject" list="subjects-list" placeholder="Начни печатать..." />
+  <datalist id="subjects-list"></datalist>
+
+  <div id="single-block">
+    <label>Преподаватель</label>
+    <input type="text" id="teacher" list="teachers-list" placeholder="ст.пр. ИвановИ.И." />
+    <datalist id="teachers-list"></datalist>
+
+    <label>Аудитория</label>
+    <input type="text" id="room" list="rooms-list" placeholder="117а" />
+    <datalist id="rooms-list"></datalist>
+
+    <label>Подгруппа</label>
+    <div class="checkbox-row">
+      <label><input type="checkbox" name="sg" value="1ПГ"> 1ПГ</label>
+      <label><input type="checkbox" name="sg" value="2ПГ"> 2ПГ</label>
+      <label><input type="checkbox" name="sg" value="3ПГ"> 3ПГ</label>
+    </div>
+    <select id="cycle">
+      <option value="">каждую неделю</option>
+      <option value="нечет">нечётные</option>
+      <option value="чет">чётные</option>
+    </select>
+  </div>
+
+  <div id="multi-block" class="hidden">
+    <label>Подгруппы (для лабы — у каждой свой препод и аудитория)</label>
+    <div id="subgroup-list"></div>
+    <button type="button" class="add-row-btn" id="add-subgroup">+ ещё подгруппа</button>
+  </div>
+
+  <details>
+    <summary>Заметка / даты (необязательно)</summary>
+    <input type="text" id="notes" placeholder="по 01.06 / с 03.03 по 26.05 / ..." />
+  </details>
+
+  <div class="actions">
+    <button class="primary" id="submit" disabled>Применить</button>
+    <button class="secondary" id="clear" title="Очистить ячейку">🗑</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+<script>
+  const state = {
+    types: [],
+    lesson_type: null,
+    cell: null,
+  };
+
+  function el(tag, attrs, ...children) {
+    const e = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(k => {
+      if (k === 'class') e.className = attrs[k];
+      else if (k === 'onclick') e.onclick = attrs[k];
+      else if (k.startsWith('data-')) e.setAttribute(k, attrs[k]);
+      else e[k] = attrs[k];
+    });
+    children.forEach(c => {
+      if (c == null) return;
+      e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    });
+    return e;
+  }
+
+  function renderTypes() {
+    const container = document.getElementById('types');
+    container.innerHTML = '';
+    state.types.forEach(t => {
+      const btn = el('div', {class: 'type-btn', 'data-code': t.code});
+      btn.style.background = t.color;
+      btn.textContent = t.label;
+      btn.onclick = () => selectType(t.code);
+      container.appendChild(btn);
+    });
+  }
+
+  function selectType(code) {
+    state.lesson_type = code;
+    document.querySelectorAll('.type-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.code === code);
+    });
+    // Лаба → multi-блок, иначе single
+    const isLab = code === 'lab';
+    document.getElementById('single-block').classList.toggle('hidden', isLab);
+    document.getElementById('multi-block').classList.toggle('hidden', !isLab);
+    if (isLab && document.querySelectorAll('.subgroup-block').length === 0) {
+      addSubgroupRow();
+    }
+    validate();
+  }
+
+  function addSubgroupRow(prefill) {
+    const list = document.getElementById('subgroup-list');
+    const idx = list.children.length;
+    const block = el('div', {class: 'subgroup-block'});
+    const header = el('div', {class: 'subgroup-header'});
+    header.innerHTML = '<span>Подгруппа #' + (idx + 1) + '</span>';
+    const removeBtn = el('button', {type: 'button', class: 'icon-btn', onclick: () => block.remove()}, '✕');
+    header.appendChild(removeBtn);
+    block.appendChild(header);
+
+    const sgInput = el('input', {type: 'text', placeholder: '1ПГ нечет / 2ПГ / ...', 'class': 'sg-name'});
+    sgInput.value = (prefill && prefill.subgroup) || '';
+    sgInput.oninput = validate;
+    block.appendChild(el('label', null, 'Подгруппа'));
+    block.appendChild(sgInput);
+
+    const teacherInput = el('input', {type: 'text', list: 'teachers-list', placeholder: 'доц. ИвановИ.И.', 'class': 'sg-teacher'});
+    teacherInput.value = (prefill && prefill.teacher) || '';
+    teacherInput.oninput = validate;
+    block.appendChild(el('label', null, 'Преподаватель'));
+    block.appendChild(teacherInput);
+
+    const roomInput = el('input', {type: 'text', list: 'rooms-list', placeholder: '703', 'class': 'sg-room'});
+    roomInput.value = (prefill && prefill.room) || '';
+    roomInput.oninput = validate;
+    block.appendChild(el('label', null, 'Аудитория'));
+    block.appendChild(roomInput);
+
+    list.appendChild(block);
+    validate();
+  }
+
+  function collectSubgroups() {
+    return [...document.querySelectorAll('.subgroup-block')].map(block => ({
+      subgroup: block.querySelector('.sg-name').value.trim(),
+      teacher: block.querySelector('.sg-teacher').value.trim(),
+      room: block.querySelector('.sg-room').value.trim(),
+    })).filter(sg => sg.subgroup || sg.teacher || sg.room);
+  }
+
+  function collectSubgroupSingle() {
+    const sgs = [...document.querySelectorAll('input[name="sg"]:checked')].map(c => c.value);
+    const cycle = document.getElementById('cycle').value;
+    if (!sgs.length) return cycle ? cycle : '';
+    return sgs.join('/') + (cycle ? ' ' + cycle : '');
+  }
+
+  function validate() {
+    const ok = state.lesson_type && document.getElementById('subject').value.trim();
+    document.getElementById('submit').disabled = !ok;
+  }
+
+  function loadDicts(d) {
+    fillList('subjects-list', d.subjects || []);
+    fillList('teachers-list', d.teachers || []);
+    fillList('rooms-list', d.rooms || []);
+  }
+
+  function fillList(id, items) {
+    const dl = document.getElementById(id);
+    dl.innerHTML = '';
+    items.forEach(v => {
+      const o = document.createElement('option');
+      o.value = v;
+      dl.appendChild(o);
+    });
+  }
+
+  function loadCellInfo(info) {
+    state.cell = info;
+    state.types = info.types || [];
+    renderTypes();
+
+    document.getElementById('cell-info').innerHTML =
+      'Ячейка: <b>' + colLetter(info.col) + info.row + '</b> на листе «' + info.sheet + '»';
+
+    // Если ячейка уже заполнена, подставляем поля
+    const parsed = info.parsed || {};
+    if (parsed.lesson_type) selectType(parsed.lesson_type);
+    if (parsed.subject) document.getElementById('subject').value = parsed.subject;
+    if (parsed.teacher) document.getElementById('teacher').value = parsed.teacher;
+    if (info.roomValue) document.getElementById('room').value = info.roomValue.split('\n')[0];
+    if (parsed.subgroup) prefillSubgroup(parsed.subgroup);
+    if (parsed.notes) {
+      const n = document.getElementById('notes');
+      n.value = parsed.notes;
+      // открыть details
+      n.closest('details').open = true;
+    }
+
+    // Для лабы — если в ячейке было несколько строк препода/аудитории, разбираем как подгруппы
+    if (parsed.lesson_type === 'lab') {
+      tryFillLabSubgroups(info);
+    }
+
+    validate();
+  }
+
+  function prefillSubgroup(sub) {
+    const ck = (val) => {
+      const cb = document.querySelector('input[name="sg"][value="' + val + '"]');
+      if (cb) cb.checked = true;
+    };
+    if (/1ПГ/i.test(sub)) ck('1ПГ');
+    if (/2ПГ/i.test(sub)) ck('2ПГ');
+    if (/3ПГ/i.test(sub)) ck('3ПГ');
+    const cycleSel = document.getElementById('cycle');
+    if (/нечет|нечёт/i.test(sub)) cycleSel.value = 'нечет';
+    else if (/чет|чёт/i.test(sub)) cycleSel.value = 'чет';
+  }
+
+  function tryFillLabSubgroups(info) {
+    // Если есть несколько строк аудиторий — пробуем составить пары препод/аудитория
+    const rooms = (info.roomValue || '').split('\n').map(s => s.trim()).filter(Boolean);
+    const lines = (info.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+    const teachers = lines.filter(l => /^(доц\.|проф\.|ст\.\s*пр\.|пр\.\s*ст\.|ст\.пр\.|пр\.|асс\.)/i.test(l));
+    if (rooms.length <= 1 || teachers.length === 0) return;
+    // Удаляем дефолтную пустую подгруппу
+    document.getElementById('subgroup-list').innerHTML = '';
+    const max = Math.max(rooms.length, teachers.length);
+    for (let i = 0; i < max; i++) {
+      addSubgroupRow({
+        subgroup: ['1ПГ', '2ПГ', '3ПГ'][i] || '',
+        teacher: teachers[i] || '',
+        room: rooms[i] || '',
+      });
+    }
+  }
+
+  function colLetter(col) {
+    let s = '';
+    while (col > 0) {
+      const mod = (col - 1) % 26;
+      s = String.fromCharCode(65 + mod) + s;
+      col = Math.floor((col - 1) / 26);
+    }
+    return s;
+  }
+
+  function showStatus(msg, isError) {
+    const s = document.getElementById('status');
+    s.textContent = msg;
+    s.className = 'status ' + (isError ? 'err' : 'ok');
+    setTimeout(() => { s.className = 'status'; }, 3500);
+  }
+
+  document.getElementById('submit').onclick = () => {
+    const data = {
+      lesson_type: state.lesson_type,
+      subject: document.getElementById('subject').value.trim(),
+      teacher: document.getElementById('teacher').value.trim(),
+      room: document.getElementById('room').value.trim(),
+      subgroup: collectSubgroupSingle(),
+      notes: document.getElementById('notes').value.trim(),
+      teachers_by_subgroup: state.lesson_type === 'lab' ? collectSubgroups() : [],
+    };
+    document.getElementById('submit').disabled = true;
+    google.script.run
+      .withSuccessHandler(res => {
+        document.getElementById('submit').disabled = false;
+        showStatus('Записано в ячейку ' + res.cell + '.', false);
+      })
+      .withFailureHandler(err => {
+        document.getElementById('submit').disabled = false;
+        showStatus('Ошибка: ' + err.message, true);
+      })
+      .applyLesson(data);
+  };
+
+  document.getElementById('clear').onclick = () => {
+    if (!confirm('Очистить ячейку и аудиторию справа?')) return;
+    google.script.run
+      .withSuccessHandler(() => showStatus('Очищено.', false))
+      .withFailureHandler(err => showStatus('Ошибка: ' + err.message, true))
+      .clearActiveCell();
+  };
+
+  document.getElementById('add-subgroup').onclick = () => addSubgroupRow();
+  document.getElementById('subject').addEventListener('input', validate);
+
+  // Старт
+  google.script.run.withSuccessHandler(loadDicts).getDictionaries();
+  google.script.run.withSuccessHandler(loadCellInfo).getActiveCellInfo();
+</script>
+</body>
+</html>
