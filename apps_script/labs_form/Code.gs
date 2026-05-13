@@ -157,10 +157,17 @@ function buildCellContent_(subgroups) {
     if (sg.notes && sg.notes.trim()) pushStyled(sg.notes.trim(), 'italic');
     const subj = (sg.subject && sg.subject.trim()) || '';
     if (subj) pushStyled(subj, 'subject_bold');
-    if (sg.subgroup) lines.push(sg.subgroup);
+    const sgColor = subgroups.length > 1 ? SG_COLORS[sgIdx % SG_COLORS.length] : null;
+    if (sg.subgroup) {
+      if (sgColor) {
+        pushStyled(sg.subgroup, 'color', {color: sgColor});
+      } else {
+        lines.push(sg.subgroup);
+      }
+    }
     if (sg.teacher) {
-      if (subgroups.length > 1) {
-        pushStyled(sg.teacher, 'color', {color: SG_COLORS[sgIdx % SG_COLORS.length]});
+      if (sgColor) {
+        pushStyled(sg.teacher, 'color', {color: sgColor});
       } else {
         lines.push(sg.teacher);
       }
@@ -187,16 +194,15 @@ function applyRichTextToCell_(cell, text, styleRanges, bgColor) {
   const normalStyle = SpreadsheetApp.newTextStyle()
     .setBold(false).setItalic(false)
     .setForegroundColor('#000000')
-    .setFontSize(10)
+    .setFontSize(12)
     .build();
   builder.setTextStyle(0, text.length, normalStyle);
 
   styleRanges.forEach(r => {
     if (r.start >= r.end || r.start < 0 || r.end > text.length) return;
     if (r.style === 'subject_bold') {
-      // Предмет: жирный, чуть крупнее
       builder.setTextStyle(r.start, r.end,
-        SpreadsheetApp.newTextStyle().setBold(true).setFontSize(11).setForegroundColor('#000000').build());
+        SpreadsheetApp.newTextStyle().setBold(true).setFontSize(12).setForegroundColor('#000000').build());
     } else if (r.style === 'bold') {
       builder.setTextStyle(r.start, r.end,
         SpreadsheetApp.newTextStyle().setBold(true).setForegroundColor('#000000').build());
@@ -257,19 +263,24 @@ function applyLesson(data) {
     bottomCell.setBackground(type.color);
     mergeRange.merge();
 
-    // Аудитории: каждая подгруппа — своя ячейка справа
-    const roomLines = content.roomLines;
+    // Аудитории: распределяем по 2 ячейкам справа
+    const roomLines = content.roomLines.filter(r => r.trim());
     const room1 = sheet.getRange(row, col + 1);
     const room2 = sheet.getRange(row + 1, col + 1);
-    if (roomLines.length >= 2) {
-      setRoomCell_(room1, roomLines[0]);
-      setRoomCell_(room2, roomLines[1]);
+    if (roomLines.length === 0) {
+      room1.clearContent();
+      room2.clearContent();
     } else if (roomLines.length === 1) {
       setRoomCell_(room1, roomLines[0]);
       room2.clearContent();
+    } else if (roomLines.length === 2) {
+      setRoomCell_(room1, roomLines[0]);
+      setRoomCell_(room2, roomLines[1]);
     } else {
-      room1.clearContent();
-      room2.clearContent();
+      // 3+ аудиторий: первая половина сверху, вторая снизу
+      const mid = Math.ceil(roomLines.length / 2);
+      setRoomCell_(room1, roomLines.slice(0, mid).join('\n'));
+      setRoomCell_(room2, roomLines.slice(mid).join('\n'));
     }
 
   } else {
@@ -309,12 +320,13 @@ function applyLesson(data) {
   return {ok: true, cell: cellAddress_(row, col)};
 }
 
-/** Аудитория: жирный, по центру */
+/** Аудитория: жирный, 12pt, по центру */
 function setRoomCell_(cell, text) {
   const val = (text || '').trim();
   if (!val) { cell.clearContent(); return; }
   cell.setValue(val);
   cell.setFontWeight('bold');
+  cell.setFontSize(12);
   cell.setVerticalAlignment('middle');
   cell.setHorizontalAlignment('center');
   cell.setWrap(true);
