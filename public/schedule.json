@@ -3,7 +3,7 @@
   "faculty": "ФРФиКТ",
   "semester": 2,
   "form": "очная",
-  "generated_at": "2026-05-13T10:40:23Z",
+  "generated_at": "2026-05-13T12:30:58Z",
   "source": {
     "type": "google_sheets",
     "sheets": [
@@ -19875,7 +19875,7 @@
       "raw": "ЛБ- 10.04-29.05 19:30-20:50 (ФМО, ул.Ленинградская,20) ауд.1306 Автоматизированное проектирование систем летательных аппаратов, Хранцкевич В.В."
     },
     {
-      "id": "6f5b1766ec43",
+      "id": "d7ac20b5ec61",
       "group_ids": [
         "y4-en-gА51"
       ],
@@ -19883,7 +19883,7 @@
       "pair_number": null,
       "time_start": "17:20",
       "time_end": "18:45",
-      "subject": "Virtualization and Cloud Security",
+      "subject": "cancellation Virtualization and Cloud Security",
       "lesson_type": "lab",
       "teacher": "Afonenko A.A.",
       "rooms": [
@@ -19893,9 +19893,9 @@
       "subgroup": null,
       "weeks": "all",
       "date_from": "2026-05-11",
-      "date_to": "2026-06-01",
+      "date_to": null,
       "notes": null,
-      "raw": "LB - 11.05-01.06 (group 1) room 505, 08.06 (all group) room 124 Virtualization and Cloud Security, Afonenko A.A./\nLB - 04.05-01.06 (group 2) room 707 Computer Security Software and Hardware Tools, Trukhanovich Alexsei L."
+      "raw": "LB - 11.05 cancellation, 18.05-01.06 (group 1) room 505, 08.06 (all group) room 124 Virtualization and Cloud Security, Afonenko A.A./\nLB - 04.05-01.06 (group 2) room 707 Computer Security Software and Hardware Tools, Trukhanovich Alexsei L."
     },
     {
       "id": "933559fff4b6",
@@ -19917,10 +19917,10 @@
       "date_from": "2026-05-04",
       "date_to": "2026-06-01",
       "notes": null,
-      "raw": "LB - 11.05-01.06 (group 1) room 505, 08.06 (all group) room 124 Virtualization and Cloud Security, Afonenko A.A./\nLB - 04.05-01.06 (group 2) room 707 Computer Security Software and Hardware Tools, Trukhanovich Alexsei L."
+      "raw": "LB - 11.05 cancellation, 18.05-01.06 (group 1) room 505, 08.06 (all group) room 124 Virtualization and Cloud Security, Afonenko A.A./\nLB - 04.05-01.06 (group 2) room 707 Computer Security Software and Hardware Tools, Trukhanovich Alexsei L."
     },
     {
-      "id": "c6df57b78385",
+      "id": "5cc47217ed95",
       "group_ids": [
         "y4-en-gА51"
       ],
@@ -19928,7 +19928,7 @@
       "pair_number": null,
       "time_start": "18:55",
       "time_end": "20:20",
-      "subject": "Virtualization and Cloud Security",
+      "subject": "cancellation Virtualization and Cloud Security",
       "lesson_type": "lab",
       "teacher": "Afonenko A.A.",
       "rooms": [
@@ -19938,9 +19938,9 @@
       "subgroup": null,
       "weeks": "all",
       "date_from": "2026-05-11",
-      "date_to": "2026-06-01",
+      "date_to": null,
       "notes": null,
-      "raw": "LB - 11.05-01.06 (group 1) room 505, 08.06 (all group) room 124 Virtualization and Cloud Security, Afonenko A.A./\nLB - 04.05-01.06 (group 2) room 707 Computer Security Software and Hardware Tools, Trukhanovich Alexsei L."
+      "raw": "LB - 11.05 cancellation, 18.05-01.06 (group 1) room 505, 08.06 (all group) room 124 Virtualization and Cloud Security, Afonenko A.A./\nLB - 04.05-01.06 (group 2) room 707 Computer Security Software and Hardware Tools, Trukhanovich Alexsei L."
     },
     {
       "id": "e4be34d43b7c",
@@ -19962,7 +19962,7 @@
       "date_from": "2026-05-04",
       "date_to": "2026-06-01",
       "notes": null,
-      "raw": "LB - 11.05-01.06 (group 1) room 505, 08.06 (all group) room 124 Virtualization and Cloud Security, Afonenko A.A./\nLB - 04.05-01.06 (group 2) room 707 Computer Security Software and Hardware Tools, Trukhanovich Alexsei L."
+      "raw": "LB - 11.05 cancellation, 18.05-01.06 (group 1) room 505, 08.06 (all group) room 124 Virtualization and Cloud Security, Afonenko A.A./\nLB - 04.05-01.06 (group 2) room 707 Computer Security Software and Hardware Tools, Trukhanovich Alexsei L."
     },
     {
       "id": "42caa7959fd8",
@@ -20097,7 +20097,7 @@
       "raw": "LB -  08.04-03.06 - odd week- group 2 room 526 (street Kurcharova,7),15.04-10.06-even week-group 1 room 526 (street Kurcharova,7) Operating System Security, Subach A.A."
     },
     {
-      "id": "b1c912e2597a",
+      "id": "60ae80a01515",
       "group_ids": [
         "y4-en-gА51"
       ],
@@ -20105,7 +20105,7 @@
       "pair_number": null,
       "time_start": "17:20",
       "time_end": "18:45",
-      "subject": "Virtualization and Cloud Security",
+      "subject": "cancellation Virtualization and Cloud Security",
       "lesson_type": "lab",
       "teacher": "Afonenko A.A.",
       "rooms": [
@@ -20115,12 +20115,12 @@
       "subgroup": null,
       "weeks": "all",
       "date_from": "2026-05-13",
-      "date_to": "2026-06-03",
+      "date_to": null,
       "notes": null,
-      "raw": "LB - 13.05-03.06 (group 2) room 505, 10.06 (all group) room 124  Virtualization and Cloud Security, Afonenko A.A."
+      "raw": "LB - 13.05 cancellation, 20.05-03.06 (group 2) room 505, 10.06 (all group) room 124  Virtualization and Cloud Security, Afonenko A.A."
     },
     {
-      "id": "5f784952ab9f",
+      "id": "3c9e4982cd39",
       "group_ids": [
         "y4-en-gА51"
       ],
@@ -20128,7 +20128,7 @@
       "pair_number": null,
       "time_start": "18:55",
       "time_end": "20:20",
-      "subject": "Virtualization and Cloud Security",
+      "subject": "cancellation Virtualization and Cloud Security",
       "lesson_type": "lab",
       "teacher": "Afonenko A.A.",
       "rooms": [
@@ -20138,9 +20138,9 @@
       "subgroup": null,
       "weeks": "all",
       "date_from": "2026-05-13",
-      "date_to": "2026-06-03",
+      "date_to": null,
       "notes": null,
-      "raw": "LB - 13.05-03.06 (group 2) room 505, 10.06 (all group) room 124   Virtualization and Cloud Security, Afonenko A.A."
+      "raw": "LB - 13.05 cancellation, 20.05-03.06 (group 2) room 505, 10.06 (all group) room 124   Virtualization and Cloud Security, Afonenko A.A."
     },
     {
       "id": "00e3aab433e9",
