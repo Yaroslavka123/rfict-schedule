@@ -600,13 +600,48 @@ function parseCellContent_(value, richText, background) {
     nonSubjectLines = lines;
   }
 
+  // Склеиваем последовательные жирные строки без teacher/subgroup между ними в один предмет
+  // "Цифровая обработка\nсигнала" (обе bold, рядом) → один предмет
+  // "МЭТМиНЭ\n...\nОсн Сенс" (жирные, но с преподом/подгруппой между) → два предмета
+  // subjectFirstLines: первая оригинальная строка каждого объединённого предмета (для parseMultiSubjectLab_)
+  const subjectFirstLines = [];
+  if (subjectLines.length > 1) {
+    const merged = [subjectLines[0]];
+    subjectFirstLines.push(subjectLines[0]);
+    for (let i = 1; i < subjectLines.length; i++) {
+      const prevIdx = lines.indexOf(subjectLines[i - 1]);
+      const currIdx = lines.indexOf(subjectLines[i]);
+      let hasBreaker = false;
+      for (let j = prevIdx + 1; j < currIdx; j++) {
+        if (looksLikeTeacher_(lines[j]) || looksLikeSubgroup_(lines[j])) {
+          hasBreaker = true;
+          break;
+        }
+      }
+      if (hasBreaker || currIdx - prevIdx > 2) {
+        merged.push(subjectLines[i]);
+        subjectFirstLines.push(subjectLines[i]);
+      } else {
+        merged[merged.length - 1] += ' ' + subjectLines[i];
+      }
+    }
+    subjectLines = merged;
+  } else if (subjectLines.length === 1) {
+    subjectFirstLines.push(subjectLines[0]);
+  }
+
   const lessonType = detectLessonType_(background);
   const cancelled = lines.some(l => /^\s*ОТМЕНА\s*$/i.test(l.trim()));
 
   // Позиционный парсинг: порядок в ячейке — notes, subject, subgroup, teacher, comment, ОТМЕНА
   // notes = строки ДО предмета (дата-пометки «с/по/до»)
   // comment = красные строки ПОСЛЕ преподавателя (не subgroup, не ОТМЕНА)
-  const subjectIdx = subjectLines.length ? lines.indexOf(subjectLines[0]) : -1;
+  // subjectIdx: позиция первого жирного слова в lines (до merge subjectLines могли быть склеены)
+  let subjectIdx = -1;
+  if (subjectLines.length) {
+    const firstWord = subjectLines[0].split(' ')[0];
+    subjectIdx = lines.findIndex(l => l.startsWith(firstWord));
+  }
   const teacher = nonSubjectLines.find(looksLikeTeacher_) || '';
   const teacherIdx = teacher ? lines.indexOf(teacher) : subjectIdx;
   const subgroup = nonSubjectLines.find(looksLikeSubgroup_) || '';
@@ -635,7 +670,7 @@ function parseCellContent_(value, richText, background) {
   // Попытка разобрать multi-subject (лабы и не только)
   let labSubgroups = null;
   if (subjectLines.length > 1) {
-    labSubgroups = parseMultiSubjectLab_(lines, subjectLines);
+    labSubgroups = parseMultiSubjectLab_(lines, subjectLines, subjectFirstLines);
   }
 
   const subject = subjectLines.length > 1 ? subjectLines[0] : subjectLines.join(' ');
@@ -653,21 +688,40 @@ function parseCellContent_(value, richText, background) {
 }
 
 /**
- * Парсит сложную ячейку лабы с несколькими предметами.
- * Формат: [Предмет(bold), Подгруппа, Препод, ..., Предмет(bold), ...]
+ * Парсит сложную ячейку с несколькими предметами.
+ * subjectLines — объединённые названия (могут не совпадать с allLines)
+ * firstLines — первая строка каждого объединённого предмета (для поиска в allLines)
  */
-function parseMultiSubjectLab_(allLines, subjectLines) {
-  const subjectSet = new Set(subjectLines.map(s => s.trim()));
+function parseMultiSubjectLab_(allLines, subjectLines, firstLines) {
+  // Карта: первая строка оригинала → объединённый предмет
+  const firstLineToSubject = {};
+  for (let i = 0; i < (firstLines || subjectLines).length; i++) {
+    firstLineToSubject[(firstLines || subjectLines)[i].trim()] = subjectLines[i].trim();
+  }
+  // Собираем все оригинальные жирные строки (для пропуска продолжений многострочных предметов)
+  const allBoldLines = new Set();
+  subjectLines.forEach(s => {
+    s.split(' ').forEach(word => {
+      allLines.forEach(l => {
+        if (l.trim() === word || s.includes(l.trim())) allBoldLines.add(l.trim());
+      });
+    });
+  });
+
   const groups = [];
   let current = null;
 
   allLines.forEach(line => {
     const trimmed = line.trim();
     if (!trimmed || /^[─━\-]+$/.test(trimmed)) return;
-    if (subjectSet.has(trimmed)) {
-      current = { subject: trimmed, subgroup: '', teacher: '', notes: '', comment: '', cancelled: false };
+    if (firstLineToSubject[trimmed]) {
+      current = { subject: firstLineToSubject[trimmed], subgroup: '', teacher: '', notes: '', comment: '', cancelled: false };
       groups.push(current);
     } else if (current) {
+      // Пропускаем продолжения многострочного предмета (bold строки, не первые)
+      if (current.subject.includes(trimmed) && !looksLikeTeacher_(trimmed) && !looksLikeSubgroup_(trimmed)) {
+        return;
+      }
       if (looksLikeTeacher_(trimmed) && !current.teacher) {
         current.teacher = trimmed;
       } else if (looksLikeSubgroup_(trimmed) && !current.subgroup) {
