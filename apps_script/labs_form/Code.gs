@@ -32,8 +32,8 @@ const GH_REPO_OWNER = 'Yaroslavka123';
 const GH_REPO_NAME  = 'rfict-schedule';
 const SCHEDULE_DIR  = 'public/schedule/';
 
-// Минимальный интервал между экспортами (мс).
-const DISPATCH_COOLDOWN_MS = 30 * 1000; // 30 сек
+// Задержка перед экспортом после последнего изменения (мс).
+const EXPORT_DELAY_MS = 2 * 60 * 1000; // 2 минуты
 const SUBJECT_COL = 1; // A
 const TEACHER_COL = 2; // B
 const ROOM_COL = 3;    // C
@@ -324,7 +324,7 @@ function applyLesson(data) {
   });
 
   SpreadsheetApp.flush();
-  dispatchScheduleUpdate_('form:applyLesson', cellAddress_(row, col));
+  scheduleDelayedExport_(sheet.getName());
   return {ok: true, cell: cellAddress_(row, col)};
 }
 
@@ -365,8 +365,6 @@ function dispatchResultMessage_(result) {
   switch (result.reason) {
     case 'no_token':
       return 'GITHUB_TOKEN не задан в Script Properties.\nНастрой токен: ⚙ Project Settings → Script Properties → GITHUB_TOKEN.';
-    case 'cooldown':
-      return 'Cooldown: предыдущий экспорт был < 30 сек назад.\nПодожди немного и попробуй снова.';
     default:
       return 'Экспорт не удался: ' + (result.message || result.reason) + '.';
   }
@@ -831,15 +829,78 @@ function onSheetEdit(e) {
   if (!e || !e.source || !e.range) return;
   const sheetName = e.range.getSheet().getName();
   if (sheetName === DICT_SHEET_NAME) return;
-  const rangeStr = e.range.getA1Notation();
-  dispatchScheduleUpdate_('onEdit', rangeStr, sheetName);
+  scheduleDelayedExport_(sheetName);
+}
+
+/**
+ * Планирует отложенный экспорт через 2 минуты (debounce).
+ * При каждом новом изменении таймер сбрасывается.
+ */
+function scheduleDelayedExport_(sheetName) {
+  const props = PropertiesService.getScriptProperties();
+
+  // Удаляем предыдущий запланированный триггер (сброс таймера)
+  const existingId = props.getProperty('_pendingExportTriggerId');
+  if (existingId) {
+    var triggers = ScriptApp.getProjectTriggers();
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getUniqueId() === existingId) {
+        ScriptApp.deleteTrigger(triggers[i]);
+        break;
+      }
+    }
+  }
+
+  // Запоминаем какой лист изменился
+  var pending = props.getProperty('_pendingExportSheet');
+  if (pending && pending !== sheetName) {
+    props.setProperty('_pendingExportSheet', '__ALL__');
+  } else {
+    props.setProperty('_pendingExportSheet', sheetName || '__ALL__');
+  }
+
+  // Новый триггер через 2 минуты
+  var trigger = ScriptApp.newTrigger('runDelayedExport_')
+    .timeBased()
+    .after(EXPORT_DELAY_MS)
+    .create();
+  props.setProperty('_pendingExportTriggerId', trigger.getUniqueId());
+}
+
+/**
+ * Вызывается по таймеру — выполняет отложенный экспорт.
+ */
+function runDelayedExport_() {
+  const props = PropertiesService.getScriptProperties();
+
+  // Чистим триггер
+  var triggerId = props.getProperty('_pendingExportTriggerId');
+  props.deleteProperty('_pendingExportTriggerId');
+  if (triggerId) {
+    var triggers = ScriptApp.getProjectTriggers();
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getUniqueId() === triggerId) {
+        ScriptApp.deleteTrigger(triggers[i]);
+        break;
+      }
+    }
+  }
+
+  var sheetName = props.getProperty('_pendingExportSheet');
+  props.deleteProperty('_pendingExportSheet');
+
+  if (sheetName === '__ALL__' || !sheetName) {
+    dispatchScheduleUpdate_('delayed-export', '');
+  } else {
+    dispatchScheduleUpdate_('delayed-export', '', sheetName);
+  }
 }
 
 /**
  * Экспорт JSON в GitHub + webhook.
- * source — 'form:applyLesson', 'onEdit', 'manual-menu'.
+ * source — 'delayed-export', 'manual-menu', 'manual-test'.
  * detail — адрес ячейки.
- * editedSheetName — название листа (при onEdit обновляем только его).
+ * editedSheetName — название листа (обновляем только его, иначе все).
  */
 function dispatchScheduleUpdate_(source, detail, editedSheetName) {
   const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
@@ -848,19 +909,9 @@ function dispatchScheduleUpdate_(source, detail, editedSheetName) {
     return {sent: false, reason: 'no_token'};
   }
 
-  // Cooldown (manual-menu игнорирует)
-  const props = PropertiesService.getScriptProperties();
-  const lastDispatch = parseInt(props.getProperty('_lastDispatchMs') || '0', 10);
-  const now = Date.now();
-  if (source !== 'manual-menu' && now - lastDispatch < DISPATCH_COOLDOWN_MS) {
-    console.log('export cooldown, skipping (' + source + ')');
-    return {sent: false, reason: 'cooldown'};
-  }
-  props.setProperty('_lastDispatchMs', String(now));
-
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (editedSheetName && source === 'onEdit') {
+    if (editedSheetName) {
       exportSingleSheet_(ss, editedSheetName, token);
     } else {
       exportAllSheets_(ss, token);
