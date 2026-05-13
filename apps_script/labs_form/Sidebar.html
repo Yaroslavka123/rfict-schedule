@@ -319,9 +319,9 @@
     <label>Период</label>
     <div class="date-row">
       <span>с</span>
-      <input type="text" id="date-from" placeholder="03.03" />
+      <input type="text" id="date-from" placeholder="03.03" maxlength="5" inputmode="numeric" />
       <span>по</span>
-      <input type="text" id="date-to" placeholder="26.05" />
+      <input type="text" id="date-to" placeholder="26.05" maxlength="5" inputmode="numeric" />
     </div>
 
     <label>Комментарий</label>
@@ -457,14 +457,16 @@
     block.appendChild(el('label', null, 'Период'));
     const dateRow = el('div', {class: 'date-row'});
     dateRow.appendChild(el('span', null, 'с'));
-    const dfInput = el('input', {type: 'text', placeholder: '03.03', 'class': 'sg-date-from'});
+    const dfInput = el('input', {type: 'text', placeholder: '03.03', 'class': 'sg-date-from', maxLength: 5, inputMode: 'numeric'});
     dfInput.value = (prefill && prefill.date_from) || '';
     dateRow.appendChild(dfInput);
     dateRow.appendChild(el('span', null, 'по'));
-    const dtInput = el('input', {type: 'text', placeholder: '26.05', 'class': 'sg-date-to'});
+    const dtInput = el('input', {type: 'text', placeholder: '26.05', 'class': 'sg-date-to', maxLength: 5, inputMode: 'numeric'});
     dtInput.value = (prefill && prefill.date_to) || '';
     dateRow.appendChild(dtInput);
     block.appendChild(dateRow);
+    setupDateMask(dfInput);
+    setupDateMask(dtInput);
 
     // Comment
     const commentInput = el('input', {type: 'text', placeholder: 'комментарий', 'class': 'sg-comment'});
@@ -854,6 +856,37 @@
     return result;
   }
 
+  // ─── Date mask: auto-dot + digits only, max DD.MM ──────────────────
+  function setupDateMask(input) {
+    if (!input || input._dateMask) return;
+    input._dateMask = true;
+    input.maxLength = 5;
+    input.inputMode = 'numeric';
+    input.addEventListener('input', () => {
+      let v = input.value.replace(/[^\d.]/g, '');
+      // Auto-dot after 2 digits if no dot yet
+      if (v.length >= 2 && !v.includes('.')) {
+        v = v.substring(0, 2) + '.' + v.substring(2);
+      }
+      // Only allow one dot
+      const parts = v.split('.');
+      if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
+      // Limit to DD.MM
+      if (v.length > 5) v = v.substring(0, 5);
+      // Limit day 01-31, month 01-12
+      if (parts[0] && parseInt(parts[0]) > 31) v = '31' + v.substring(2);
+      if (parts.length > 1 && parts[1].length === 2 && parseInt(parts[1]) > 12) {
+        v = parts[0] + '.12';
+      }
+      input.value = v;
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key.length === 1 && !/[\d.]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+      }
+    });
+  }
+
   function colLetter(col) {
     let s = '';
     while (col > 0) {
@@ -958,6 +991,10 @@
   setupAutocomplete('subject', 'ac-subjects', () => dictData.subjects);
   setupAutocomplete('teacher', 'ac-teachers', () => dictData.teachers);
   setupAutocomplete('room', 'ac-rooms', () => dictData.rooms);
+
+  // ─── Init date masks for single-block fields ──────────────────────
+  setupDateMask(document.getElementById('date-from'));
+  setupDateMask(document.getElementById('date-to'));
 
   // ─── Init: one call for cell info + dicts ────────────────────────────
   google.script.run.withSuccessHandler(info => {
