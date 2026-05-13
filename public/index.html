@@ -551,7 +551,9 @@
           }
 
           html += '<tr class="' + cls + '">';
-          html += '<td>' + (l.pair || '') + '</td>';
+          var pairText = l.pair || '';
+          if (l.duration && l.duration > 1) pairText += '-' + (l.pair + l.duration - 1);
+          html += '<td>' + pairText + '</td>';
           html += '<td class="pair-time">' + (l.time || '') + '</td>';
           html += '<td><span class="type-badge ' + typeClass + '">' + (TYPE_LABELS[l.type] || l.type || '?') + '</span></td>';
           html += '<td class="subject-cell">' + esc(l.subject || '') + (l.cancelled ? ' <span style="color:var(--red)">ОТМЕНА</span>' : '') + '</td>';
