@@ -1,6 +1,6 @@
 {
   "name": "11.05-16.05(14-я неделя)",
-  "generated_at": "2026-05-13T23:25:51.081Z",
+  "generated_at": "2026-05-13T23:31:27.886Z",
   "course": 3,
   "semester": 6,
   "week_number": 14,
@@ -1384,7 +1384,7 @@
       "time": "12:10 - 13:35",
       "group": "3",
       "type": "lab",
-      "subject": "ЧМПМиНЭ",
+      "subject": "Осн Сенс",
       "teacher": "доц. ЛеонтьевА.В.",
       "room": "66/k1",
       "subgroup": "3ПГ чет",
@@ -1402,7 +1402,7 @@
       "time": "12:10 - 13:35",
       "group": "3",
       "type": "lab",
-      "subject": "ЧМПМиНЭ",
+      "subject": "МЭТМиНЭ",
       "teacher": "доц. ЛюдчикО.Р.",
       "room": "26/K1",
       "subgroup": "3ПГ нечет",
@@ -1420,7 +1420,7 @@
       "time": "12:10 - 13:35",
       "group": "3",
       "type": "lab",
-      "subject": "ЧМПМиНЭ",
+      "subject": "УИППвМЭ",
       "teacher": "доц. БурмаковА.П.",
       "room": "87/k1",
       "subgroup": "2ПГ нечет",
@@ -1438,7 +1438,7 @@
       "time": "12:10 - 13:35",
       "group": "3",
       "type": "lab",
-      "subject": "ЧМПМиНЭ",
+      "subject": "МиНЭ",
       "teacher": "доц. ЛобанокМ.В.",
       "room": "87/K1",
       "subgroup": "1ПГ чет",
@@ -2363,7 +2363,7 @@
       "frequency": null,
       "period_start": null,
       "period_end": null,
-      "comment": "на 13.05",
+      "comment": "25/К1 на 13.05",
       "cancelled": false
     },
     {
@@ -2381,7 +2381,7 @@
       "frequency": null,
       "period_start": null,
       "period_end": null,
-      "comment": "на 13.05",
+      "comment": "25/К1 на 13.05",
       "cancelled": false
     },
     {
