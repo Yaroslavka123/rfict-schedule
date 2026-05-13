@@ -879,6 +879,7 @@ const COLOR_TO_TYPE_MAP_ = {
   '#d9ead3': 'lecture',
   '#fce5cd': 'lab',
   '#c9daf8': 'practice',
+  '#ffffff': 'seminar',
   '#fff2cc': 'curator_hour',
   '#d9d2e9': 'additional',
 };
