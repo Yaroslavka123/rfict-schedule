@@ -934,7 +934,7 @@ function pushSheet_(ws, meta, token) {
   };
 
   var courseDir = 'course_' + (meta.course || 'unknown');
-  var fileName = sheetName.replace(/[\s/\\:*?"<>|]/g, '_') + '.json';
+  var fileName = weekNumber + '.json';
   var filePath = SCHEDULE_DIR + courseDir + '/' + fileName;
   var content = JSON.stringify(json, null, 2);
   pushFileToGitHub_(filePath, content, token);
@@ -1048,6 +1048,20 @@ function parseWeekSheet_(sheet, groups) {
   var allValues = sheet.getRange(1, 1, lastRow, lastCol).getValues();
   var allBgs = sheet.getRange(1, 1, lastRow, lastCol).getBackgrounds();
 
+  // Карта merged-ячеек: mergeMap[row][col] = {startRow, numRows}
+  var mergeMap = {};
+  var mergedRanges = sheet.getRange(1, 1, lastRow, lastCol).getMergedRanges();
+  for (var m = 0; m < mergedRanges.length; m++) {
+    var mr = mergedRanges[m];
+    var startR = mr.getRow();
+    var startC = mr.getColumn();
+    var numR = mr.getNumRows();
+    if (numR > 1) {
+      if (!mergeMap[startR]) mergeMap[startR] = {};
+      mergeMap[startR][startC] = numR;
+    }
+  }
+
   var lessons = [];
   var currentDay = '';
   var currentDayNum = 0;
@@ -1079,6 +1093,14 @@ function parseWeekSheet_(sheet, groups) {
       var type = COLOR_TO_TYPE_MAP_[bg] || 'unknown';
       var roomValue = roomColIdx < lastCol ? String(allValues[r][roomColIdx] || '') : '';
 
+      // Определяем duration (количество пар) из merged range
+      var duration = 1;
+      var col1based = colIdx + 1;
+      var row1based = r + 1;
+      if (mergeMap[row1based] && mergeMap[row1based][col1based]) {
+        duration = mergeMap[row1based][col1based];
+      }
+
       var parsed = parseLessonCell_(cellValue, roomValue);
       for (var p = 0; p < parsed.length; p++) {
         var entry = parsed[p];
@@ -1086,6 +1108,7 @@ function parseWeekSheet_(sheet, groups) {
           day: currentDay,
           day_number: currentDayNum,
           pair: pair,
+          duration: duration,
           time: time,
           group: group.id,
           type: type,
