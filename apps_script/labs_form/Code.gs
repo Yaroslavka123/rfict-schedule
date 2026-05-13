@@ -25,15 +25,14 @@ const LESSON_TYPES = [
 const DICT_SHEET_NAME = 'Справочники';
 
 // ──────────────────────────────────────────────────────────────────────────
-// GitHub Actions dispatch (обновление schedule.json по событию)
+// GitHub — экспорт schedule.json по событию
 // ──────────────────────────────────────────────────────────────────────────
 
 const GH_REPO_OWNER = 'Yaroslavka123';
 const GH_REPO_NAME  = 'rfict-schedule';
-const GH_EVENT_TYPE = 'sheets-edited';
+const SCHEDULE_JSON_PATH = 'public/schedule.json';
 
-// Минимальный интервал между dispatch-запросами (мс).
-// Защита от спама при быстрых последовательных правках.
+// Минимальный интервал между экспортами (мс).
 const DISPATCH_COOLDOWN_MS = 30 * 1000; // 30 сек
 const SUBJECT_COL = 1; // A
 const TEACHER_COL = 2; // B
@@ -361,15 +360,15 @@ function manualDispatch() {
 }
 
 function dispatchResultMessage_(result) {
-  if (!result) return 'Dispatch не выполнен (неизвестная ошибка).';
-  if (result.sent) return 'Запрос отправлен в GitHub Actions.\nschedule.json обновится через ~30-40 сек.';
+  if (!result) return 'Экспорт не выполнен (неизвестная ошибка).';
+  if (result.sent) return 'schedule.json обновлён и запушен в GitHub.';
   switch (result.reason) {
     case 'no_token':
       return 'GITHUB_TOKEN не задан в Script Properties.\nНастрой токен: ⚙ Project Settings → Script Properties → GITHUB_TOKEN.';
     case 'cooldown':
-      return 'Cooldown: предыдущий dispatch был < 30 сек назад.\nПодожди немного и попробуй снова.';
+      return 'Cooldown: предыдущий экспорт был < 30 сек назад.\nПодожди немного и попробуй снова.';
     default:
-      return 'Dispatch не удался: ' + (result.message || result.reason) + '.';
+      return 'Экспорт не удался: ' + (result.message || result.reason) + '.';
   }
 }
 
@@ -816,7 +815,7 @@ function looksLikeNotes_(s) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// GitHub Actions dispatch — обновление schedule.json по событию
+// Экспорт schedule.json — парсинг таблицы + пуш в GitHub
 // ──────────────────────────────────────────────────────────────────────────
 
 /**
@@ -828,7 +827,6 @@ function looksLikeNotes_(s) {
  *     Event type:   On edit
  */
 function onSheetEdit(e) {
-  // Не срабатывать на правки в листе «Справочники»
   if (e && e.source && e.range) {
     const sheetName = e.range.getSheet().getName();
     if (sheetName === DICT_SHEET_NAME) return;
@@ -838,66 +836,365 @@ function onSheetEdit(e) {
 }
 
 /**
- * Отправить repository_dispatch в GitHub Actions.
- * source — откуда вызов ('form:applyLesson', 'onEdit', 'manual-test').
+ * Собрать schedule.json из всех листов и запушить в GitHub.
+ * source — откуда вызов ('form:applyLesson', 'onEdit', 'manual-menu').
  * detail — доп. информация (адрес ячейки, и т.п.).
  */
 function dispatchScheduleUpdate_(source, detail) {
   const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
   if (!token) {
-    console.warn('GITHUB_TOKEN not set in Script Properties — dispatch skipped');
+    console.warn('GITHUB_TOKEN not set — export skipped');
     return {sent: false, reason: 'no_token'};
   }
 
-  // Cooldown: не шлём dispatch чаще чем раз в DISPATCH_COOLDOWN_MS
+  // Cooldown: не экспортируем чаще чем раз в DISPATCH_COOLDOWN_MS
+  // (manual-menu игнорирует cooldown)
   const props = PropertiesService.getScriptProperties();
   const lastDispatch = parseInt(props.getProperty('_lastDispatchMs') || '0', 10);
   const now = Date.now();
-  if (now - lastDispatch < DISPATCH_COOLDOWN_MS) {
-    console.log('dispatch cooldown, skipping (' + source + ')');
+  if (source !== 'manual-menu' && now - lastDispatch < DISPATCH_COOLDOWN_MS) {
+    console.log('export cooldown, skipping (' + source + ')');
     return {sent: false, reason: 'cooldown'};
   }
   props.setProperty('_lastDispatchMs', String(now));
 
-  const url = 'https://api.github.com/repos/' + GH_REPO_OWNER + '/' + GH_REPO_NAME + '/dispatches';
-  const payload = {
-    event_type: GH_EVENT_TYPE,
-    client_payload: {
-      source: source,
-      detail: detail || '',
-      sheet: (SpreadsheetApp.getActiveSpreadsheet() || {getName: () => 'unknown'}).getName(),
-      user: (Session.getEffectiveUser() || {getEmail: () => ''}).getEmail(),
-      at: new Date().toISOString(),
-    },
-  };
-
   try {
-    const resp = UrlFetchApp.fetch(url, {
-      method: 'post',
-      contentType: 'application/json',
-      headers: {
-        'Accept': 'application/vnd.github+json',
-        'Authorization': 'Bearer ' + token,
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true,
-    });
-    const code = resp.getResponseCode();
-    if (code >= 300) {
-      console.error('dispatch failed: ' + code + ' ' + resp.getContentText());
-      return {sent: false, reason: 'http_' + code};
-    }
-    console.log('dispatch OK (' + source + ')');
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const json = buildScheduleJSON_(ss);
+    const content = JSON.stringify(json, null, 2);
+    pushFileToGitHub_(SCHEDULE_JSON_PATH, content, token);
+    console.log('schedule.json pushed (' + source + ', ' + detail + ')');
     return {sent: true};
   } catch (err) {
-    console.error('dispatch error: ' + err.message);
+    console.error('export error: ' + err.message);
     return {sent: false, reason: 'error', message: err.message};
   }
 }
 
-/** Ручной тест dispatch — можно запустить из редактора Apps Script. */
+// ──────────────────────────────────────────────────────────────────────────
+// Построение JSON из всех листов расписания
+// ──────────────────────────────────────────────────────────────────────────
+
+const COLOR_TO_TYPE_MAP_ = {
+  '#d9ead3': 'lecture',
+  '#fce5cd': 'lab',
+  '#c9daf8': 'practice',
+  '#fff2cc': 'curator_hour',
+  '#d9d2e9': 'additional',
+};
+
+const DAY_NAMES_ = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+function buildScheduleJSON_(ss) {
+  const sheets = ss.getSheets();
+  const weekSheets = sheets.filter(function(s) {
+    var name = s.getName();
+    return /неделя\)?\s*$/.test(name) && !/черновик/i.test(name);
+  });
+  if (!weekSheets.length) throw new Error('Не найдены листы расписания');
+
+  // Мета-информация из первого листа
+  var firstSheet = weekSheets[0];
+  var course = firstSheet.getRange('A2').getValue();
+  var semesterMatch = String(firstSheet.getRange('D1').getValue() || '').match(/(\d+)\s*семестр/);
+  var semester = semesterMatch ? parseInt(semesterMatch[1], 10) : null;
+
+  // Группы (одинаковые на всех листах)
+  var groups = discoverGroups_(firstSheet);
+
+  // Парсим каждый лист
+  var allLessons = [];
+  for (var i = 0; i < weekSheets.length; i++) {
+    var ws = weekSheets[i];
+    var weekName = ws.getName().trim();
+    var weekMatch = weekName.match(/(\d+)-я неделя/);
+    var weekNumber = weekMatch ? parseInt(weekMatch[1], 10) : i + 1;
+    var dateMatch = weekName.match(/^([\d.]+\s*-\s*[\d.]+)/);
+    var dateRange = dateMatch ? dateMatch[1] : '';
+
+    var lessons = parseWeekSheet_(ws, groups);
+    for (var j = 0; j < lessons.length; j++) {
+      lessons[j].week = weekName;
+      lessons[j].week_number = weekNumber;
+      lessons[j].date_range = dateRange;
+    }
+    allLessons = allLessons.concat(lessons);
+  }
+
+  return {
+    generated_at: new Date().toISOString(),
+    course: typeof course === 'number' ? course : parseInt(course, 10) || null,
+    semester: semester,
+    groups: groups.map(function(g) {
+      return {id: g.id, name: g.name, specialty: g.specialty, department: g.department};
+    }),
+    lessons: allLessons,
+  };
+}
+
+/**
+ * Определяет группы из строки 5 листа.
+ * Каждая группа занимает 2 колонки: контент + аудитория.
+ */
+function discoverGroups_(sheet) {
+  var lastCol = sheet.getLastColumn();
+  var row4 = sheet.getRange(4, 1, 1, lastCol).getValues()[0];
+  var row5 = sheet.getRange(5, 1, 1, lastCol).getValues()[0];
+
+  // Определяем кафедры из строки 4 (заполняем пробелы merged-ячеек)
+  var departments = [];
+  var currentDept = '';
+  for (var c = 0; c < lastCol; c++) {
+    var v4 = String(row4[c] || '').trim();
+    if (v4) currentDept = v4;
+    departments[c] = currentDept;
+  }
+
+  var groups = [];
+  for (var c = 0; c < lastCol; c++) {
+    var val = String(row5[c] || '').trim();
+    if (!val.match(/^Группа\s/)) continue;
+    var parts = val.split('\n');
+    var idMatch = parts[0].match(/Группа\s+(.+)/);
+    var groupId = idMatch ? idMatch[1].trim() : String(c);
+    groups.push({
+      id: groupId,
+      name: parts[0].trim(),
+      specialty: parts.length > 1 ? parts.slice(1).join(' ').trim() : '',
+      department: departments[c] || '',
+      content_col: c + 1,
+      room_col: c + 2,
+    });
+  }
+  return groups;
+}
+
+/**
+ * Парсит один лист-неделю.
+ */
+function parseWeekSheet_(sheet, groups) {
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 6 || lastCol < 4) return [];
+
+  var allValues = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+  var allBgs = sheet.getRange(1, 1, lastRow, lastCol).getBackgrounds();
+
+  var lessons = [];
+  var currentDay = '';
+  var currentDayNum = 0;
+
+  for (var r = 5; r < lastRow; r++) {
+    var dayVal = String(allValues[r][0] || '').trim();
+    var dayIdx = DAY_NAMES_.indexOf(dayVal);
+    if (dayIdx >= 0) {
+      currentDay = dayVal;
+      currentDayNum = dayIdx + 1;
+    }
+
+    var pair = allValues[r][1];
+    var time = String(allValues[r][2] || '').replace(/\n/g, ' ').trim();
+    if (!pair || !currentDay) continue;
+    pair = typeof pair === 'number' ? pair : parseInt(pair, 10);
+    if (isNaN(pair)) continue;
+
+    for (var g = 0; g < groups.length; g++) {
+      var group = groups[g];
+      var colIdx = group.content_col - 1;
+      var roomColIdx = group.room_col - 1;
+      if (colIdx >= lastCol) continue;
+
+      var cellValue = String(allValues[r][colIdx] || '').trim();
+      if (!cellValue) continue;
+
+      var bg = (allBgs[r][colIdx] || '').toLowerCase();
+      var type = COLOR_TO_TYPE_MAP_[bg] || 'unknown';
+      var roomValue = roomColIdx < lastCol ? String(allValues[r][roomColIdx] || '') : '';
+
+      var parsed = parseLessonCell_(cellValue, roomValue);
+      for (var p = 0; p < parsed.length; p++) {
+        var entry = parsed[p];
+        lessons.push({
+          day: currentDay,
+          day_number: currentDayNum,
+          pair: pair,
+          time: time,
+          group: group.id,
+          type: type,
+          subject: entry.subject,
+          teacher: entry.teacher,
+          room: entry.room,
+          subgroup: entry.subgroup || null,
+          frequency: entry.frequency || null,
+          notes: entry.notes || null,
+          comment: entry.comment || null,
+          cancelled: entry.cancelled || false,
+        });
+      }
+    }
+  }
+  return lessons;
+}
+
+/**
+ * Парсит содержимое одной ячейки занятия.
+ * Разделяет по ─── на отдельные подгруппы/предметы.
+ * Также детектирует несколько предметов без разделителя
+ * (новый предмет после преподавателя).
+ */
+function parseLessonCell_(cellValue, roomValue) {
+  var blocks = cellValue.split(/\n?─{3,}\n?/);
+  var rooms = (roomValue || '').split('\n')
+    .map(function(s) { return s.trim(); })
+    .filter(function(s) { return s && !/^[─━\-]+$/.test(s); });
+
+  rooms = rooms.map(function(r) { return r.replace(/\.0$/, ''); });
+
+  var allEntries = [];
+  for (var i = 0; i < blocks.length; i++) {
+    var block = blocks[i].trim();
+    if (!block) continue;
+
+    var lines = block.split('\n')
+      .map(function(s) { return s.trim(); })
+      .filter(function(s) { return s.length > 0; });
+
+    var subEntries = splitIntoSubEntries_(lines);
+    for (var j = 0; j < subEntries.length; j++) {
+      allEntries.push(parseEntryLines_(subEntries[j]));
+    }
+  }
+
+  for (var e = 0; e < allEntries.length; e++) {
+    allEntries[e].room = rooms[e] !== undefined ? rooms[e] : (rooms[0] || '');
+  }
+  return allEntries.length > 0 ? allEntries : [];
+}
+
+/**
+ * Разбивает строки блока на под-записи.
+ * Новый предмет начинается после преподавателя, если строка
+ * не является преподом, подгруппой, датой или ОТМЕНА.
+ */
+function splitIntoSubEntries_(lines) {
+  var entries = [];
+  var current = [];
+  var hasTeacher = false;
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var isTeacher = looksLikeTeacher_(line);
+    var isSubgroup = looksLikeSubgroup_(line);
+    var isNotes = looksLikeNotes_(line);
+    var isCancel = /^\s*ОТМЕНА\s*$/i.test(line);
+
+    if (hasTeacher && !isTeacher && !isSubgroup && !isNotes && !isCancel && current.length > 0) {
+      entries.push(current);
+      current = [];
+      hasTeacher = false;
+    }
+
+    current.push(line);
+    if (isTeacher) hasTeacher = true;
+  }
+  if (current.length > 0) entries.push(current);
+  return entries;
+}
+
+function parseEntryLines_(lines) {
+  var subject = '';
+  var teacher = '';
+  var subgroup = '';
+  var frequency = '';
+  var notes = '';
+  var comment = '';
+  var cancelled = false;
+  var foundSubject = false;
+
+  for (var k = 0; k < lines.length; k++) {
+    var line = lines[k];
+    if (/^\s*ОТМЕНА\s*$/i.test(line)) {
+      cancelled = true;
+    } else if (!foundSubject && looksLikeNotes_(line)) {
+      notes = notes ? notes + '; ' + line : line;
+    } else if (looksLikeTeacher_(line)) {
+      teacher = teacher ? teacher + ', ' + line : line;
+    } else if (looksLikeSubgroup_(line)) {
+      subgroup = line;
+      if (/нечет\/чет|чет\/нечет/.test(line)) frequency = line.match(/нечет\/чет|чет\/нечет/)[0];
+      else if (/\bнечет\b/i.test(line)) frequency = 'нечет';
+      else if (/\bчет\b/i.test(line)) frequency = 'чет';
+      else if (/еженедел/i.test(line)) frequency = 'еженедельно';
+    } else if (!foundSubject) {
+      subject = subject ? subject + ' ' + line : line;
+      foundSubject = true;
+    } else if (looksLikeNotes_(line)) {
+      notes = notes ? notes + '; ' + line : line;
+    } else {
+      comment = comment ? comment + '; ' + line : line;
+    }
+  }
+
+  return {
+    subject: subject,
+    teacher: teacher,
+    room: '',
+    subgroup: subgroup,
+    frequency: frequency,
+    notes: notes,
+    comment: comment,
+    cancelled: cancelled,
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Пуш файла в GitHub через Contents API
+// ──────────────────────────────────────────────────────────────────────────
+
+function pushFileToGitHub_(path, content, token) {
+  var base = 'https://api.github.com/repos/' + GH_REPO_OWNER + '/' + GH_REPO_NAME;
+  var url = base + '/contents/' + path;
+  var headers = {
+    'Authorization': 'Bearer ' + token,
+    'Accept': 'application/vnd.github.v3+json',
+  };
+
+  // Получаем SHA текущего файла (если существует)
+  var sha = null;
+  try {
+    var getResp = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: headers,
+      muteHttpExceptions: true,
+    });
+    if (getResp.getResponseCode() === 200) {
+      sha = JSON.parse(getResp.getContentText()).sha;
+    }
+  } catch (_) { /* файл не существует */ }
+
+  var payload = {
+    message: 'chore: обновление schedule.json',
+    content: Utilities.base64Encode(content, Utilities.Charset.UTF_8),
+    branch: 'main',
+  };
+  if (sha) payload.sha = sha;
+
+  var putResp = UrlFetchApp.fetch(url, {
+    method: 'put',
+    headers: headers,
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
+  });
+
+  var code = putResp.getResponseCode();
+  if (code !== 200 && code !== 201) {
+    throw new Error('GitHub API: ' + code + ' ' + putResp.getContentText().substring(0, 200));
+  }
+}
+
+/** Ручной тест экспорта — можно запустить из редактора Apps Script. */
 function testDispatch() {
-  const result = dispatchScheduleUpdate_('manual-test', 'A1');
+  var result = dispatchScheduleUpdate_('manual-test', 'A1');
   SpreadsheetApp.getUi().alert(dispatchResultMessage_(result));
 }
