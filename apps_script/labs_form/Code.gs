@@ -851,6 +851,12 @@ function scheduleDelayedExport_(sheetName) {
     }
   }
 
+  // Сохраняем ID таблицы (нужен для openById в time-based триггере)
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss) {
+    props.setProperty('_pendingExportSpreadsheetId', ss.getId());
+  }
+
   // Запоминаем какой лист изменился
   var pending = props.getProperty('_pendingExportSheet');
   if (pending && pending !== sheetName) {
@@ -886,13 +892,20 @@ function runDelayedExport_() {
     }
   }
 
+  var ssId = props.getProperty('_pendingExportSpreadsheetId');
+  props.deleteProperty('_pendingExportSpreadsheetId');
   var sheetName = props.getProperty('_pendingExportSheet');
   props.deleteProperty('_pendingExportSheet');
 
+  if (!ssId) {
+    console.error('delayed export: no spreadsheet ID saved');
+    return;
+  }
+
   if (sheetName === '__ALL__' || !sheetName) {
-    dispatchScheduleUpdate_('delayed-export', '');
+    dispatchScheduleUpdate_('delayed-export', '', null, ssId);
   } else {
-    dispatchScheduleUpdate_('delayed-export', '', sheetName);
+    dispatchScheduleUpdate_('delayed-export', '', sheetName, ssId);
   }
 }
 
@@ -902,7 +915,7 @@ function runDelayedExport_() {
  * detail — адрес ячейки.
  * editedSheetName — название листа (обновляем только его, иначе все).
  */
-function dispatchScheduleUpdate_(source, detail, editedSheetName) {
+function dispatchScheduleUpdate_(source, detail, editedSheetName, spreadsheetId) {
   const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
   if (!token) {
     console.warn('GITHUB_TOKEN not set — export skipped');
@@ -910,7 +923,10 @@ function dispatchScheduleUpdate_(source, detail, editedSheetName) {
   }
 
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = spreadsheetId
+      ? SpreadsheetApp.openById(spreadsheetId)
+      : SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) throw new Error('Spreadsheet not found');
     if (editedSheetName) {
       exportSingleSheet_(ss, editedSheetName, token);
     } else {
