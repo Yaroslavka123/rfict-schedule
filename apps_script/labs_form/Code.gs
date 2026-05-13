@@ -635,6 +635,7 @@ function parseCellContent_(value, richText, background) {
         mergedPositions.push(currIdx);
       } else {
         merged[merged.length - 1] += ' ' + subjectLines[i];
+        mergedPositions[mergedPositions.length - 1] = currIdx;
       }
     }
     subjectLines = merged;
