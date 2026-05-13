@@ -1,6 +1,6 @@
 {
   "name": "11.05-16.05(14-я неделя)",
-  "generated_at": "2026-05-13T23:40:10.153Z",
+  "generated_at": "2026-05-13T23:43:54.350Z",
   "course": 3,
   "semester": 6,
   "week_number": 14,
@@ -811,8 +811,8 @@
       "subject": "ИАД",
       "teacher": "ст.пр. ИсмайиловаА.С.",
       "room": "508а",
-      "subgroup": "2 ПГ  еженедельно",
-      "frequency": "еженедельно",
+      "subgroup": "2ПГ",
+      "frequency": null,
       "period_start": null,
       "period_end": null,
       "comment": "на 11.05, 18.05",
@@ -2939,7 +2939,7 @@
       "frequency": "нечет/чет",
       "period_start": null,
       "period_end": "21.05",
-      "comment": "по 21.05",
+      "comment": null,
       "cancelled": false
     },
     {
@@ -2956,7 +2956,7 @@
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
       "period_start": null,
-      "period_end": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
