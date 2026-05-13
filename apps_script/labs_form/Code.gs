@@ -544,6 +544,7 @@ function parseCellContent_(value, richText, background) {
       teacher: '',
       subgroup: '',
       notes: '',
+      comment: '',
     };
   }
 
@@ -560,7 +561,6 @@ function parseCellContent_(value, richText, background) {
       const parts = runText.split('\n').map(s => s.trim()).filter(s => s && !/^[─━\-]+$/.test(s));
       if (ts && ts.isBold()) {
         parts.forEach(p => {
-          // «ОТМЕНА» и даты-пометки — не предмет, хоть и жирные
           if (/^\s*ОТМЕНА\s*$/i.test(p)) {
             nonSubjectLines.push(p);
           } else if (looksLikeNotes_(p)) {
@@ -578,10 +578,36 @@ function parseCellContent_(value, richText, background) {
   }
 
   const lessonType = detectLessonType_(background);
-  // Отдельно собираем заметки (даты) и проверяем отмену
-  const noteLines = nonSubjectLines.filter(looksLikeNotes_);
   const cancelled = lines.some(l => /^\s*ОТМЕНА\s*$/i.test(l.trim()));
-  const notes = noteLines.filter(l => !/^\s*ОТМЕНА\s*$/i.test(l)).join('; ');
+
+  // Позиционный парсинг: порядок в ячейке — notes, subject, subgroup, teacher, comment, ОТМЕНА
+  // notes = строки ДО предмета (дата-пометки «с/по/до»)
+  // comment = красные строки ПОСЛЕ преподавателя (не subgroup, не ОТМЕНА)
+  const subjectIdx = subjectLines.length ? lines.indexOf(subjectLines[0]) : -1;
+  const teacher = nonSubjectLines.find(looksLikeTeacher_) || '';
+  const teacherIdx = teacher ? lines.indexOf(teacher) : subjectIdx;
+  const subgroup = nonSubjectLines.find(looksLikeSubgroup_) || '';
+
+  const noteLines = [];
+  const commentLines = [];
+  nonSubjectLines.forEach(l => {
+    if (/^\s*ОТМЕНА\s*$/i.test(l)) return;
+    if (looksLikeSubgroup_(l)) return;
+    if (looksLikeTeacher_(l)) return;
+    const lineIdx = lines.indexOf(l);
+    if (subjectIdx >= 0 && lineIdx < subjectIdx && looksLikeNotes_(l)) {
+      noteLines.push(l);
+    } else if (lineIdx > teacherIdx) {
+      commentLines.push(l);
+    } else if (looksLikeNotes_(l)) {
+      noteLines.push(l);
+    } else {
+      commentLines.push(l);
+    }
+  });
+
+  const notes = noteLines.join('; ');
+  const comment = commentLines.join('; ');
 
   // Попытка разобрать multi-subject лабы
   let labSubgroups = null;
@@ -590,8 +616,6 @@ function parseCellContent_(value, richText, background) {
   }
 
   const subject = subjectLines.length > 1 ? subjectLines[0] : subjectLines.join(' ');
-  const teacher = nonSubjectLines.find(looksLikeTeacher_) || '';
-  const subgroup = nonSubjectLines.find(looksLikeSubgroup_) || '';
 
   return {
     lesson_type: lessonType,
@@ -599,6 +623,7 @@ function parseCellContent_(value, richText, background) {
     teacher: teacher,
     subgroup: subgroup,
     notes: notes,
+    comment: comment,
     cancelled: cancelled,
     lab_subgroups: labSubgroups,
   };
@@ -617,7 +642,7 @@ function parseMultiSubjectLab_(allLines, subjectLines) {
     const trimmed = line.trim();
     if (!trimmed || /^[─━\-]+$/.test(trimmed)) return;
     if (subjectSet.has(trimmed)) {
-      current = { subject: trimmed, subgroup: '', teacher: '', notes: '', cancelled: false };
+      current = { subject: trimmed, subgroup: '', teacher: '', notes: '', comment: '', cancelled: false };
       groups.push(current);
     } else if (current) {
       if (looksLikeTeacher_(trimmed) && !current.teacher) {
@@ -626,8 +651,10 @@ function parseMultiSubjectLab_(allLines, subjectLines) {
         current.subgroup = trimmed;
       } else if (/^\s*ОТМЕНА\s*$/i.test(trimmed)) {
         current.cancelled = true;
-      } else if (looksLikeNotes_(trimmed) && !current.notes) {
+      } else if (looksLikeNotes_(trimmed) && !current.notes && !current.teacher) {
         current.notes = trimmed;
+      } else if (!current.comment) {
+        current.comment = trimmed;
       }
     }
   });
