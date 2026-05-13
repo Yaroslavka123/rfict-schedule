@@ -1,6 +1,6 @@
 {
   "name": "11.05-16.05(14-я неделя)",
-  "generated_at": "2026-05-13T22:33:03.506Z",
+  "generated_at": "2026-05-13T22:44:02.092Z",
   "course": 3,
   "semester": 6,
   "week_number": 14,
@@ -75,7 +75,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -92,7 +93,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -109,7 +111,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -126,7 +129,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -143,7 +147,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -160,7 +165,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -177,7 +183,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -194,7 +201,8 @@
       "room": "708",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": "с 13.04 по 05.05",
+      "period_start": "13.04",
+      "period_end": "05.05",
       "comment": null,
       "cancelled": false
     },
@@ -211,7 +219,8 @@
       "room": "609",
       "subgroup": "1ПГ чет",
       "frequency": null,
-      "notes": "по 27.05",
+      "period_start": null,
+      "period_end": "27.05",
       "comment": null,
       "cancelled": false
     },
@@ -228,7 +237,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -245,7 +255,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 01.06",
+      "period_start": null,
+      "period_end": "01.06",
       "comment": null,
       "cancelled": false
     },
@@ -262,7 +273,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 01.06",
+      "period_start": null,
+      "period_end": "01.06",
       "comment": null,
       "cancelled": false
     },
@@ -279,7 +291,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 01.06",
+      "period_start": null,
+      "period_end": "01.06",
       "comment": null,
       "cancelled": false
     },
@@ -296,7 +309,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 01.06",
+      "period_start": null,
+      "period_end": "01.06",
       "comment": null,
       "cancelled": false
     },
@@ -313,7 +327,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 01.06",
+      "period_start": null,
+      "period_end": "01.06",
       "comment": null,
       "cancelled": false
     },
@@ -330,7 +345,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 01.06",
+      "period_start": null,
+      "period_end": "01.06",
       "comment": null,
       "cancelled": false
     },
@@ -347,7 +363,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 01.06",
+      "period_start": null,
+      "period_end": "01.06",
       "comment": null,
       "cancelled": false
     },
@@ -364,7 +381,8 @@
       "room": "24/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -381,7 +399,8 @@
       "room": "49/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -398,7 +417,8 @@
       "room": "56/K1",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -415,7 +435,8 @@
       "room": "45/K1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -432,7 +453,8 @@
       "room": "81/К1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "с 04.05",
+      "period_start": "04.05",
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -449,7 +471,8 @@
       "room": "66/K1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -466,7 +489,8 @@
       "room": "602/606 K7",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -483,7 +507,8 @@
       "room": "24/K1",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -500,7 +525,8 @@
       "room": "42/K1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -517,7 +543,8 @@
       "room": "124-3",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -534,7 +561,8 @@
       "room": "508",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -551,7 +579,8 @@
       "room": "517",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -568,7 +597,8 @@
       "room": "519",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -585,7 +615,8 @@
       "room": "707",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -602,7 +633,8 @@
       "room": "505",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -619,7 +651,8 @@
       "room": "129",
       "subgroup": "3ПГ/4ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": "по 20.05",
+      "period_start": null,
+      "period_end": "20.05",
       "comment": null,
       "cancelled": false
     },
@@ -636,7 +669,8 @@
       "room": "503",
       "subgroup": "3ПГ/4ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -653,7 +687,8 @@
       "room": "608",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 20.05",
+      "period_start": null,
+      "period_end": "20.05",
       "comment": null,
       "cancelled": false
     },
@@ -670,7 +705,8 @@
       "room": "708",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -687,7 +723,8 @@
       "room": "508",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -704,7 +741,8 @@
       "room": "619",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -721,7 +759,8 @@
       "room": "91/K1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -738,7 +777,8 @@
       "room": "615",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 18.05",
+      "period_start": null,
+      "period_end": "18.05",
       "comment": null,
       "cancelled": false
     },
@@ -755,7 +795,8 @@
       "room": "45/К1",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -767,13 +808,14 @@
       "time": "15:35 - 17:00",
       "group": "2",
       "type": "lab",
-      "subject": "ИАД 2 ПГ еженедельно",
+      "subject": "ИАД",
       "teacher": "ст.пр. ИсмайиловаА.С.",
       "room": "508а",
-      "subgroup": null,
-      "frequency": null,
-      "notes": "на 11.05, 18.05",
-      "comment": null,
+      "subgroup": "2 ПГ  еженедельно",
+      "frequency": "еженедельно",
+      "period_start": null,
+      "period_end": null,
+      "comment": "на 11.05, 18.05",
       "cancelled": false
     },
     {
@@ -789,7 +831,8 @@
       "room": "64/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -806,7 +849,8 @@
       "room": "45/К1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -823,7 +867,8 @@
       "room": "517а",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -840,7 +885,8 @@
       "room": "42/К1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -857,7 +903,8 @@
       "room": "619",
       "subgroup": "2ПГ чет",
       "frequency": null,
-      "notes": "по 27.05",
+      "period_start": null,
+      "period_end": "27.05",
       "comment": null,
       "cancelled": false
     },
@@ -874,7 +921,8 @@
       "room": "ДО",
       "subgroup": null,
       "frequency": null,
-      "notes": "с 16.00",
+      "period_start": "16.00",
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -891,7 +939,8 @@
       "room": "56/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -908,7 +957,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -925,7 +975,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -942,7 +993,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -959,7 +1011,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -976,7 +1029,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -993,7 +1047,8 @@
       "room": "129",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1010,7 +1065,8 @@
       "room": "505",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1027,7 +1083,8 @@
       "room": "45/К1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -1044,7 +1101,8 @@
       "room": "67/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1061,7 +1119,8 @@
       "room": "33/К1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": "по 30.05",
+      "period_start": null,
+      "period_end": "30.05",
       "comment": null,
       "cancelled": false
     },
@@ -1078,7 +1137,8 @@
       "room": "620",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": "по 29.05",
+      "period_start": null,
+      "period_end": "29.05",
       "comment": null,
       "cancelled": false
     },
@@ -1095,7 +1155,8 @@
       "room": "708",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1112,7 +1173,8 @@
       "room": "508",
       "subgroup": "3ПГ/4ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1129,7 +1191,8 @@
       "room": "75/К1",
       "subgroup": "1ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1146,7 +1209,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1163,7 +1227,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1180,7 +1245,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1197,7 +1263,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1214,7 +1281,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1231,7 +1299,8 @@
       "room": "42/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1248,7 +1317,8 @@
       "room": "42/К1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1265,7 +1335,8 @@
       "room": "83/К1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1282,7 +1353,8 @@
       "room": "81/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1299,7 +1371,8 @@
       "room": "64/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1316,7 +1389,8 @@
       "room": "66/k1",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1333,7 +1407,8 @@
       "room": "26/K1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1350,7 +1425,8 @@
       "room": "87/k1",
       "subgroup": "2ПГ нечет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1367,7 +1443,8 @@
       "room": "87/K1",
       "subgroup": "1ПГ чет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1384,7 +1461,8 @@
       "room": "49/K1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -1401,7 +1479,8 @@
       "room": "45/К1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -1418,7 +1497,8 @@
       "room": "620",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": "по 29.05",
+      "period_start": null,
+      "period_end": "29.05",
       "comment": null,
       "cancelled": false
     },
@@ -1435,7 +1515,8 @@
       "room": "619",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 22.05",
+      "period_start": null,
+      "period_end": "22.05",
       "comment": null,
       "cancelled": false
     },
@@ -1452,7 +1533,8 @@
       "room": "514",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1469,7 +1551,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1486,7 +1569,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1503,7 +1587,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1520,7 +1605,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1537,7 +1623,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1554,7 +1641,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1571,7 +1659,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1588,7 +1677,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1605,7 +1695,8 @@
       "room": "83/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1622,7 +1713,8 @@
       "room": "45/К1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -1639,7 +1731,8 @@
       "room": "73/K1",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1656,7 +1749,8 @@
       "room": "ДО",
       "subgroup": null,
       "frequency": null,
-      "notes": "с 16.00",
+      "period_start": "16.00",
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1668,12 +1762,13 @@
       "time": "15:35 - 17:00",
       "group": "602",
       "type": "lab",
-      "subject": "ПЭД",
+      "subject": "по 21.05 ПЭД",
       "teacher": "ст.пр. БеленькаяС.С.",
       "room": "45/К1",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1690,7 +1785,8 @@
       "room": "619",
       "subgroup": "4ПГ чет",
       "frequency": null,
-      "notes": "по 27.05",
+      "period_start": null,
+      "period_end": "27.05",
       "comment": null,
       "cancelled": false
     },
@@ -1707,7 +1803,8 @@
       "room": "708",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "с 14.04 по 06.05",
+      "period_start": "14.04",
+      "period_end": "06.05",
       "comment": null,
       "cancelled": false
     },
@@ -1724,7 +1821,8 @@
       "room": "75/К1",
       "subgroup": "2ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1741,7 +1839,8 @@
       "room": "ДО",
       "subgroup": "1ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1758,7 +1857,8 @@
       "room": "31/К1",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1775,7 +1875,8 @@
       "room": "508",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1792,7 +1893,8 @@
       "room": "42/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1809,7 +1911,8 @@
       "room": "56/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": "по 20.05",
+      "period_start": null,
+      "period_end": "20.05",
       "comment": null,
       "cancelled": false
     },
@@ -1826,7 +1929,8 @@
       "room": "49/К1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -1843,7 +1947,8 @@
       "room": "45/К1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1860,7 +1965,8 @@
       "room": "31/К1",
       "subgroup": "2ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1877,7 +1983,8 @@
       "room": "514",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1894,8 +2001,9 @@
       "room": "ДО",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": "с 9.00 по 12.00",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "с 9.00 по 12.00",
       "cancelled": false
     },
     {
@@ -1911,8 +2019,9 @@
       "room": "ДО",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": "с 9.00 по 12.00",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "с 9.00 по 12.00",
       "cancelled": false
     },
     {
@@ -1928,7 +2037,8 @@
       "room": "620",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 18.05",
+      "period_start": null,
+      "period_end": "18.05",
       "comment": null,
       "cancelled": false
     },
@@ -1945,7 +2055,8 @@
       "room": "619",
       "subgroup": "3ПГ/4ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": "по 27.05",
+      "period_start": null,
+      "period_end": "27.05",
       "comment": null,
       "cancelled": false
     },
@@ -1962,7 +2073,8 @@
       "room": "75/К1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "с 13.05",
+      "period_start": "13.05",
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1979,7 +2091,8 @@
       "room": "707",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -1996,7 +2109,8 @@
       "room": "514",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2013,7 +2127,8 @@
       "room": "505",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2030,7 +2145,8 @@
       "room": "33/К1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 30.05",
+      "period_start": null,
+      "period_end": "30.05",
       "comment": null,
       "cancelled": false
     },
@@ -2047,7 +2163,8 @@
       "room": "129",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2064,7 +2181,8 @@
       "room": "129",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 20.05",
+      "period_start": null,
+      "period_end": "20.05",
       "comment": null,
       "cancelled": false
     },
@@ -2081,8 +2199,9 @@
       "room": "24/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": "на 13.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "на 13.05",
       "cancelled": false
     },
     {
@@ -2098,7 +2217,8 @@
       "room": "84/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2115,8 +2235,9 @@
       "room": "615",
       "subgroup": null,
       "frequency": null,
-      "notes": "на 13.00",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "на 13.00",
       "cancelled": false
     },
     {
@@ -2132,7 +2253,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2149,7 +2271,8 @@
       "room": "73/К1",
       "subgroup": "1ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2166,7 +2289,8 @@
       "room": "67/К1",
       "subgroup": "2ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": true
     },
@@ -2183,7 +2307,8 @@
       "room": "45/К1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -2200,8 +2325,9 @@
       "room": "608",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 20.05; На 13.05 619",
-      "comment": null,
+      "period_start": null,
+      "period_end": "20.05",
+      "comment": "На 13.05 619",
       "cancelled": false
     },
     {
@@ -2217,7 +2343,8 @@
       "room": "31/К1",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2234,8 +2361,9 @@
       "room": "615",
       "subgroup": null,
       "frequency": null,
-      "notes": "на 13.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "на 13.05",
       "cancelled": false
     },
     {
@@ -2251,8 +2379,9 @@
       "room": "615",
       "subgroup": null,
       "frequency": null,
-      "notes": "на 13.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "на 13.05",
       "cancelled": false
     },
     {
@@ -2268,7 +2397,8 @@
       "room": "64/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2285,7 +2415,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2302,7 +2433,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2319,7 +2451,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 18.05",
+      "period_start": null,
+      "period_end": "18.05",
       "comment": null,
       "cancelled": false
     },
@@ -2336,7 +2469,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2353,7 +2487,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2370,7 +2505,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2387,7 +2523,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2404,7 +2541,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2421,7 +2559,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2438,7 +2577,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2455,7 +2595,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2472,7 +2613,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2489,7 +2631,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": "с 13.05",
+      "period_start": "13.05",
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2506,7 +2649,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": "с 13.05",
+      "period_start": "13.05",
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2523,8 +2667,9 @@
       "room": "ДО",
       "subgroup": "2ПГ",
       "frequency": null,
-      "notes": "13.05,20.05,27.05, 03.06",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "13.05,20.05,27.05, 03.06",
       "cancelled": false
     },
     {
@@ -2535,12 +2680,13 @@
       "time": "09:00 - 10:25",
       "group": "601",
       "type": "lab",
-      "subject": "ПЭД",
+      "subject": "по 21.05 ПЭД",
       "teacher": "доц. ДемидчикВ.И.",
       "room": "45/К1",
       "subgroup": "1ПГ/2 ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2552,47 +2698,14 @@
       "time": "09:00 - 10:25",
       "group": "602",
       "type": "lab",
-      "subject": "БИС",
-      "teacher": "ст.пр. ТрухановичА.Л., асс. РундыгинС.Д.",
+      "subject": "БИС ЭДиУС МОиИО",
+      "teacher": "ст.пр. ТрухановичА.Л., асс. РундыгинС.Д., ст.пр. ОгурцовА.М., ст.пр. АфоненкоА.А.",
       "room": "707",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
-      "comment": null,
-      "cancelled": false
-    },
-    {
-      "day": "Чт",
-      "day_number": 4,
-      "pair": 1,
-      "duration": 2,
-      "time": "09:00 - 10:25",
-      "group": "602",
-      "type": "lab",
-      "subject": "ЭДиУС",
-      "teacher": "ст.пр. ОгурцовА.М.",
-      "room": "67/К1",
-      "subgroup": "3ПГ нечет",
-      "frequency": null,
-      "notes": null,
-      "comment": null,
-      "cancelled": false
-    },
-    {
-      "day": "Чт",
-      "day_number": 4,
-      "pair": 1,
-      "duration": 2,
-      "time": "09:00 - 10:25",
-      "group": "602",
-      "type": "lab",
-      "subject": "МОиИО",
-      "teacher": "ст.пр. АфоненкоА.А.",
-      "room": "508",
-      "subgroup": "1ПГ/2ПГ чет/чет",
-      "frequency": null,
-      "notes": null,
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "3ПГ нечет; 1ПГ/2ПГ чет/чет",
       "cancelled": false
     },
     {
@@ -2603,30 +2716,14 @@
       "time": "09:00 - 10:25",
       "group": "5",
       "type": "lab",
-      "subject": "ПСКЗиВО",
-      "teacher": "ст.пр. ШмарловскийА.В.",
+      "subject": "ПСКЗиВО СПиОМПиОвП",
+      "teacher": "ст.пр. ШмарловскийА.В., ст.пр. ЧуйкоВ.А.",
       "room": "619",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 22.05; по 29.05",
-      "comment": null,
-      "cancelled": false
-    },
-    {
-      "day": "Чт",
-      "day_number": 4,
-      "pair": 1,
-      "duration": 2,
-      "time": "09:00 - 10:25",
-      "group": "5",
-      "type": "lab",
-      "subject": "СПиОМПиОвП",
-      "teacher": "ст.пр. ЧуйкоВ.А.",
-      "room": "620",
-      "subgroup": "1ПГ/2ПГ нечет/чет",
-      "frequency": "нечет/чет",
-      "notes": null,
-      "comment": null,
+      "period_start": null,
+      "period_end": "22.05",
+      "comment": "по 29.05; 1ПГ/2ПГ нечет/чет",
       "cancelled": false
     },
     {
@@ -2637,30 +2734,14 @@
       "time": "09:00 - 10:25",
       "group": "7",
       "type": "lab",
-      "subject": "БИС 3 пг",
+      "subject": "БИС ИАД ст.пр. ИсмайиловаА.С.",
       "teacher": "ст.пр. ТрухановичА.Л.",
       "room": "708",
-      "subgroup": null,
+      "subgroup": "3 пг",
       "frequency": null,
-      "notes": "с 14.05",
-      "comment": null,
-      "cancelled": false
-    },
-    {
-      "day": "Чт",
-      "day_number": 4,
-      "pair": 1,
-      "duration": 2,
-      "time": "09:00 - 10:25",
-      "group": "7",
-      "type": "lab",
-      "subject": "ИАД",
-      "teacher": "ст.пр. ИсмайиловаА.С.",
-      "room": "31/К1",
-      "subgroup": "1ПГ еженедельно",
-      "frequency": "еженедельно",
-      "notes": null,
-      "comment": null,
+      "period_start": "14.05",
+      "period_end": null,
+      "comment": "1ПГ еженедельно",
       "cancelled": false
     },
     {
@@ -2676,7 +2757,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2693,7 +2775,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2710,7 +2793,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2727,7 +2811,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2744,7 +2829,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2761,7 +2847,8 @@
       "room": "25/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2778,8 +2865,9 @@
       "room": "56/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": "по 21.05; по 21.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": "21.05",
+      "comment": "по 21.05",
       "cancelled": false
     },
     {
@@ -2795,7 +2883,8 @@
       "room": "45/К1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2812,7 +2901,8 @@
       "room": "42/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2827,10 +2917,11 @@
       "subject": "ЧМПМиНЭ",
       "teacher": "доц. ЛеонтьевА.В.",
       "room": "64/К1",
-      "subgroup": "3ПГ еженедельно",
-      "frequency": "еженедельно",
-      "notes": null,
-      "comment": null,
+      "subgroup": "1ПГ чет",
+      "frequency": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "3ПГ еженедельно",
       "cancelled": false
     },
     {
@@ -2846,7 +2937,8 @@
       "room": "66/K1",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2863,7 +2955,8 @@
       "room": "73/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2880,7 +2973,8 @@
       "room": "508",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2897,7 +2991,8 @@
       "room": "514",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2914,8 +3009,9 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "24/8",
       "cancelled": false
     },
     {
@@ -2931,8 +3027,9 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "24/8",
       "cancelled": false
     },
     {
@@ -2948,8 +3045,9 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "12/6/8/6",
       "cancelled": false
     },
     {
@@ -2965,8 +3063,9 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "12/6/8/6",
       "cancelled": false
     },
     {
@@ -2982,7 +3081,8 @@
       "room": "41/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -2999,7 +3099,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3016,7 +3117,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3033,7 +3135,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3050,7 +3153,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3067,7 +3171,8 @@
       "room": "42/К1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3084,7 +3189,8 @@
       "room": "81/К1",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3101,7 +3207,8 @@
       "room": "81/K1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3118,7 +3225,8 @@
       "room": "42/К1",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3135,7 +3243,8 @@
       "room": "73/К1",
       "subgroup": "2ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": true
     },
@@ -3152,7 +3261,8 @@
       "room": "67/К1",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3169,7 +3279,8 @@
       "room": "45/К1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -3186,7 +3297,8 @@
       "room": "45/К1",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -3203,7 +3315,8 @@
       "room": "619",
       "subgroup": "3ПГ/4ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 21.05",
+      "period_start": null,
+      "period_end": "21.05",
       "comment": null,
       "cancelled": false
     },
@@ -3220,7 +3333,8 @@
       "room": "618",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": "по 29.05",
+      "period_start": null,
+      "period_end": "29.05",
       "comment": null,
       "cancelled": false
     },
@@ -3237,7 +3351,8 @@
       "room": "75/К1",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3254,7 +3369,8 @@
       "room": "73/K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3271,7 +3387,8 @@
       "room": "ДО",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3288,7 +3405,8 @@
       "room": "ДО",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3305,8 +3423,9 @@
       "room": "42/К1",
       "subgroup": "1ПГ",
       "frequency": null,
-      "notes": "доп. занятие на 15.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "доп. занятие на 15.05",
       "cancelled": false
     },
     {
@@ -3322,8 +3441,9 @@
       "room": "ДО",
       "subgroup": "1ПГ",
       "frequency": null,
-      "notes": "22.05; 15.05,29.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "22.05",
       "cancelled": false
     },
     {
@@ -3339,8 +3459,9 @@
       "room": "ДО",
       "subgroup": "2ПГ",
       "frequency": null,
-      "notes": null,
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "15.05,29.05",
       "cancelled": false
     },
     {
@@ -3356,7 +3477,8 @@
       "room": "31/К1 - 708",
       "subgroup": "2ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3373,7 +3495,8 @@
       "room": "49/К1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3390,7 +3513,8 @@
       "room": "67/К1",
       "subgroup": "1ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3407,7 +3531,8 @@
       "room": "609",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3424,7 +3549,8 @@
       "room": "25/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3441,7 +3567,8 @@
       "room": "64/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3458,7 +3585,8 @@
       "room": "615",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 22.05",
+      "period_start": null,
+      "period_end": "22.05",
       "comment": null,
       "cancelled": false
     },
@@ -3475,7 +3603,8 @@
       "room": "619",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 22.05",
+      "period_start": null,
+      "period_end": "22.05",
       "comment": null,
       "cancelled": false
     },
@@ -3492,7 +3621,8 @@
       "room": "707",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3509,7 +3639,8 @@
       "room": "33/K1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": "по 30.05",
+      "period_start": null,
+      "period_end": "30.05",
       "comment": null,
       "cancelled": false
     },
@@ -3526,7 +3657,8 @@
       "room": "612",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 22.05",
+      "period_start": null,
+      "period_end": "22.05",
       "comment": null,
       "cancelled": false
     },
@@ -3543,8 +3675,9 @@
       "room": "615",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 22.05; 608 на 15.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": "22.05",
+      "comment": "608 на 15.05",
       "cancelled": false
     },
     {
@@ -3560,7 +3693,8 @@
       "room": "619",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 22.05",
+      "period_start": null,
+      "period_end": "22.05",
       "comment": null,
       "cancelled": false
     },
@@ -3577,7 +3711,8 @@
       "room": "609",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3594,7 +3729,8 @@
       "room": "46/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3611,7 +3747,8 @@
       "room": "49/К1",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3628,7 +3765,8 @@
       "room": "83/К1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3645,7 +3783,8 @@
       "room": "81/K1",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3662,7 +3801,8 @@
       "room": "613",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3679,7 +3819,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": true
     },
@@ -3696,7 +3837,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 22.05",
+      "period_start": null,
+      "period_end": "22.05",
       "comment": null,
       "cancelled": false
     },
@@ -3713,7 +3855,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": true
     },
@@ -3730,7 +3873,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 22.05",
+      "period_start": null,
+      "period_end": "22.05",
       "comment": null,
       "cancelled": false
     },
@@ -3747,7 +3891,8 @@
       "room": "115",
       "subgroup": null,
       "frequency": null,
-      "notes": "по 22.05",
+      "period_start": null,
+      "period_end": "22.05",
       "comment": null,
       "cancelled": false
     },
@@ -3764,7 +3909,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3781,7 +3927,8 @@
       "room": "64/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3798,7 +3945,8 @@
       "room": "119",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3815,7 +3963,8 @@
       "room": "618",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": "по 29.05",
+      "period_start": null,
+      "period_end": "29.05",
       "comment": null,
       "cancelled": false
     },
@@ -3832,7 +3981,8 @@
       "room": "619",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3849,8 +3999,9 @@
       "room": "75/К1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "с 18:30",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "с 18:30",
       "cancelled": false
     },
     {
@@ -3866,7 +4017,8 @@
       "room": "608",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3883,7 +4035,8 @@
       "room": "707",
       "subgroup": "3ПГ чет",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3900,8 +4053,9 @@
       "room": "707",
       "subgroup": "3ПГ нечет",
       "frequency": null,
-      "notes": "по 30.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "по 30.05",
       "cancelled": false
     },
     {
@@ -3917,7 +4071,8 @@
       "room": "33/K1",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3934,7 +4089,8 @@
       "room": "609",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3951,7 +4107,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3968,7 +4125,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -3985,7 +4143,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4002,7 +4161,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4019,7 +4179,8 @@
       "room": "609",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4036,7 +4197,8 @@
       "room": "620",
       "subgroup": "3ПГ/4ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 30.05",
+      "period_start": null,
+      "period_end": "30.05",
       "comment": null,
       "cancelled": false
     },
@@ -4053,7 +4215,8 @@
       "room": "117",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4070,7 +4233,8 @@
       "room": "612",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4087,7 +4251,8 @@
       "room": "708",
       "subgroup": "1ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4104,7 +4269,8 @@
       "room": "508",
       "subgroup": "1ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4121,7 +4287,8 @@
       "room": "508",
       "subgroup": "2ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4138,7 +4305,8 @@
       "room": "56/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4155,7 +4323,8 @@
       "room": "42/K1",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4172,7 +4341,8 @@
       "room": "129",
       "subgroup": "3ПГ/4ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4189,7 +4359,8 @@
       "room": "503",
       "subgroup": "3ПГ/4ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4206,8 +4377,9 @@
       "room": "620",
       "subgroup": "1ПГ/2ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 30.05; по 30.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": "30.05",
+      "comment": "по 30.05",
       "cancelled": false
     },
     {
@@ -4223,8 +4395,9 @@
       "room": "619",
       "subgroup": "3ПГ/4ПГ чет/нечет",
       "frequency": "чет/нечет",
-      "notes": "по 30.05; с 16.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": "30.05",
+      "comment": "с 16.05",
       "cancelled": false
     },
     {
@@ -4240,7 +4413,8 @@
       "room": "707",
       "subgroup": "3ПГ/4ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4255,10 +4429,11 @@
       "subject": "БИС",
       "teacher": "ст.пр. ЩербакИ.Н., ст.пр. ЩербакИ.Н., ст.пр. ЩербакИ.Н.",
       "room": "ДО",
-      "subgroup": "3ПГ",
+      "subgroup": "1ПГ",
       "frequency": null,
-      "notes": "16.05; 23.05; 30.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "23.05; 2ПГ; 30.05; 3ПГ",
       "cancelled": false
     },
     {
@@ -4274,7 +4449,8 @@
       "room": "41/К1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4291,7 +4467,8 @@
       "room": "612",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4308,7 +4485,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4325,7 +4503,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4342,7 +4521,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4359,7 +4539,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4376,7 +4557,8 @@
       "room": "K1",
       "subgroup": null,
       "frequency": null,
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4393,7 +4575,8 @@
       "room": "42/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4410,7 +4593,8 @@
       "room": "707",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": "с 16.05",
+      "period_start": "16.05",
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4427,7 +4611,8 @@
       "room": "41/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4444,7 +4629,8 @@
       "room": "56/К1",
       "subgroup": "1ПГ/2ПГ нечет/чет",
       "frequency": "нечет/чет",
-      "notes": null,
+      "period_start": null,
+      "period_end": null,
       "comment": null,
       "cancelled": false
     },
@@ -4461,8 +4647,9 @@
       "room": "ДО",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": "отработка 09.05    16.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "отработка 09.05    16.05",
       "cancelled": false
     },
     {
@@ -4478,8 +4665,9 @@
       "room": "ДО",
       "subgroup": "3ПГ",
       "frequency": null,
-      "notes": "отработка 09.05    16.05",
-      "comment": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "отработка 09.05    16.05",
       "cancelled": false
     }
   ]
