@@ -286,10 +286,7 @@ function applyLesson(data) {
       sheet.getRange(row, col + 1, spanRows, 1).merge();
     }
 
-    // 5. Восстанавливаем вертикальную линию между колонками
-    try {
-      sheet.getRange(row, col, spanRows, 2).setBorder(null, null, null, null, true, null);
-    } catch (_) {}
+
 
     // Один flush в конце — всё отрендерится атомарно
     SpreadsheetApp.flush();
