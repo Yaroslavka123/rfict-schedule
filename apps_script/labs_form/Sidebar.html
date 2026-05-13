@@ -183,6 +183,37 @@
       margin-top: 12px;
     }
     .hidden { display: none !important; }
+    .cancel-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      background: #fce8e6;
+    }
+    .cancel-row label {
+      margin: 0;
+      font-weight: 500;
+      color: #c5221f;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cancel-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #c5221f;
+    }
+    .sg-notes {
+      font-size: 12px;
+      padding: 4px 6px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      width: 100%;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -230,10 +261,12 @@
     <button type="button" class="add-row-btn" id="add-subgroup">+ ещё подгруппа</button>
   </div>
 
-  <details>
-    <summary>Заметка / даты (необязательно)</summary>
-    <input type="text" id="notes" placeholder="по 01.06 / с 03.03 по 26.05 / ..." />
-  </details>
+  <label>Даты / период</label>
+  <input type="text" id="notes" placeholder="по 01.06 / с 03.03 по 26.05 / на 11.05" />
+
+  <div class="cancel-row">
+    <label><input type="checkbox" id="cancel-check"> ОТМЕНА</label>
+  </div>
 
   <div class="actions">
     <button class="primary" id="submit" disabled>✓ Применить</button>
@@ -327,6 +360,11 @@
     block.appendChild(el('label', null, 'Аудитория'));
     block.appendChild(roomInput);
 
+    const notesInput = el('input', {type: 'text', placeholder: 'по 01.06 / с 03.03 по 26.05', 'class': 'sg-notes'});
+    notesInput.value = (prefill && prefill.notes) || '';
+    block.appendChild(el('label', null, 'Даты'));
+    block.appendChild(notesInput);
+
     list.appendChild(block);
     validate();
   }
@@ -337,6 +375,7 @@
       subgroup: block.querySelector('.sg-name').value.trim(),
       teacher: block.querySelector('.sg-teacher').value.trim(),
       room: block.querySelector('.sg-room').value.trim(),
+      notes: block.querySelector('.sg-notes').value.trim(),
     })).filter(sg => sg.subgroup || sg.teacher || sg.room || sg.subject);
   }
 
@@ -407,10 +446,10 @@
     if (info.roomValue) document.getElementById('room').value = info.roomValue.split('\n')[0];
     if (parsed.subgroup) prefillSubgroup(parsed.subgroup);
     if (parsed.notes) {
-      const n = document.getElementById('notes');
-      n.value = parsed.notes;
-      // открыть details
-      n.closest('details').open = true;
+      document.getElementById('notes').value = parsed.notes;
+    }
+    if (parsed.cancelled) {
+      document.getElementById('cancel-check').checked = true;
     }
 
     // Для лабы — если в ячейке было несколько строк препода/аудитории, разбираем как подгруппы
@@ -451,6 +490,7 @@
           subgroup: sg.subgroup || '',
           teacher: sg.teacher || '',
           room: rooms[i] || '',
+          notes: sg.notes || '',
         });
       });
       return;
@@ -497,6 +537,7 @@
     document.getElementById('teacher').value = '';
     document.getElementById('room').value = '';
     document.getElementById('notes').value = '';
+    document.getElementById('cancel-check').checked = false;
     document.querySelectorAll('input[name="sg"]').forEach(c => c.checked = false);
     document.getElementById('cycle').value = '';
     document.getElementById('subgroup-list').innerHTML = '';
@@ -529,6 +570,7 @@
       room: document.getElementById('room').value.trim(),
       subgroup: collectSubgroupSingle(),
       notes: document.getElementById('notes').value.trim(),
+      cancelled: document.getElementById('cancel-check').checked,
       teachers_by_subgroup: subgroups,
     };
   }

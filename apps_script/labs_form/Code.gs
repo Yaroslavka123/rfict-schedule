@@ -169,68 +169,101 @@ function applyLesson(data) {
 
   // Сборка многострочного текста
   const lines = [];
+  const styleRanges = []; // [{start, end, style: 'bold'|'italic'|'cancel'}]
+
+  // Глобальные даты/примечания — первая строка курсивом
   if (data.notes && data.notes.trim()) lines.push(data.notes.trim());
-  lines.push(data.subject.trim());
 
   // Для лабы — собираем по подгруппам, для остального — обычный путь
   let roomLines = [];
-  const boldRanges = []; // [{start, end}] — для всех предметов (включая per-subgroup)
-  if (data.lesson_type === 'lab' && data.teachers_by_subgroup && data.teachers_by_subgroup.length > 0) {
-    // Проверяем: у подгрупп свои предметы?
+  const isLab = data.lesson_type === 'lab' && data.teachers_by_subgroup && data.teachers_by_subgroup.length > 0;
+
+  if (isLab) {
     const hasPerSubjectSubgroups = data.teachers_by_subgroup.some(
       sg => sg.subject && sg.subject.trim() && sg.subject.trim() !== data.subject.trim()
     );
     if (hasPerSubjectSubgroups) {
-      // Убираем главный предмет из lines (добавлен выше)
-      lines.pop();
+      // Multi-subject: каждая подгруппа — свой предмет
       data.teachers_by_subgroup.forEach(sg => {
+        if (sg.notes && sg.notes.trim()) {
+          const nStart = lines.join('\n').length + (lines.length ? 1 : 0);
+          lines.push(sg.notes.trim());
+          styleRanges.push({start: nStart, end: nStart + sg.notes.trim().length, style: 'italic'});
+        }
         const subj = (sg.subject && sg.subject.trim()) || data.subject.trim();
         const subjStart = lines.join('\n').length + (lines.length ? 1 : 0);
         lines.push(subj);
-        boldRanges.push({start: subjStart, end: subjStart + subj.length});
+        styleRanges.push({start: subjStart, end: subjStart + subj.length, style: 'bold'});
         if (sg.subgroup) lines.push(sg.subgroup);
         if (sg.teacher)  lines.push(sg.teacher);
         roomLines.push(sg.room || '');
       });
     } else {
+      // Single subject: общий предмет жирным, потом подгруппы
+      lines.push(data.subject.trim());
       data.teachers_by_subgroup.forEach(sg => {
+        if (sg.notes && sg.notes.trim()) {
+          const nStart = lines.join('\n').length + (lines.length ? 1 : 0);
+          lines.push(sg.notes.trim());
+          styleRanges.push({start: nStart, end: nStart + sg.notes.trim().length, style: 'italic'});
+        }
         if (sg.subgroup) lines.push(sg.subgroup);
         if (sg.teacher)  lines.push(sg.teacher);
         roomLines.push(sg.room || '');
       });
     }
   } else {
+    lines.push(data.subject.trim());
     if (data.subgroup && data.subgroup.trim()) lines.push(data.subgroup.trim());
     if (data.teacher && data.teacher.trim()) lines.push(data.teacher.trim());
     if (data.room && data.room.trim()) roomLines.push(data.room.trim());
   }
 
+  // ОТМЕНА — добавляем последней строкой
+  if (data.cancelled) {
+    lines.push('ОТМЕНА');
+  }
+
   const text = lines.join('\n');
 
-  // Жирный шрифт у строк предмета (одна или две строки: предмет может быть многострочным)
-  const subjectLines = data.subject.trim().split('\n');
-  const subjectStartLine = data.notes && data.notes.trim() ? 1 : 0;
-  const subjectStartIdx = lines.slice(0, subjectStartLine).join('\n').length + (subjectStartLine ? 1 : 0);
-  const subjectEndIdx = subjectStartIdx + subjectLines.join('\n').length;
+  // Вычисляем позицию предмета для bold (если не multi-subject)
+  const hasMultiSubjectBold = styleRanges.some(r => r.style === 'bold');
+  if (!hasMultiSubjectBold) {
+    const subjectStartLine = data.notes && data.notes.trim() ? 1 : 0;
+    const subjectStartIdx = lines.slice(0, subjectStartLine).join('\n').length + (subjectStartLine ? 1 : 0);
+    const subjectEndIdx = subjectStartIdx + data.subject.trim().length;
+    styleRanges.push({start: subjectStartIdx, end: subjectEndIdx, style: 'bold'});
+  }
 
+  // Глобальные даты — курсив
+  if (data.notes && data.notes.trim()) {
+    styleRanges.push({start: 0, end: data.notes.trim().length, style: 'italic'});
+  }
+
+  // ОТМЕНА — красный жирный
+  if (data.cancelled) {
+    const cancelText = 'ОТМЕНА';
+    const cancelStart = text.length - cancelText.length;
+    styleRanges.push({start: cancelStart, end: text.length, style: 'cancel'});
+  }
+
+  // Строим RichText
   const builder = SpreadsheetApp.newRichTextValue().setText(text);
-  // Сначала сбрасываем все стили на обычный текст
   const normalStyle = SpreadsheetApp.newTextStyle().setBold(false).setItalic(false).build();
   if (text.length > 0) builder.setTextStyle(0, text.length, normalStyle);
-  // Затем выборочно применяем жирный только к предмету
-  const boldStyle = SpreadsheetApp.newTextStyle().setBold(true).build();
-  if (boldRanges.length > 0) {
-    boldRanges.forEach(r => builder.setTextStyle(r.start, r.end, boldStyle));
-  } else {
-    builder.setTextStyle(subjectStartIdx, subjectEndIdx, boldStyle);
-  }
-  // Курсивом — даты-заметки (если есть)
-  if (data.notes && data.notes.trim()) {
-    builder.setTextStyle(
-      0, data.notes.trim().length,
-      SpreadsheetApp.newTextStyle().setItalic(true).setBold(false).build()
-    );
-  }
+
+  styleRanges.forEach(r => {
+    if (r.start >= r.end || r.start < 0 || r.end > text.length) return;
+    if (r.style === 'bold') {
+      builder.setTextStyle(r.start, r.end, SpreadsheetApp.newTextStyle().setBold(true).build());
+    } else if (r.style === 'italic') {
+      builder.setTextStyle(r.start, r.end, SpreadsheetApp.newTextStyle().setItalic(true).build());
+    } else if (r.style === 'cancel') {
+      builder.setTextStyle(r.start, r.end,
+        SpreadsheetApp.newTextStyle().setBold(true).setForegroundColor('#cc0000').build()
+      );
+    }
+  });
 
   cell.setRichTextValue(builder.build());
   cell.setBackground(type.color);
@@ -498,10 +531,20 @@ function parseCellContent_(value, richText, background) {
     runs.forEach(run => {
       const ts = run.getTextStyle();
       const runText = run.getText();
+      const parts = runText.split('\n').map(s => s.trim()).filter(Boolean);
       if (ts && ts.isBold()) {
-        subjectLines.push(...runText.split('\n').map(s => s.trim()).filter(Boolean));
+        parts.forEach(p => {
+          // «ОТМЕНА» и даты-пометки — не предмет, хоть и жирные
+          if (/^\s*ОТМЕНА\s*$/i.test(p)) {
+            nonSubjectLines.push(p);
+          } else if (looksLikeNotes_(p)) {
+            nonSubjectLines.push(p);
+          } else {
+            subjectLines.push(p);
+          }
+        });
       } else {
-        nonSubjectLines.push(...runText.split('\n').map(s => s.trim()).filter(Boolean));
+        nonSubjectLines.push(...parts);
       }
     });
   } else {
@@ -509,10 +552,12 @@ function parseCellContent_(value, richText, background) {
   }
 
   const lessonType = detectLessonType_(background);
-  const notes = nonSubjectLines.filter(looksLikeNotes_).join('; ');
+  // Отдельно собираем заметки (даты) и проверяем отмену
+  const noteLines = nonSubjectLines.filter(looksLikeNotes_);
+  const cancelled = lines.some(l => /^\s*ОТМЕНА\s*$/i.test(l.trim()));
+  const notes = noteLines.filter(l => !/^\s*ОТМЕНА\s*$/i.test(l)).join('; ');
 
-  // Попытка разобрать multi-subject лабы:
-  // каждый жирный блок — отдельный предмет со своими подгруппами/преподами
+  // Попытка разобрать multi-subject лабы
   let labSubgroups = null;
   if (lessonType === 'lab' && subjectLines.length > 1) {
     labSubgroups = parseMultiSubjectLab_(lines, subjectLines);
@@ -528,6 +573,7 @@ function parseCellContent_(value, richText, background) {
     teacher: teacher,
     subgroup: subgroup,
     notes: notes,
+    cancelled: cancelled,
     lab_subgroups: labSubgroups,
   };
 }
@@ -545,13 +591,15 @@ function parseMultiSubjectLab_(allLines, subjectLines) {
     const trimmed = line.trim();
     if (!trimmed) return;
     if (subjectSet.has(trimmed)) {
-      current = { subject: trimmed, subgroup: '', teacher: '' };
+      current = { subject: trimmed, subgroup: '', teacher: '', notes: '' };
       groups.push(current);
     } else if (current) {
       if (looksLikeTeacher_(trimmed) && !current.teacher) {
         current.teacher = trimmed;
       } else if (looksLikeSubgroup_(trimmed) && !current.subgroup) {
         current.subgroup = trimmed;
+      } else if (looksLikeNotes_(trimmed) && !current.notes) {
+        current.notes = trimmed;
       }
     }
   });
