@@ -262,22 +262,16 @@ function applyLesson(data) {
       } catch (_) {}
     }
 
-    // 2. Очищаем и объединяем СНАЧАЛА (до записи контента)
+    // 2. Очищаем нижние ячейки
     for (let r = 1; r < spanRows; r++) {
       sheet.getRange(row + r, col).clearContent().setBackground(type.color);
       sheet.getRange(row + r, col + 1).clearContent();
     }
-    if (spanRows > 1) {
-      sheet.getRange(row, col, spanRows, 1).merge();
-      sheet.getRange(row, col + 1, spanRows, 1).merge();
-    }
-    SpreadsheetApp.flush();
 
-    // 3. Записываем контент в уже объединённые ячейки
+    // 3. Записываем контент + аудитории (до merge, чтобы всё было в одном flush)
     const topCell = sheet.getRange(row, col);
     applyRichTextToCell_(topCell, content.text, content.styleRanges, type.color);
 
-    // 4. Аудитории
     const roomLines = content.roomLines.filter(r => r.trim());
     if (roomLines.length === 0) {
       sheet.getRange(row, col + 1).clearContent();
@@ -286,10 +280,19 @@ function applyLesson(data) {
       setRoomCell_(sheet.getRange(row, col + 1), roomText);
     }
 
-    // 5. Восстанавливаем вертикальную линию между колонками (breakApart может сбросить borders)
+    // 4. Объединяем ячейки (после записи, всё в одном batch)
+    if (spanRows > 1) {
+      sheet.getRange(row, col, spanRows, 1).merge();
+      sheet.getRange(row, col + 1, spanRows, 1).merge();
+    }
+
+    // 5. Восстанавливаем вертикальную линию между колонками
     try {
       sheet.getRange(row, col, spanRows, 2).setBorder(null, null, null, null, true, null);
     } catch (_) {}
+
+    // Один flush в конце — всё отрендерится атомарно
+    SpreadsheetApp.flush();
 
   } else {
     // Одна ячейка — обычное занятие
