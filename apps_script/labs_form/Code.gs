@@ -253,11 +253,35 @@ function applyLesson(data) {
     const content = buildCellContent_(sgs);
     const spanRows = Math.max(1, Math.min(data.span_rows || 2, 3));
 
-    // Разъединяем ячейки (до 3 строк)
-    const maxBreak = sheet.getRange(row, col, 3, 1);
-    try { maxBreak.breakApart(); } catch (_) {}
-    const maxBreakRoom = sheet.getRange(row, col + 1, 3, 1);
-    try { maxBreakRoom.breakApart(); } catch (_) {}
+    // Определяем старый размер merge (чтобы очистить только те ячейки, которые были частью)
+    let oldSpan = 1;
+    let oldRoomSpan = 1;
+    try {
+      const merges = sheet.getRange(row, col, 3, 1).getMergedRanges();
+      for (let i = 0; i < merges.length; i++) {
+        if (merges[i].getRow() === row && merges[i].getColumn() === col) {
+          oldSpan = merges[i].getNumRows();
+          break;
+        }
+      }
+    } catch (_) {}
+    try {
+      const roomMerges = sheet.getRange(row, col + 1, 3, 1).getMergedRanges();
+      for (let i = 0; i < roomMerges.length; i++) {
+        if (roomMerges[i].getRow() === row && roomMerges[i].getColumn() === col + 1) {
+          oldRoomSpan = roomMerges[i].getNumRows();
+          break;
+        }
+      }
+    } catch (_) {}
+
+    // Разъединяем старые merge
+    if (oldSpan > 1) {
+      try { sheet.getRange(row, col, oldSpan, 1).breakApart(); } catch (_) {}
+    }
+    if (oldRoomSpan > 1) {
+      try { sheet.getRange(row, col + 1, oldRoomSpan, 1).breakApart(); } catch (_) {}
+    }
 
     // Записываем контент в верхнюю ячейку
     const topCell = sheet.getRange(row, col);
@@ -269,8 +293,8 @@ function applyLesson(data) {
       c.clearContent();
       c.setBackground(type.color);
     }
-    // Очищаем ячейки, которые были частью старого merge, но теперь не нужны
-    for (let r = spanRows; r < 3; r++) {
+    // Очищаем только ячейки, которые были частью СТАРОГО merge, но теперь не нужны
+    for (let r = spanRows; r < oldSpan; r++) {
       try { sheet.getRange(row + r, col).clearContent(); } catch (_) {}
     }
     if (spanRows > 1) {
@@ -293,8 +317,8 @@ function applyLesson(data) {
       }
       setRoomCell_(sheet.getRange(row, col + 1), roomText);
     }
-    // Очищаем аудитории за пределами нового span
-    for (let r = spanRows; r < 3; r++) {
+    // Очищаем аудитории только из СТАРОГО merge
+    for (let r = spanRows; r < oldRoomSpan; r++) {
       try { sheet.getRange(row + r, col + 1).clearContent(); } catch (_) {}
     }
 
