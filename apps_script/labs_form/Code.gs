@@ -1272,6 +1272,8 @@ function extractPeriod_(line, entry) {
   // Месяцы: "с апреля", "по мая"
   var monthStart = line.match(/с\s+(январ\S*|феврал\S*|март\S*|апрел\S*|ма\S*|июн\S*|июл\S*|август\S*|сентябр\S*|октябр\S*|ноябр\S*|декабр\S*)/i);
   if (monthStart) { entry.period_start = monthStart[1]; return; }
+  var monthEnd = line.match(/по\s+(январ\S*|феврал\S*|март\S*|апрел\S*|ма\S*|июн\S*|июл\S*|август\S*|сентябр\S*|октябр\S*|ноябр\S*|декабр\S*)/i);
+  if (monthEnd) { entry.period_end = monthEnd[1]; return; }
   // Остальное — в комментарий
   entry.comment = entry.comment ? entry.comment + '; ' + line : line;
 }
