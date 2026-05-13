@@ -303,6 +303,12 @@
     header.appendChild(removeBtn);
     block.appendChild(header);
 
+    const subjInput = el('input', {type: 'text', list: 'subjects-list', placeholder: 'Если отличается от основного', 'class': 'sg-subject'});
+    subjInput.value = (prefill && prefill.subject) || '';
+    subjInput.oninput = validate;
+    block.appendChild(el('label', null, 'Предмет'));
+    block.appendChild(subjInput);
+
     const sgInput = el('input', {type: 'text', placeholder: '1ПГ нечет / 2ПГ / ...', 'class': 'sg-name'});
     sgInput.value = (prefill && prefill.subgroup) || '';
     sgInput.oninput = validate;
@@ -327,10 +333,11 @@
 
   function collectSubgroups() {
     return [...document.querySelectorAll('.subgroup-block')].map(block => ({
+      subject: block.querySelector('.sg-subject').value.trim(),
       subgroup: block.querySelector('.sg-name').value.trim(),
       teacher: block.querySelector('.sg-teacher').value.trim(),
       room: block.querySelector('.sg-room').value.trim(),
-    })).filter(sg => sg.subgroup || sg.teacher || sg.room);
+    })).filter(sg => sg.subgroup || sg.teacher || sg.room || sg.subject);
   }
 
   function collectSubgroupSingle() {
@@ -341,7 +348,17 @@
   }
 
   function validate() {
-    const ok = state.lesson_type && document.getElementById('subject').value.trim();
+    let ok = false;
+    if (state.lesson_type) {
+      const mainSubj = document.getElementById('subject').value.trim();
+      if (state.lesson_type === 'lab') {
+        // Для лабы: достаточно либо основного предмета, либо предмета в каждой подгруппе
+        const sgSubjects = [...document.querySelectorAll('.sg-subject')].map(el => el.value.trim());
+        ok = mainSubj || (sgSubjects.length > 0 && sgSubjects.every(s => s));
+      } else {
+        ok = !!mainSubj;
+      }
+    }
     document.getElementById('submit').disabled = !ok;
     document.getElementById('next-cell').disabled = !ok;
   }
@@ -399,6 +416,10 @@
     // Для лабы — если в ячейке было несколько строк препода/аудитории, разбираем как подгруппы
     if (parsed.lesson_type === 'lab') {
       tryFillLabSubgroups(info);
+      // Если multi-subject — очищаем основной предмет (у каждой подгруппы свой)
+      if (parsed.lab_subgroups && parsed.lab_subgroups.length > 0) {
+        document.getElementById('subject').value = '';
+      }
     }
 
     validate();
@@ -418,17 +439,34 @@
   }
 
   function tryFillLabSubgroups(info) {
-    // Если есть несколько строк аудиторий — пробуем составить пары препод/аудитория
+    const parsed = info.parsed || {};
+
+    // 1) Если парсер разобрал multi-subject — используем его данные
+    if (parsed.lab_subgroups && parsed.lab_subgroups.length > 0) {
+      document.getElementById('subgroup-list').innerHTML = '';
+      const rooms = (info.roomValue || '').split('\n').map(s => s.trim()).filter(Boolean);
+      parsed.lab_subgroups.forEach((sg, i) => {
+        addSubgroupRow({
+          subject: sg.subject || '',
+          subgroup: sg.subgroup || '',
+          teacher: sg.teacher || '',
+          room: rooms[i] || '',
+        });
+      });
+      return;
+    }
+
+    // 2) Fallback: несколько аудиторий — парим преподов с аудиториями
     const rooms = (info.roomValue || '').split('\n').map(s => s.trim()).filter(Boolean);
     const lines = (info.value || '').split('\n').map(s => s.trim()).filter(Boolean);
     const teachers = lines.filter(l => /^(доц\.|проф\.|ст\.\s*пр\.|пр\.\s*ст\.|ст\.пр\.|пр\.|асс\.)/i.test(l));
     if (rooms.length <= 1 || teachers.length === 0) return;
-    // Удаляем дефолтную пустую подгруппу
     document.getElementById('subgroup-list').innerHTML = '';
-    const max = Math.max(rooms.length, teachers.length);
-    for (let i = 0; i < max; i++) {
+    const subgroups = lines.filter(l => /\dПГ/i.test(l));
+    const count = teachers.length;
+    for (let i = 0; i < count; i++) {
       addSubgroupRow({
-        subgroup: ['1ПГ', '2ПГ', '3ПГ'][i] || '',
+        subgroup: subgroups[i] || ['1ПГ', '2ПГ', '3ПГ'][i] || '',
         teacher: teachers[i] || '',
         room: rooms[i] || '',
       });
@@ -478,14 +516,20 @@
   }
 
   function collectData() {
+    const subgroups = state.lesson_type === 'lab' ? collectSubgroups() : [];
+    let subject = document.getElementById('subject').value.trim();
+    // Если основной предмет пуст, но у подгрупп есть свои — берём первый
+    if (!subject && subgroups.length > 0) {
+      subject = subgroups.find(sg => sg.subject)?.subject || '';
+    }
     return {
       lesson_type: state.lesson_type,
-      subject: document.getElementById('subject').value.trim(),
+      subject: subject,
       teacher: document.getElementById('teacher').value.trim(),
       room: document.getElementById('room').value.trim(),
       subgroup: collectSubgroupSingle(),
       notes: document.getElementById('notes').value.trim(),
-      teachers_by_subgroup: state.lesson_type === 'lab' ? collectSubgroups() : [],
+      teachers_by_subgroup: subgroups,
     };
   }
 

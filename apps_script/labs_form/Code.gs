@@ -57,7 +57,6 @@ function onOpen() {
 }
 
 function showSidebar() {
-  ensureDictionarySheet();
   const html = HtmlService
     .createHtmlOutputFromFile('Sidebar')
     .setTitle('Занятие')
@@ -105,16 +104,25 @@ function getActiveCellInfo() {
  * Возвращает словари для autocomplete.
  */
 function getDictionaries() {
+  // Кэш на 60 сек для быстрой повторной загрузки
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get('dictionaries');
+  if (cached) {
+    try { return JSON.parse(cached); } catch (_) { /* fallthrough */ }
+  }
   const sheet = ensureDictionarySheet();
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) {
     return {subjects: [], teachers: [], rooms: []};
   }
   const range = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
-  const subjects = uniqueNonEmpty_(range.map(r => r[0]));
-  const teachers = uniqueNonEmpty_(range.map(r => r[1]));
-  const rooms    = uniqueNonEmpty_(range.map(r => r[2]));
-  return {subjects, teachers, rooms};
+  const result = {
+    subjects: uniqueNonEmpty_(range.map(r => r[0])),
+    teachers: uniqueNonEmpty_(range.map(r => r[1])),
+    rooms:    uniqueNonEmpty_(range.map(r => r[2])),
+  };
+  try { cache.put('dictionaries', JSON.stringify(result), 60); } catch (_) { /* ignore */ }
+  return result;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -152,12 +160,31 @@ function applyLesson(data) {
 
   // Для лабы — собираем по подгруппам, для остального — обычный путь
   let roomLines = [];
+  const boldRanges = []; // [{start, end}] — для всех предметов (включая per-subgroup)
   if (data.lesson_type === 'lab' && data.teachers_by_subgroup && data.teachers_by_subgroup.length > 0) {
-    data.teachers_by_subgroup.forEach(sg => {
-      if (sg.subgroup) lines.push(sg.subgroup);
-      if (sg.teacher)  lines.push(sg.teacher);
-      roomLines.push(sg.room || '');
-    });
+    // Проверяем: у подгрупп свои предметы?
+    const hasPerSubjectSubgroups = data.teachers_by_subgroup.some(
+      sg => sg.subject && sg.subject.trim() && sg.subject.trim() !== data.subject.trim()
+    );
+    if (hasPerSubjectSubgroups) {
+      // Убираем главный предмет из lines (добавлен выше)
+      lines.pop();
+      data.teachers_by_subgroup.forEach(sg => {
+        const subj = (sg.subject && sg.subject.trim()) || data.subject.trim();
+        const subjStart = lines.join('\n').length + (lines.length ? 1 : 0);
+        lines.push(subj);
+        boldRanges.push({start: subjStart, end: subjStart + subj.length});
+        if (sg.subgroup) lines.push(sg.subgroup);
+        if (sg.teacher)  lines.push(sg.teacher);
+        roomLines.push(sg.room || '');
+      });
+    } else {
+      data.teachers_by_subgroup.forEach(sg => {
+        if (sg.subgroup) lines.push(sg.subgroup);
+        if (sg.teacher)  lines.push(sg.teacher);
+        roomLines.push(sg.room || '');
+      });
+    }
   } else {
     if (data.subgroup && data.subgroup.trim()) lines.push(data.subgroup.trim());
     if (data.teacher && data.teacher.trim()) lines.push(data.teacher.trim());
@@ -173,10 +200,12 @@ function applyLesson(data) {
   const subjectEndIdx = subjectStartIdx + subjectLines.join('\n').length;
 
   const builder = SpreadsheetApp.newRichTextValue().setText(text);
-  builder.setTextStyle(
-    subjectStartIdx, subjectEndIdx,
-    SpreadsheetApp.newTextStyle().setBold(true).build()
-  );
+  const boldStyle = SpreadsheetApp.newTextStyle().setBold(true).build();
+  if (boldRanges.length > 0) {
+    boldRanges.forEach(r => builder.setTextStyle(r.start, r.end, boldStyle));
+  } else {
+    builder.setTextStyle(subjectStartIdx, subjectEndIdx, boldStyle);
+  }
   // Курсивом — даты-заметки (если есть)
   if (data.notes && data.notes.trim()) {
     builder.setTextStyle(
@@ -462,18 +491,55 @@ function parseCellContent_(value, richText, background) {
     nonSubjectLines = lines;
   }
 
-  const subject = subjectLines.join(' ');
+  const lessonType = detectLessonType_(background);
   const notes = nonSubjectLines.filter(looksLikeNotes_).join('; ');
+
+  // Попытка разобрать multi-subject лабы:
+  // каждый жирный блок — отдельный предмет со своими подгруппами/преподами
+  let labSubgroups = null;
+  if (lessonType === 'lab' && subjectLines.length > 1) {
+    labSubgroups = parseMultiSubjectLab_(lines, subjectLines);
+  }
+
+  const subject = subjectLines.length > 1 ? subjectLines[0] : subjectLines.join(' ');
   const teacher = nonSubjectLines.find(looksLikeTeacher_) || '';
   const subgroup = nonSubjectLines.find(looksLikeSubgroup_) || '';
 
   return {
-    lesson_type: detectLessonType_(background),
+    lesson_type: lessonType,
     subject: subject,
     teacher: teacher,
     subgroup: subgroup,
     notes: notes,
+    lab_subgroups: labSubgroups,
   };
+}
+
+/**
+ * Парсит сложную ячейку лабы с несколькими предметами.
+ * Формат: [Предмет(bold), Подгруппа, Препод, ..., Предмет(bold), ...]
+ */
+function parseMultiSubjectLab_(allLines, subjectLines) {
+  const subjectSet = new Set(subjectLines.map(s => s.trim()));
+  const groups = [];
+  let current = null;
+
+  allLines.forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    if (subjectSet.has(trimmed)) {
+      current = { subject: trimmed, subgroup: '', teacher: '' };
+      groups.push(current);
+    } else if (current) {
+      if (looksLikeTeacher_(trimmed) && !current.teacher) {
+        current.teacher = trimmed;
+      } else if (looksLikeSubgroup_(trimmed) && !current.subgroup) {
+        current.subgroup = trimmed;
+      }
+    }
+  });
+
+  return groups.length > 1 ? groups : null;
 }
 
 function extractSubjectFromRich_(richCell, fallbackStr) {
