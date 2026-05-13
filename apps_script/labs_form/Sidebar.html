@@ -680,6 +680,7 @@
     const teachers = lines.filter(l => /^(доц\.|проф\.|ст\.\s*пр\.|пр\.\s*ст\.|ст\.пр\.|пр\.|асс\.)/i.test(l));
     if (rooms.length <= 1 && teachers.length <= 1) {
       // Simple: one subgroup
+      document.getElementById('subgroup-list').innerHTML = '';
       const dateInfo = parseDateStr(parsed.notes || '');
       addSubgroupRow({
         subject: parsed.subject || '',

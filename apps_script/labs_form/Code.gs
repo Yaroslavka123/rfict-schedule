@@ -602,13 +602,15 @@ function parseMultiSubjectLab_(allLines, subjectLines) {
     const trimmed = line.trim();
     if (!trimmed) return;
     if (subjectSet.has(trimmed)) {
-      current = { subject: trimmed, subgroup: '', teacher: '', notes: '' };
+      current = { subject: trimmed, subgroup: '', teacher: '', notes: '', cancelled: false };
       groups.push(current);
     } else if (current) {
       if (looksLikeTeacher_(trimmed) && !current.teacher) {
         current.teacher = trimmed;
       } else if (looksLikeSubgroup_(trimmed) && !current.subgroup) {
         current.subgroup = trimmed;
+      } else if (/^\s*ОТМЕНА\s*$/i.test(trimmed)) {
+        current.cancelled = true;
       } else if (looksLikeNotes_(trimmed) && !current.notes) {
         current.notes = trimmed;
       }
