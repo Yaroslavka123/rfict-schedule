@@ -1,6 +1,6 @@
 {
   "name": "11.05-16.05(14-я неделя)",
-  "generated_at": "2026-05-13T23:43:54.350Z",
+  "generated_at": "2026-05-13T23:51:17.333Z",
   "course": 3,
   "semester": 6,
   "week_number": 14,
@@ -4356,7 +4356,7 @@
       "type": "lab",
       "subject": "ИАД",
       "teacher": "ст.пр. ИсмайиловаА.С.",
-      "room": "508",
+      "room": "31/K1",
       "subgroup": "2ПГ",
       "frequency": null,
       "period_start": null,
