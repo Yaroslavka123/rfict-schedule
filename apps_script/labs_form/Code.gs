@@ -262,22 +262,16 @@ function applyLesson(data) {
       } catch (_) {}
     }
 
-    // 2. Очищаем и объединяем СНАЧАЛА (до записи контента)
+    // 2. Очищаем нижние ячейки
     for (let r = 1; r < spanRows; r++) {
       sheet.getRange(row + r, col).clearContent().setBackground(type.color);
       sheet.getRange(row + r, col + 1).clearContent();
     }
-    if (spanRows > 1) {
-      sheet.getRange(row, col, spanRows, 1).merge();
-      sheet.getRange(row, col + 1, spanRows, 1).merge();
-    }
-    SpreadsheetApp.flush();
 
-    // 3. Записываем контент в уже объединённые ячейки
+    // 3. Записываем контент + аудитории (до merge, чтобы всё было в одном flush)
     const topCell = sheet.getRange(row, col);
     applyRichTextToCell_(topCell, content.text, content.styleRanges, type.color);
 
-    // 4. Аудитории
     const roomLines = content.roomLines.filter(r => r.trim());
     if (roomLines.length === 0) {
       sheet.getRange(row, col + 1).clearContent();
@@ -286,10 +280,19 @@ function applyLesson(data) {
       setRoomCell_(sheet.getRange(row, col + 1), roomText);
     }
 
-    // 5. Восстанавливаем вертикальную линию между колонками (breakApart может сбросить borders)
+    // 4. Объединяем ячейки (после записи, всё в одном batch)
+    if (spanRows > 1) {
+      sheet.getRange(row, col, spanRows, 1).merge();
+      sheet.getRange(row, col + 1, spanRows, 1).merge();
+    }
+
+    // 5. Восстанавливаем вертикальную линию между колонками
     try {
       sheet.getRange(row, col, spanRows, 2).setBorder(null, null, null, null, true, null);
     } catch (_) {}
+
+    // Один flush в конце — всё отрендерится атомарно
+    SpreadsheetApp.flush();
 
   } else {
     // Одна ячейка — обычное занятие
@@ -597,15 +600,31 @@ function parseCellContent_(value, richText, background) {
     nonSubjectLines = lines;
   }
 
-  // Склеиваем последовательные жирные строки без teacher/subgroup между ними в один предмет
+  // Определяем позицию каждого subject в lines (с учётом дубликатов)
   const rawBoldLines = new Set(subjectLines.map(s => s.trim()));
+  const subjectPositions = [];
+  {
+    const usedIndices = new Set();
+    subjectLines.forEach(sl => {
+      for (let k = 0; k < lines.length; k++) {
+        if (!usedIndices.has(k) && lines[k] === sl) {
+          subjectPositions.push(k);
+          usedIndices.add(k);
+          break;
+        }
+      }
+    });
+  }
+
+  // Склеиваем последовательные жирные строки без teacher/subgroup между ними
   const subjectFirstLines = [];
   if (subjectLines.length > 1) {
     const merged = [subjectLines[0]];
     subjectFirstLines.push(subjectLines[0]);
+    const mergedPositions = [subjectPositions[0]];
     for (let i = 1; i < subjectLines.length; i++) {
-      const prevIdx = lines.indexOf(subjectLines[i - 1]);
-      const currIdx = lines.indexOf(subjectLines[i]);
+      const prevIdx = mergedPositions[mergedPositions.length - 1];
+      const currIdx = subjectPositions[i];
       let hasBreaker = false;
       for (let j = prevIdx + 1; j < currIdx; j++) {
         if (looksLikeTeacher_(lines[j]) || looksLikeSubgroup_(lines[j])) {
@@ -616,6 +635,7 @@ function parseCellContent_(value, richText, background) {
       if (hasBreaker || currIdx - prevIdx > 2) {
         merged.push(subjectLines[i]);
         subjectFirstLines.push(subjectLines[i]);
+        mergedPositions.push(currIdx);
       } else {
         merged[merged.length - 1] += ' ' + subjectLines[i];
       }
@@ -682,35 +702,52 @@ function parseCellContent_(value, richText, background) {
 
 /**
  * Парсит сложную ячейку с несколькими предметами.
- * subjectLines — объединённые названия (могут не совпадать с allLines)
- * firstLines — первая строка каждого объединённого предмета (для поиска в allLines)
- * rawBoldSet — Set всех оригинальных жирных строк (до merge) для пропуска продолжений
+ * Поддерживает одинаковые названия предметов (ЦОСи ВА + ЦОСи ВА + ИАД).
  */
 function parseMultiSubjectLab_(allLines, subjectLines, firstLines, rawBoldSet) {
-  const firstLineToSubject = {};
-  const firstLineSet = new Set();
-  for (let i = 0; i < (firstLines || subjectLines).length; i++) {
-    const fl = (firstLines || subjectLines)[i].trim();
-    firstLineToSubject[fl] = subjectLines[i].trim();
-    firstLineSet.add(fl);
-  }
+  const fls = firstLines || subjectLines;
+  // Находим позиции первых строк каждого предмета в allLines (с учётом дубликатов)
+  const firstLinePositions = [];
+  const usedIdx = new Set();
+  fls.forEach((fl, i) => {
+    for (let k = 0; k < allLines.length; k++) {
+      if (!usedIdx.has(k) && allLines[k].trim() === fl.trim()) {
+        firstLinePositions.push({ pos: k, subject: subjectLines[i].trim() });
+        usedIdx.add(k);
+        break;
+      }
+    }
+  });
+  const firstLinePosSet = new Set(firstLinePositions.map(fp => fp.pos));
+
   // Строки-продолжения: жирные строки, которые не являются первой строкой предмета
-  const continuationLines = new Set();
+  const continuationPositions = new Set();
   if (rawBoldSet) {
-    rawBoldSet.forEach(bl => { if (!firstLineSet.has(bl)) continuationLines.add(bl); });
+    allLines.forEach((l, idx) => {
+      if (rawBoldSet.has(l.trim()) && !firstLinePosSet.has(idx)) {
+        continuationPositions.add(idx);
+      }
+    });
   }
 
   const groups = [];
   let current = null;
+  let nextFirstIdx = 0;
+  let pendingNotes = '';
 
-  allLines.forEach(line => {
+  allLines.forEach((line, idx) => {
     const trimmed = line.trim();
     if (!trimmed || /^[─━\-]+$/.test(trimmed)) return;
-    if (firstLineToSubject[trimmed]) {
-      current = { subject: firstLineToSubject[trimmed], subgroup: '', teacher: '', notes: '', comment: '', cancelled: false };
+    if (nextFirstIdx < firstLinePositions.length && idx === firstLinePositions[nextFirstIdx].pos) {
+      current = { subject: firstLinePositions[nextFirstIdx].subject, subgroup: '', teacher: '', notes: '', comment: '', cancelled: false };
+      if (pendingNotes && groups.length === 0) {
+        current.notes = pendingNotes;
+        pendingNotes = '';
+      }
       groups.push(current);
+      nextFirstIdx++;
     } else if (current) {
-      if (continuationLines.has(trimmed)) return;
+      if (continuationPositions.has(idx)) return;
       if (looksLikeTeacher_(trimmed) && !current.teacher) {
         current.teacher = trimmed;
       } else if (looksLikeSubgroup_(trimmed) && !current.subgroup) {
@@ -722,6 +759,8 @@ function parseMultiSubjectLab_(allLines, subjectLines, firstLines, rawBoldSet) {
       } else if (!current.comment) {
         current.comment = trimmed;
       }
+    } else if (!current && looksLikeNotes_(trimmed)) {
+      pendingNotes = pendingNotes ? pendingNotes + '; ' + trimmed : trimmed;
     }
   });
 

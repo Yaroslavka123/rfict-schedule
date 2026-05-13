@@ -843,7 +843,7 @@
     const parsed = info.parsed || {};
     if (parsed.lab_subgroups && parsed.lab_subgroups.length > 0) {
       document.getElementById('subgroup-list').innerHTML = '';
-      const rooms = (info.roomValue || '').split('\n').map(s => s.trim()).filter(Boolean);
+      const rooms = (info.roomValue || '').split('\n').map(s => s.trim()).filter(s => s && !/^[─━\-]+$/.test(s));
       parsed.lab_subgroups.forEach((sg, i) => {
         const dateInfo = parseDateStr(sg.notes || '');
         addSubgroupRow({
@@ -861,7 +861,7 @@
     }
 
     // Fallback: single-subject lab
-    const rooms = (info.roomValue || '').split('\n').map(s => s.trim()).filter(Boolean);
+    const rooms = (info.roomValue || '').split('\n').map(s => s.trim()).filter(s => s && !/^[─━\-]+$/.test(s));
     const lines = (info.value || '').split('\n').map(s => s.trim()).filter(Boolean);
     const teachers = lines.filter(l => /^(доц\.|проф\.|ст\.\s*пр\.|пр\.\s*ст\.|ст\.пр\.|пр\.|асс\.)/i.test(l));
     if (rooms.length <= 1 && teachers.length <= 1) {
