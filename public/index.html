@@ -856,13 +856,12 @@
         var day = l.day;
         if (!occ[room][day]) occ[room][day] = {};
         var dur = l.duration || 1;
+        var groupName = l.group;
+        if (weekData && weekData.groups) {
+          var g = weekData.groups.find(function(g) { return g.id === l.group; });
+          if (g) groupName = g.name;
+        }
         for (var p = l.pair; p < l.pair + dur; p++) {
-          var weekData2 = allData.find(function(w) { return w.week_number === currentWeek; });
-          var groupName = l.group;
-          if (weekData2 && weekData2.groups) {
-            var g = weekData2.groups.find(function(g) { return g.id === l.group; });
-            if (g) groupName = g.name;
-          }
           if (!occ[room][day][p]) occ[room][day][p] = [];
           occ[room][day][p].push({
             subject: l.subject || '',
@@ -980,7 +979,7 @@
         html += '<div class="tt-teacher">' + esc(e.teacher || '—') + '</div>';
         html += '<div class="tt-group">Группа: ' + esc(e.group || '—') + '</div>';
         if (e.subgroup) html += '<div class="tt-subgroup">ПГ: ' + esc(e.subgroup) + '</div>';
-        html += '<div class="tt-type">' + (TYPE_LABELS[e.type] || e.type || '') + '</div>';
+        html += '<div class="tt-type">' + esc(TYPE_LABELS[e.type] || e.type || '') + '</div>';
         html += '<div class="tt-time">' + esc(e.time || '') + '</div>';
       });
       tt.innerHTML = html;
