@@ -323,83 +323,86 @@
       gap: 12px;
       align-items: center;
       flex-wrap: wrap;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
-    .day-tabs { display: flex; gap: 4px; }
-    .day-tab {
-      padding: 6px 14px;
-      border: 1px solid var(--border);
-      background: var(--card);
-      color: var(--text2);
-      font-size: 13px;
-      font-weight: 600;
-      border-radius: 6px;
-      cursor: pointer;
+    .room-table-wrap {
+      overflow-x: auto;
+      width: 100%;
     }
-    .day-tab.active { border-color: var(--accent); color: var(--accent); background: #0d2744; }
-    .day-tab:hover { border-color: var(--text2); }
-
     .room-table {
       border-collapse: collapse;
+      width: 100%;
       background: var(--card);
-      border-radius: 8px;
-      overflow: hidden;
       border: 1px solid var(--border);
     }
     .room-table th {
       background: #1c2128;
-      padding: 8px 6px;
+      padding: 2px 3px;
       text-align: center;
-      font-size: 12px;
+      font-size: 9px;
       font-weight: 600;
       color: var(--text2);
       border: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      white-space: nowrap;
     }
-    .room-table th:first-child {
-      text-align: left;
-      min-width: 80px;
-      padding-left: 12px;
+    .room-table .th-day {
+      position: sticky;
+      left: 0;
+      z-index: 15;
+      background: #1c2128;
+      min-width: 28px;
+      font-size: 11px;
     }
+    .room-table .th-pair {
+      position: sticky;
+      left: 28px;
+      z-index: 15;
+      background: #1c2128;
+      min-width: 20px;
+      font-size: 10px;
+    }
+    .th-cat-lecture { color: #f0883e !important; border-bottom: 2px solid #f0883e !important; }
+    .th-cat-computer { color: #58a6ff !important; border-bottom: 2px solid #58a6ff !important; }
+    .th-cat-regular { color: #8b949e !important; border-bottom: 2px solid #8b949e !important; }
+
     .room-table td {
       padding: 0;
       border: 1px solid var(--border);
       text-align: center;
       vertical-align: middle;
-      width: 40px;
-      height: 32px;
+      min-width: 18px;
+      height: 18px;
       cursor: default;
-      position: relative;
     }
-    .room-table td:first-child {
-      text-align: left;
-      font-weight: 600;
-      padding: 6px 12px;
-      white-space: nowrap;
-      width: auto;
-    }
-    .room-table tr:hover td { filter: brightness(1.1); }
-
-    .room-cat-row td {
-      background: #161b22 !important;
+    .room-table .td-day {
       font-weight: 700;
-      font-size: 12px;
-      text-align: left !important;
-      padding: 8px 12px !important;
-      letter-spacing: 0.5px;
+      color: var(--accent);
+      background: #1c2128;
+      position: sticky;
+      left: 0;
+      z-index: 5;
+      font-size: 10px;
+      padding: 0 4px;
+      text-align: center;
     }
-    .room-cat-lecture td { color: #f0883e; border-bottom: 2px solid #f0883e; }
-    .room-cat-computer td { color: #58a6ff; border-bottom: 2px solid #58a6ff; }
-    .room-cat-regular td { color: #8b949e; border-bottom: 2px solid #8b949e; }
-
-    .room-name-lecture { color: #f0883e; }
-    .room-name-computer { color: #58a6ff; }
-    .room-name-regular { color: #8b949e; }
+    .room-table .td-pair {
+      font-weight: 600;
+      color: var(--text2);
+      background: #1c2128;
+      position: sticky;
+      left: 28px;
+      z-index: 5;
+      font-size: 9px;
+      text-align: center;
+    }
+    .day-separator td { border-top: 2px solid var(--accent) !important; }
 
     .slot-free { background: rgba(255,255,255,0.02); }
-    .slot-busy {
-      cursor: pointer;
-    }
-    .slot-busy:hover { filter: brightness(1.3) !important; }
+    .slot-busy { cursor: pointer; }
+    .slot-busy:hover { filter: brightness(1.4) !important; }
     .slot-lh { background: #3d2800; }
     .slot-comp { background: #0d2744; }
     .slot-reg { background: #1a3a1a; }
@@ -492,12 +495,14 @@
     <div class="tab-panel" id="panel-rooms">
       <div class="room-controls">
         <div class="filter-group">
-          <label>День:</label>
-          <div class="day-tabs" id="dayTabs"></div>
+          <label>Неделя:</label>
+          <select id="roomWeekFilter" style="min-width:80px"></select>
         </div>
       </div>
-      <div id="roomTableContainer">
-        <div class="no-data">Выберите неделю для просмотра занятости кабинетов</div>
+      <div class="room-table-wrap">
+        <div id="roomTableContainer">
+          <div class="no-data">Выберите неделю для просмотра занятости кабинетов</div>
+        </div>
       </div>
     </div>
   </div>
@@ -781,7 +786,6 @@
       5: '15:30–17:00', 6: '17:10–18:40', 7: '18:50–20:20', 8: '20:30–22:00'
     };
     var LECTURE_HALLS = ['115', '117', '119'];
-    var currentRoomDay = 'Пн';
 
     function normalizeRoom(r) {
       if (!r) return '';
@@ -835,33 +839,32 @@
       return occ;
     }
 
-    function renderDayTabs() {
-      var container = document.getElementById('dayTabs');
-      container.innerHTML = '';
-      var days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-      days.forEach(function(d) {
-        var btn = document.createElement('button');
-        btn.className = 'day-tab' + (d === currentRoomDay ? ' active' : '');
-        btn.textContent = d;
-        btn.onclick = function() {
-          currentRoomDay = d;
-          document.querySelectorAll('.day-tab').forEach(function(b) {
-            b.classList.toggle('active', b.textContent === d);
-          });
-          renderRoomTable();
-        };
-        container.appendChild(btn);
-      });
-    }
+    var currentRoomWeek = null;
 
     function renderRoomTab() {
-      renderDayTabs();
+      var sel = document.getElementById('roomWeekFilter');
+      sel.innerHTML = '';
+      allData.forEach(function(w) {
+        var opt = document.createElement('option');
+        opt.value = w.week_number;
+        opt.textContent = w.week_number + '-я';
+        sel.appendChild(opt);
+      });
+      if (allData.length) {
+        currentRoomWeek = allData[allData.length - 1].week_number;
+        sel.value = currentRoomWeek;
+      }
+      sel.onchange = function() {
+        currentRoomWeek = parseInt(sel.value);
+        renderRoomTable();
+      };
       renderRoomTable();
     }
 
     function renderRoomTable() {
       var container = document.getElementById('roomTableContainer');
-      var weekData = allData.find(function(w) { return w.week_number === currentWeek; });
+      var wk = currentRoomWeek || currentWeek;
+      var weekData = allData.find(function(w) { return w.week_number === wk; });
       if (!weekData) {
         container.innerHTML = '<div class="no-data">Нет данных за выбранную неделю</div>';
         return;
@@ -877,35 +880,37 @@
         return;
       }
 
-      var CATEGORY_LABELS = {
-        lecture_hall: 'Поточные аудитории',
-        computer: 'Компьютерные классы',
-        regular: 'Обычные аудитории'
-      };
       var CAT_CSS = { lecture_hall: 'lecture', computer: 'computer', regular: 'regular' };
       var SLOT_CSS = { lecture_hall: 'slot-lh', computer: 'slot-comp', regular: 'slot-reg' };
 
       var grouped = {lecture_hall: [], computer: [], regular: []};
       rooms.forEach(function(r) { grouped[classifyRoom(r)].push(r); });
       var catOrder = ['lecture_hall', 'computer', 'regular'];
+      var orderedRooms = [];
+      catOrder.forEach(function(c) { orderedRooms = orderedRooms.concat(grouped[c]); });
 
+      // Header: День | Пара | room1 | room2 | ...
       var html = '<table class="room-table"><thead><tr>';
-      html += '<th>Кабинет</th>';
-      for (var p = 1; p <= 8; p++) {
-        html += '<th>' + p + '<br><span style="font-weight:400;font-size:9px;opacity:0.6">' + (PAIR_TIMES[p] || '').split('\u2013')[0] + '</span></th>';
-      }
+      html += '<th class="th-day" rowspan="1">Д</th><th class="th-pair" rowspan="1">П</th>';
+      orderedRooms.forEach(function(r) {
+        var cat = classifyRoom(r);
+        html += '<th class="th-cat-' + CAT_CSS[cat] + '">' + esc(r) + '</th>';
+      });
       html += '</tr></thead><tbody>';
 
-      catOrder.forEach(function(cat) {
-        if (grouped[cat].length === 0) return;
-        html += '<tr class="room-cat-row room-cat-' + CAT_CSS[cat] + '"><td colspan="9">' + CATEGORY_LABELS[cat] + '</td></tr>';
+      var days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      days.forEach(function(day, di) {
+        for (var p = 1; p <= 8; p++) {
+          html += '<tr' + (p === 1 && di > 0 ? ' class="day-separator"' : '') + '>';
+          if (p === 1) {
+            html += '<td class="td-day" rowspan="8">' + day + '</td>';
+          }
+          html += '<td class="td-pair">' + p + '</td>';
 
-        grouped[cat].forEach(function(room) {
-          html += '<tr>';
-          html += '<td class="room-name-' + CAT_CSS[cat] + '">' + esc(room) + '</td>';
-          for (var p = 1; p <= 8; p++) {
-            var entries = (occ[room] && occ[room][currentRoomDay] && occ[room][currentRoomDay][p]) || [];
+          orderedRooms.forEach(function(room) {
+            var entries = (occ[room] && occ[room][day] && occ[room][day][p]) || [];
             if (entries.length > 0) {
+              var cat = classifyRoom(room);
               var ttData = JSON.stringify(entries).replace(/"/g, '&quot;');
               var slotClass = entries.length > 1 ? 'slot-multi' : SLOT_CSS[cat];
               html += '<td class="slot-busy ' + slotClass + '" data-tt="' + ttData + '"';
@@ -914,9 +919,9 @@
             } else {
               html += '<td class="slot-free"></td>';
             }
-          }
+          });
           html += '</tr>';
-        });
+        }
       });
 
       html += '</tbody></table>';
