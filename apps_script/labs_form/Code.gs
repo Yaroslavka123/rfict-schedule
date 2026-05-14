@@ -19,7 +19,7 @@ const LESSON_TYPES = [
   {code: 'practice',     label: 'Практ.',  short: 'ПЗ',  color: '#c9daf8'}, // синий
   {code: 'seminar',      label: 'Семинар', short: 'Сем', color: '#ffffff'}, // белый (как сейчас)
   {code: 'curator_hour', label: 'Куратор', short: 'КЧ',  color: '#fff2cc'}, // жёлтый
-  {code: 'additional',   label: 'ДО',      short: 'ДО',  color: '#d9d2e9'}, // фиолетовый
+  {code: 'additional',   label: 'ДО',      short: 'ДО',  color: '#d9d2e9', isDO: true}, // ДО — надстройка
 ];
 
 const DICT_SHEET_NAME = 'Справочники';

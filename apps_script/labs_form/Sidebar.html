@@ -93,14 +93,17 @@
 
     /* Subgroup blocks */
     .subgroup-block {
+      border: 1px solid #c4cdd6;
       border-left: 4px solid var(--primary);
-      border-radius: 0 6px 6px 0;
+      border-radius: 0 8px 8px 0;
       padding: 14px;
       margin-top: 12px;
       background: #e8edf2;
       position: relative;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
     .subgroup-block.cancelled-block {
+      border-color: #f5c6cb;
       border-left-color: var(--danger);
       background: #fce8e6;
     }
@@ -283,6 +286,11 @@
 
   <label>Тип занятия *</label>
   <div class="types" id="types"></div>
+  <div id="do-toggle" style="margin-top:6px;display:none">
+    <label style="display:flex;align-items:center;gap:6px;font-weight:500;color:#7b1fa2;cursor:pointer">
+      <input type="checkbox" id="do-check" style="width:16px;height:16px;accent-color:#7b1fa2"> ДО (дистанционное)
+    </label>
+  </div>
 
   <!-- Не-лаба: один предмет, один препод -->
   <div id="single-block">
@@ -384,6 +392,7 @@
     const container = document.getElementById('types');
     container.innerHTML = '';
     state.types.forEach(t => {
+      if (t.isDO) return;
       const btn = el('div', {class: 'type-btn', 'data-code': t.code});
       btn.style.background = t.color;
       btn.textContent = t.label;
@@ -397,13 +406,15 @@
     document.querySelectorAll('.type-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.code === code);
     });
+    document.getElementById('do-toggle').style.display = '';
     const isLab = code === 'lab';
-    const isDO = code === 'additional';
-    const useMulti = isLab || isDO || state.use_multi;
+    const useMulti = isLab || state.use_multi;
     document.getElementById('single-block').classList.toggle('hidden', useMulti);
     document.getElementById('multi-block').classList.toggle('hidden', !useMulti);
     if (isLab) {
       setSpanRows(2);
+    } else {
+      setSpanRows(1);
     }
     if (useMulti && document.querySelectorAll('.subgroup-block').length === 0) {
       addSubgroupRow();
@@ -600,7 +611,9 @@
   }
 
   function collectData() {
-    const useMulti = state.lesson_type === 'lab' || state.lesson_type === 'additional' || state.use_multi;
+    const isDO = document.getElementById('do-check').checked;
+    const effectiveType = isDO ? 'additional' : state.lesson_type;
+    const useMulti = state.lesson_type === 'lab' || state.use_multi;
     if (useMulti) {
       const subgroups = collectSubgroups();
       let subject = '';
@@ -609,7 +622,7 @@
         sg.notes = buildDateNotes(sg.date_from, sg.date_to);
       });
       return {
-        lesson_type: state.lesson_type,
+        lesson_type: effectiveType,
         subject: subject,
         teacher: '',
         room: '',
@@ -624,7 +637,7 @@
     const dateFrom = document.getElementById('date-from').value.trim();
     const dateTo = document.getElementById('date-to').value.trim();
     return {
-      lesson_type: state.lesson_type,
+      lesson_type: effectiveType,
       subject: document.getElementById('subject').value.trim(),
       teacher: document.getElementById('teacher').value.trim(),
       room: document.getElementById('room').value.trim(),
@@ -640,7 +653,7 @@
   function validate() {
     let ok = false;
     if (state.lesson_type) {
-      const useMulti = state.lesson_type === 'lab' || state.lesson_type === 'additional' || state.use_multi;
+      const useMulti = state.lesson_type === 'lab' || state.use_multi;
       if (useMulti) {
         const subs = [...document.querySelectorAll('.sg-subject')].map(el => el.value.trim());
         ok = subs.length > 0 && subs.every(s => s);
@@ -787,14 +800,20 @@
     refreshBtn.style.display = '';
 
     const parsed = info.parsed || {};
-    if (parsed.lesson_type) selectType(parsed.lesson_type);
+    if (parsed.lesson_type === 'additional') {
+      const baseType = (parsed.lab_subgroups && parsed.lab_subgroups.length > 0) ? 'lab' : 'lecture';
+      selectType(baseType);
+      document.getElementById('do-check').checked = true;
+    } else if (parsed.lesson_type) {
+      selectType(parsed.lesson_type);
+    }
 
     // Восстановить количество пар
     if (info.spanRows) {
       setSpanRows(info.spanRows);
     }
 
-    if (parsed.lesson_type === 'lab' || parsed.lesson_type === 'additional') {
+    if (parsed.lesson_type === 'lab' || (parsed.lesson_type === 'additional' && parsed.lab_subgroups && parsed.lab_subgroups.length > 0)) {
       tryFillLabSubgroups(info);
     } else if (parsed.lab_subgroups && parsed.lab_subgroups.length > 1) {
       // Multi-subject non-lab (e.g. lecture for 2 groups)
@@ -972,6 +991,8 @@
     document.getElementById('date-to').value = '';
     document.getElementById('comment').value = '';
     document.getElementById('cancel-check').checked = false;
+    document.getElementById('do-check').checked = false;
+    document.getElementById('do-toggle').style.display = 'none';
     document.querySelectorAll('input[name="sg"]').forEach(c => c.checked = false);
     document.getElementById('cycle').value = '';
     document.getElementById('subgroup-list').innerHTML = '';
