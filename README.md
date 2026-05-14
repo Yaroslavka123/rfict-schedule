@@ -1,13 +1,50 @@
 # rfict-schedule
 
-Система управления расписанием **РФиКТ БГУ**. Apps Script расширение для Google Sheets + автоматический экспорт JSON в GitHub + webhook для Go backend.
+Система управления расписанием **РФиКТ БГУ**. Apps Script расширение для Google Sheets + автоматический экспорт JSON в GitHub + webhook для Go backend + веб-интерфейс расписания.
+
+---
+
+## Содержание
+
+- [Архитектура](#архитектура)
+- [Структура репозитория](#структура-репозитория)
+- [Быстрый старт](#быстрый-старт)
+- [Apps Script (серверная часть)](#apps-script-серверная-часть)
+  - [Установка](#установка-apps-script)
+  - [Настройка автоэкспорта](#настройка-автоэкспорта)
+  - [4 курса](#4-курса)
+  - [Использование формы](#использование-формы)
+  - [Типы занятий](#типы-занятий)
+  - [Логика пар](#логика-пар-span-rows)
+  - [ДО-модификатор](#до-модификатор)
+  - [Подгруппы](#подгруппы)
+  - [Автоэкспорт и debounce](#автоэкспорт-и-debounce)
+  - [Справочники](#справочники)
+  - [Структура ячейки](#структура-ячейки)
+  - [RichText формат](#richtext-формат)
+  - [Серверные функции (Code.gs)](#серверные-функции-codegs)
+- [Фронтенд (index.html)](#фронтенд-indexhtml)
+  - [Вкладка «Расписание»](#вкладка-расписание)
+  - [Вкладка «Кабинеты»](#вкладка-кабинеты)
+  - [Загрузка данных](#загрузка-данных)
+- [API для Go Backend](#api-для-go-backend)
+  - [Webhook](#webhook-получение-обновлений)
+  - [JSON Schema](#json-schema-файл-недели)
+  - [Go structs](#go-structs)
+  - [REST endpoints](#рекомендуемые-rest-endpoints)
+  - [Получение JSON из GitHub](#получение-json-из-github)
+- [Расписание звонков](#расписание-звонков)
+- [Устранение неполадок](#устранение-неполадок)
+
+---
 
 ## Архитектура
 
 ```
 ┌─────────────────┐    onEdit / Применить     ┌──────────────┐
 │  Google Sheets   │ ──────────────────────── │  Apps Script  │
-│  (расписание)    │                          │  (Code.gs)    │
+│  (расписание)    │                          │  (Code.gs +   │
+│                  │ ◄──── sidebar форма ──── │  Sidebar.html)│
 └─────────────────┘                          └──────┬───────┘
                                                      │
                                           debounce 2 мин
@@ -27,10 +64,13 @@
 ```
 
 **Поток данных:**
-1. Пользователь заполняет расписание через sidebar-форму или напрямую в ячейках
-2. Apps Script (debounce 2 мин) генерирует JSON и пушит в GitHub
-3. Apps Script вызывает webhook Go backend с метаданными обновления
-4. Frontend читает JSON из GitHub Pages / raw GitHub
+
+1. Пользователь заполняет расписание через **sidebar-форму** или напрямую в ячейках
+2. Apps Script (**debounce 2 мин** после последнего изменения) парсит таблицу, генерирует JSON и пушит в GitHub через Contents API
+3. Apps Script вызывает **webhook** Go backend с метаданными обновления (опционально)
+4. Фронтенд (`index.html`) читает JSON из `raw.githubusercontent.com` и отображает расписание + таблицу занятости кабинетов
+
+---
 
 ## Структура репозитория
 
@@ -38,58 +78,298 @@
 rfict-schedule/
 ├── apps_script/labs_form/
 │   ├── Code.gs            # Серверная логика: форма, парсинг, экспорт, webhook
-│   ├── Sidebar.html       # UI формы ввода занятий
-│   ├── appsscript.json    # Манифест Apps Script
-│   └── README.md          # Документация Apps Script
+│   ├── Sidebar.html       # UI формы ввода занятий (sidebar в Google Sheets)
+│   ├── appsscript.json    # Манифест Apps Script (OAuth scopes, timezone)
+│   └── README.md          # Документация Apps Script (подробная)
 ├── public/
-│   ├── index.html         # Фронтенд расписания (фильтры, поиск, тёмная тема)
+│   ├── index.html         # Фронтенд: расписание + таблица кабинетов
 │   └── schedule/
 │       └── course_{N}/    # JSON файлы по курсам (1-4)
 │           ├── 1.json     # Неделя 1
 │           ├── 2.json     # Неделя 2
 │           └── ...        # до 14.json
-└── README.md
+├── .gitignore
+├── LICENSE
+└── README.md              # Этот файл
 ```
 
-## Установка Apps Script
+---
+
+## Быстрый старт
+
+1. Скопируй `Code.gs` и `Sidebar.html` в Apps Script проект таблицы расписания
+2. Настрой `GITHUB_TOKEN` в Script Properties
+3. Добавь installable trigger `onSheetEdit` (On edit)
+4. Обнови страницу таблицы → появится меню **«Расписание»**
+5. Нажми **«Расписание → 🔄 Пересоздать справочник из таблицы»** для инициализации словарей
+6. Открой фронтенд `public/index.html` (или задеплой на GitHub Pages)
+
+Подробные инструкции: [`apps_script/labs_form/README.md`](apps_script/labs_form/README.md)
+
+---
+
+## Apps Script (серверная часть)
+
+### Установка Apps Script
 
 1. Открой таблицу расписания → **Расширения → Apps Script**
 2. Создай файл `Code.gs` → вставь содержимое [`apps_script/labs_form/Code.gs`](apps_script/labs_form/Code.gs)
-3. Создай файл `Sidebar.html` → вставь содержимое [`apps_script/labs_form/Sidebar.html`](apps_script/labs_form/Sidebar.html)
-4. В **⚙ Project Settings** → включи **Show "appsscript.json"** → замени на [`appsscript.json`](apps_script/labs_form/appsscript.json)
+3. Создай HTML-файл `Sidebar` (без расширения) → вставь содержимое [`apps_script/labs_form/Sidebar.html`](apps_script/labs_form/Sidebar.html)
+4. В **⚙ Project Settings** → включи **Show "appsscript.json"** → замени содержимое на [`appsscript.json`](apps_script/labs_form/appsscript.json)
 5. Сохрани (Ctrl+S), обнови страницу таблицы
 
 ### Настройка автоэкспорта
 
-1. **⚙ Project Settings → Script Properties:**
-   - `GITHUB_TOKEN` — [Fine-grained PAT](https://github.com/settings/personal-access-tokens/new) с правами `Contents: Read and write` на репозиторий
-   - `WEBHOOK_URL` *(опционально)* — URL Go backend endpoint для получения обновлений
+**Script Properties** (⚙ Project Settings → Script Properties → Add):
 
-2. **Triggers** (часы слева) → **Add Trigger:**
-   - Function: `onSheetEdit`
-   - Event source: From spreadsheet
-   - Event type: On edit
+| Ключ | Описание | Обязательно |
+|------|----------|:-----------:|
+| `GITHUB_TOKEN` | [Fine-grained PAT](https://github.com/settings/personal-access-tokens/new) с правами `Contents: Read and write` на `Yaroslavka123/rfict-schedule` | ✓ |
+| `WEBHOOK_URL` | URL Go backend endpoint для получения обновлений (`POST`) | — |
 
-### Автоэкспорт
+**Triggers** (часы слева → Add Trigger):
 
-При любом изменении в таблице (ручное или через форму) экспорт запускается автоматически с **debounce 2 минуты** — несколько быстрых правок → один пуш.
-
-Ручной экспорт: **Расписание → Обновить расписание сейчас** (мгновенный, без задержки).
+| Function | Event source | Event type |
+|----------|-------------|------------|
+| `onSheetEdit` | From spreadsheet | On edit |
 
 ### 4 курса
 
-Каждый курс — отдельная Google таблица со своим Apps Script. Курс определяется из ячейки `A2` (формат: `N курс`). JSON пушится в папку `public/schedule/course_{N}/`.
+Каждый курс — отдельная Google таблица со своим Apps Script. Курс определяется автоматически из ячейки **A2** (формат: `N курс`). JSON пушится в папку `public/schedule/course_{N}/`.
 
 Для добавления нового курса: скопируй Apps Script + настрой `GITHUB_TOKEN` в новой таблице.
 
-## Использование формы
+### Использование формы
 
-- Меню **Расписание → Добавить / редактировать занятие** — открывает sidebar
-- Выбери тип занятия (Лекция / Лаб / Практ / Семинар / Куратор / ДО)
-- Для **лабы**: каждая подгруппа — отдельный блок (предмет, подгруппа, чет/нечет, препод, аудитория, даты, комментарий, отмена)
-- Лаба пишется в 2 ячейки (текущая + ниже). Если 2 подгруппы — каждая в своей ячейке
-- **Ctrl+Enter** — быстрое применение
-- **↓ След.** — применить и перейти к следующей ячейке
+1. Кликни на ячейку в таблице расписания
+2. **Расписание → ➕ Добавить / редактировать занятие** — откроется sidebar
+3. Выбери тип занятия (кнопки в верхней части)
+4. Заполни поля (предмет, преподаватель, аудитория, подгруппа, даты, комментарий)
+5. Нажми **«Применить» (Ctrl+Enter)** — ячейка автоматически заполнится правильным форматом
+
+Если ячейка уже заполнена → форма открывается **с её данными** для редактирования.
+
+### Типы занятий
+
+| Тип | Код | Цвет ячейки | Кнопка | Пар |
+|-----|-----|-------------|--------|:---:|
+| Лекция | `lecture` | `#d9ead3` (зелёный) | ЛК | 1 |
+| Лабораторная | `lab` | `#fce5cd` (оранжевый) | ЛБ | 2 |
+| Практика | `practice` | `#c9daf8` (голубой) | ПЗ | 1 |
+| Семинар | `seminar` | `#ffffff` (белый) | Сем | 1 |
+| Кураторский час | `curator_hour` | `#fff2cc` (жёлтый) | КЧ | 1 |
+| ДО (дистанционное) | `additional` | `#d9d2e9` (фиолетовый) | ДО | 1 |
+
+### Логика пар (span rows)
+
+Количество пар определяется автоматически:
+
+- **Лабораторная** → всегда **2 пары** (merge 2 ячейки по вертикали)
+- **Все остальные** → всегда **1 пара**
+
+Селектор кол-ва пар убран из формы — он детерминирован типом занятия.
+
+### ДО-модификатор
+
+ДО — это не отдельный тип, а **надстройка** (чекбокс). Любой тип может быть ДО:
+
+- Лекция + ДО = дистанционная лекция
+- Лаба + ДО = дистанционная лаба
+- Практика + ДО = дистанционная практика
+
+Когда ДО включён, сохраняется цвет и логика основного типа, а в ячейку добавляется пометка.
+
+### Подгруппы
+
+**Обычное занятие** (не лаба): чекбоксы `1ПГ`–`6ПГ` + выбор чёт/нечёт.
+
+**Лаба / мульти-блок**: каждая подгруппа — отдельный блок с полями:
+- Предмет
+- Подгруппа (1ПГ–6ПГ, чекбоксы)
+- Чёт/нечёт
+- Преподаватель
+- Аудитория
+- Дата с / по
+- Комментарий
+- Чекбокс ОТМЕНА
+
+Подгруппы визуально выделены рамкой, крупным заголовком «Подгруппа #N» и контрастным фоном. Кнопка **«+ ещё предмет/подгруппа»** добавляет новый блок.
+
+### Автоэкспорт и debounce
+
+При **любом изменении** в таблице (ручном или через форму) запускается отложенный экспорт:
+
+1. Изменение ячейки → `onSheetEdit` или `applyLesson` вызывает `scheduleDelayedExport_()`
+2. Создаётся **time-based триггер** на 2 минуты вперёд
+3. Если за 2 минуты произошли ещё изменения → таймер **сбрасывается** (debounce)
+4. Через 2 минуты после **последнего** изменения → `runDelayedExport_()`:
+   - Парсит таблицу → генерирует JSON
+   - Пушит в GitHub через Contents API
+   - Отправляет webhook (если `WEBHOOK_URL` задан)
+
+**Ручной экспорт:** меню **«Расписание → ⚡ Обновить расписание сейчас»** — мгновенный, без debounce.
+
+Если за время debounce изменились разные листы → экспортируются все. Если один лист → только он.
+
+### Справочники
+
+Словари (предметы, преподаватели, аудитории) хранятся в скрытом листе **«Справочники»**:
+
+| Столбец A | Столбец B | Столбец C |
+|-----------|-----------|-----------|
+| Предметы | Преподаватели | Аудитории |
+
+**Инициализация:** меню **«Расписание → 🔄 Пересоздать справочник из таблицы»** — скрипт сканирует все листы и собирает уникальные значения.
+
+**Автоматическое пополнение:** при применении занятия через форму новые предметы/преподы/аудитории автоматически добавляются в справочник.
+
+**Ручное редактирование:** меню **«Расписание → 📋 Открыть справочник»** — откроет лист, можно редактировать руками.
+
+Словари кэшируются на 60 секунд (`CacheService`).
+
+### Структура ячейки
+
+Форма пишет в **две соседние ячейки**:
+
+| Ячейка | Содержимое |
+|--------|-----------|
+| Активная (lesson cell) | **Предмет** (жирным), подгруппа (красным), преподаватель, комментарий (красным), ОТМЕНА |
+| Соседняя справа (room cell) | Аудитория(и). При лабе с несколькими подгруппами — через разделитель `───` |
+
+Цвет фона обеих ячеек устанавливается по типу занятия.
+
+### RichText формат
+
+Ячейки используют **RichText** (стилизованный текст), а не plain text. Это позволяет парсеру точно разбирать содержимое без эвристик.
+
+**Правила стилизации:**
+
+| Стиль текста | Значение |
+|-------------|----------|
+| **Жирный чёрный** | Название предмета (`subject`) |
+| Красный до предмета | Период: `с ДД.ММ по ДД.ММ` → `period_start` / `period_end` |
+| Красный после предмета, до преподавателя | Подгруппа: `1ПГ/2ПГ нечет/чет` → `subgroup`, `frequency` |
+| Обычный чёрный после предмета | Преподаватель: `ст.пр. ИвановИ.И.` → `teacher` |
+| Красный после преподавателя | Комментарий → `comment` |
+| **Жирный красный** | `ОТМЕНА` → `cancelled: true` |
+
+**Разделитель подгрупп:** строка `───────────────` разделяет блоки в одной ячейке.
+
+Шрифт: Arial 12pt для всех стилей.
+
+### Серверные функции (Code.gs)
+
+#### Публичные (вызываются из UI/sidebar)
+
+| Функция | Описание |
+|---------|----------|
+| `onOpen()` | Создаёт меню «Расписание» с пунктами |
+| `showSidebar()` | Открывает sidebar с формой ввода |
+| `getActiveCellInfo()` | Возвращает данные активной ячейки + словари (один roundtrip) |
+| `applyLesson(data)` | Записывает занятие в ячейку: RichText + цвет + аудитория |
+| `applyLessonAndMoveDown(data)` | `applyLesson` + перевод курсора вниз |
+| `clearActiveCell()` | Очищает активную ячейку и соседнюю (аудитория) |
+| `manualDispatch()` | Мгновенный экспорт всех листов в GitHub |
+| `openDictionarySheet()` | Открывает лист «Справочники» |
+| `rebuildDictionaryFromSheet()` | Пересоздаёт справочник из данных таблицы |
+| `getDictionaries()` | Возвращает словари (с кэшем 60 сек) |
+
+#### Внутренние (приватные)
+
+| Функция | Описание |
+|---------|----------|
+| `buildCellContent_(subgroups)` | Собирает текст + styleRanges из массива подгрупп |
+| `applyRichTextToCell_(cell, text, styleRanges, bgColor)` | Применяет RichText и форматирование к ячейке |
+| `setRoomCell_(cell, text)` | Форматирует ячейку аудитории (жирный, Arial 12pt) |
+| `scheduleDelayedExport_(sheetName)` | Планирует отложенный экспорт (debounce) |
+| `runDelayedExport_()` | Выполняет отложенный экспорт (вызывается по таймеру) |
+| `dispatchScheduleUpdate_(source, detail, editedSheetName, spreadsheetId)` | Экспорт JSON в GitHub + webhook |
+| `getSheetMeta_(ss)` | Метаданные таблицы: курс, семестр, группы |
+| `discoverGroups_(sheet)` | Определяет группы из строки 5 листа |
+| `parseWeekSheet_(sheet, groups)` | Парсит лист-неделю в массив Lesson |
+| `parseRichLessonCell_(richText, roomValue)` | Парсит RichText ячейки в структурированные данные |
+| `buildStyleMap_(runs)` | Карта charIndex → {bold, red} из RichText runs |
+| `extractPeriod_(line, entry)` | Извлекает даты периода из строки |
+| `pushSheet_(ws, meta, token)` | Пушит один лист в GitHub + webhook |
+| `exportSingleSheet_(ss, sheetName, token)` | Экспорт одного листа |
+| `exportAllSheets_(ss, token)` | Экспорт всех листов |
+| `pushFileToGitHub_(path, content, token)` | Пуш файла через GitHub Contents API |
+| `notifyWebhook_(filePath, json)` | POST-запрос на WEBHOOK_URL |
+| `appendToDictionary_(items)` | Добавляет новые значения в справочник |
+| `parseCellContent_(value, richText, background)` | Парсит содержимое ячейки для заполнения формы |
+| `detectLessonType_(background)` | Определяет тип занятия по цвету фона |
+
+---
+
+## Фронтенд (index.html)
+
+Одностраничное веб-приложение (HTML + vanilla JS, без фреймворков) с тёмной темой.
+
+### Вкладка «Расписание»
+
+Таблица расписания с фильтрами:
+
+| Фильтр | Описание |
+|--------|----------|
+| Курс | Выбор курса (1-4). Загружает данные из `course_{N}/` |
+| Группа | Фильтр по группе |
+| Тип | Фильтр по типу занятия |
+| Неделя | Навигация по неделям (1-14) |
+| Поиск | Полнотекстовый поиск по предмету, преподавателю, группе |
+
+**Особенности:**
+- Таблица сгруппирована по дням и парам
+- Занятия на 2-3 пары отображаются как `1-2` или `1-3`
+- Отменённые занятия — зачёркнутый текст + красная метка «ОТМЕНА»
+- Статистика: общее кол-во занятий, кол-во отмен
+- Текущая неделя выбирается автоматически
+
+### Вкладка «Кабинеты»
+
+Таблица занятости кабинетов (матрица):
+
+| Ось | Содержимое |
+|-----|-----------|
+| **X (столбцы)** | Кабинеты, сгруппированные по категориям |
+| **Y (строки)** | Дни × Пары (Пн 1-8, Вт 1-8, ..., Сб 1-8 = 48 строк) |
+
+**Категории кабинетов:**
+
+| Категория | Кабинеты | Цвет заголовка | Цвет ячейки |
+|-----------|----------|---------------|-------------|
+| Поточные | 115, 117, 119 | 🟠 оранжевый | `#3d2800` |
+| Компьютерные | */К1, */К2 | 🔵 синий | `#0d2744` |
+| Обычные | Все остальные | ⚪ серый | `#1a3a1a` |
+
+Порядок столбцов: поточные → комп. классы → обычные.
+
+**Ячейки:**
+- Без текста — только цветовые маркеры
+- Фиолетовый (`#3b1f5e`) = несколько групп в одном слоте
+- При наведении — tooltip с предметом, преподавателем, группой, типом
+- Отменённые занятия = кабинет свободен (не отображается)
+
+**Неделя:** собственный селектор недели (независимый от вкладки «Расписание»). По умолчанию — **последняя доступная неделя**.
+
+**Sticky-элементы:**
+- Столбец «День» — sticky слева
+- Столбец «Пара» — sticky слева (правее дня)
+- Заголовки кабинетов — sticky сверху
+
+### Загрузка данных
+
+Фронтенд загружает JSON напрямую из `raw.githubusercontent.com` (без API, без rate limit проблем):
+
+```
+https://raw.githubusercontent.com/Yaroslavka123/rfict-schedule/main/public/schedule/course_{N}/{week}.json
+```
+
+При инициализации:
+1. Проверяет наличие каждого курса (HEAD-запрос на `1.json`)
+2. Загружает все 14 недель параллельно (`Promise.all`)
+3. Заполняет фильтры из загруженных данных
+
+> **Кэш CDN:** `raw.githubusercontent.com` кэширует файлы на ~5 минут. После экспорта данные обновляются с небольшой задержкой.
 
 ---
 
@@ -97,7 +377,7 @@ rfict-schedule/
 
 ### Webhook: получение обновлений
 
-Apps Script отправляет POST-запрос на `WEBHOOK_URL` после каждого успешного пуша JSON в GitHub.
+Apps Script отправляет **POST-запрос** на `WEBHOOK_URL` после каждого успешного пуша JSON в GitHub.
 
 #### `POST {WEBHOOK_URL}`
 
@@ -136,18 +416,6 @@ Apps Script отправляет POST-запрос на `WEBHOOK_URL` после
 **Go handler example:**
 
 ```go
-type WebhookPayload struct {
-    Event        string `json:"event"`
-    File         string `json:"file"`
-    Course       int    `json:"course"`
-    Semester     int    `json:"semester"`
-    WeekNumber   int    `json:"week_number"`
-    DateRange    string `json:"date_range"`
-    Name         string `json:"name"`
-    GeneratedAt  string `json:"generated_at"`
-    LessonsCount int    `json:"lessons_count"`
-}
-
 func handleWebhook(w http.ResponseWriter, r *http.Request) {
     var payload WebhookPayload
     if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -189,8 +457,8 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `name` | `string` | Название листа |
-| `generated_at` | `string` | ISO 8601 timestamp |
+| `name` | `string` | Название листа (формат: `ДД.ММ-ДД.ММ(N-я неделя)`) |
+| `generated_at` | `string` | ISO 8601 timestamp генерации |
 | `course` | `int` | Номер курса (1-4) |
 | `semester` | `int` | Номер семестра |
 | `week_number` | `int` | Номер недели (1-14) |
@@ -240,23 +508,23 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 ```
 
 | Поле | Тип | Nullable | Описание |
-|------|-----|----------|----------|
-| `day` | `string` | нет | День недели (`"Пн"`, `"Вт"`, `"Ср"`, `"Чт"`, `"Пт"`, `"Сб"`) |
-| `day_number` | `int` | нет | Номер дня (1=Пн, 6=Сб) |
-| `pair` | `int` | нет | Номер пары (1-8) |
-| `duration` | `int` | нет | Длительность в парах (1, 2 или 3) |
-| `time` | `string` | нет | Время начала и конца (см. таблицу звонков) |
-| `group` | `string` | нет | ID группы (соответствует `groups[].id`) |
-| `type` | `string` | нет | Тип занятия (см. enum ниже) |
-| `subject` | `string` | нет | Название предмета |
-| `teacher` | `string` | да | ФИО преподавателя с должностью |
-| `room` | `string` | да | Номер аудитории |
-| `subgroup` | `string` | да | Подгруппа (`"1ПГ"`, `"2ПГ"`, `"1ПГ/2ПГ нечет/чет"`) |
-| `frequency` | `string` | да | Частота (`"чет"`, `"нечет"`, `"нечет/чет"`, `"еженедельно"`) |
-| `period_start` | `string` | да | Дата начала периода (`"ДД.ММ"`) |
-| `period_end` | `string` | да | Дата конца периода (`"ДД.ММ"`) |
-| `comment` | `string` | да | Комментарий |
-| `cancelled` | `bool` | нет | Занятие отменено (`ОТМЕНА`) |
+|------|-----|:--------:|----------|
+| `day` | `string` | — | День недели (`"Пн"`, `"Вт"`, `"Ср"`, `"Чт"`, `"Пт"`, `"Сб"`) |
+| `day_number` | `int` | — | Номер дня (1=Пн, 6=Сб) |
+| `pair` | `int` | — | Номер пары (1-8) |
+| `duration` | `int` | — | Длительность в парах (1, 2 или 3) |
+| `time` | `string` | — | Время начала и конца (см. таблицу звонков) |
+| `group` | `string` | — | ID группы (соответствует `groups[].id`) |
+| `type` | `string` | — | Тип занятия (см. enum ниже) |
+| `subject` | `string` | — | Название предмета |
+| `teacher` | `string` | ✓ | ФИО преподавателя с должностью |
+| `room` | `string` | ✓ | Номер аудитории |
+| `subgroup` | `string` | ✓ | Подгруппа (`"1ПГ"`, `"2ПГ"`, `"1ПГ/2ПГ нечет/чет"`) |
+| `frequency` | `string` | ✓ | Частота (`"чет"`, `"нечет"`, `"нечет/чет"`, `"еженедельно"`) |
+| `period_start` | `string` | ✓ | Дата начала периода (`"ДД.ММ"`) |
+| `period_end` | `string` | ✓ | Дата конца периода (`"ДД.ММ"`) |
+| `comment` | `string` | ✓ | Комментарий |
+| `cancelled` | `bool` | — | Занятие отменено (`ОТМЕНА`) |
 
 #### Enum: `type`
 
@@ -269,24 +537,60 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 | `curator_hour` | `#fff2cc` (жёлтый) | Кураторский час |
 | `additional` | `#d9d2e9` (фиолетовый) | ДО / дополнительное |
 
-#### Расписание звонков
+### Go structs
 
-| Пара | Время |
-|------|-------|
-| 1 | 09:00 - 10:25 |
-| 2 | 10:35 - 12:00 |
-| 3 | 12:10 - 13:35 |
-| 4 | 14:00 - 15:25 |
-| 5 | 15:35 - 17:00 |
-| 6 | 17:20 - 18:45 |
-| 7 | 18:55 - 20:20 |
-| 8 | 20:30 - 21:55 |
+```go
+type WebhookPayload struct {
+    Event        string `json:"event"`
+    File         string `json:"file"`
+    Course       int    `json:"course"`
+    Semester     int    `json:"semester"`
+    WeekNumber   int    `json:"week_number"`
+    DateRange    string `json:"date_range"`
+    Name         string `json:"name"`
+    GeneratedAt  string `json:"generated_at"`
+    LessonsCount int    `json:"lessons_count"`
+}
 
-> При `duration > 1` поле `time` содержит время первой пары. Фактическое окончание = время конца пары `pair + duration - 1`.
+type Lesson struct {
+    Day         string  `json:"day"`
+    DayNumber   int     `json:"day_number"`
+    Pair        int     `json:"pair"`
+    Duration    int     `json:"duration"`
+    Time        string  `json:"time"`
+    Group       string  `json:"group"`
+    Type        string  `json:"type"`
+    Subject     string  `json:"subject"`
+    Teacher     *string `json:"teacher"`
+    Room        *string `json:"room"`
+    Subgroup    *string `json:"subgroup"`
+    Frequency   *string `json:"frequency"`
+    PeriodStart *string `json:"period_start"`
+    PeriodEnd   *string `json:"period_end"`
+    Comment     *string `json:"comment"`
+    Cancelled   bool    `json:"cancelled"`
+}
 
-### Рекомендуемые Go endpoints
+type Group struct {
+    ID         string `json:"id"`
+    Name       string `json:"name"`
+    Specialty  string `json:"specialty"`
+    Department string `json:"department"`
+}
 
-На основе структуры данных, рекомендуемые REST endpoints для Go backend:
+type WeekSchedule struct {
+    Name        string   `json:"name"`
+    GeneratedAt string   `json:"generated_at"`
+    Course      int      `json:"course"`
+    Semester    int      `json:"semester"`
+    WeekNumber  int      `json:"week_number"`
+    DateRange   string   `json:"date_range"`
+    Groups      []Group  `json:"groups"`
+    Lessons     []Lesson `json:"lessons"`
+}
+```
+
+### Рекомендуемые REST endpoints
 
 #### Расписание
 
@@ -377,47 +681,6 @@ POST /api/v1/webhook/schedule
 Принимает webhook от Apps Script (см. [Webhook payload](#post-webhook_url)).
 При получении — скачивает обновлённый JSON из GitHub и обновляет кэш/БД.
 
-#### Go struct для Lesson
-
-```go
-type Lesson struct {
-    Day         string  `json:"day"`
-    DayNumber   int     `json:"day_number"`
-    Pair        int     `json:"pair"`
-    Duration    int     `json:"duration"`
-    Time        string  `json:"time"`
-    Group       string  `json:"group"`
-    Type        string  `json:"type"`
-    Subject     string  `json:"subject"`
-    Teacher     *string `json:"teacher"`
-    Room        *string `json:"room"`
-    Subgroup    *string `json:"subgroup"`
-    Frequency   *string `json:"frequency"`
-    PeriodStart *string `json:"period_start"`
-    PeriodEnd   *string `json:"period_end"`
-    Comment     *string `json:"comment"`
-    Cancelled   bool    `json:"cancelled"`
-}
-
-type Group struct {
-    ID         string `json:"id"`
-    Name       string `json:"name"`
-    Specialty  string `json:"specialty"`
-    Department string `json:"department"`
-}
-
-type WeekSchedule struct {
-    Name        string   `json:"name"`
-    GeneratedAt string   `json:"generated_at"`
-    Course      int      `json:"course"`
-    Semester    int      `json:"semester"`
-    WeekNumber  int      `json:"week_number"`
-    DateRange   string   `json:"date_range"`
-    Groups      []Group  `json:"groups"`
-    Lessons     []Lesson `json:"lessons"`
-}
-```
-
 ### Получение JSON из GitHub
 
 Для скачивания JSON напрямую из GitHub (без webhook):
@@ -431,12 +694,57 @@ https://raw.githubusercontent.com/Yaroslavka123/rfict-schedule/main/public/sched
 https://raw.githubusercontent.com/Yaroslavka123/rfict-schedule/main/public/schedule/course_3/14.json
 ```
 
-> **Rate limit:** GitHub raw content не имеет строгого rate limit, но для production рекомендуется кэшировать данные на стороне backend и обновлять по webhook.
+> **Rate limit:** `raw.githubusercontent.com` не имеет строгого rate limit, но для production рекомендуется кэшировать данные на стороне backend и обновлять по webhook.
 
-### Список всех файлов
-
+**Список всех файлов:**
 ```
 https://api.github.com/repos/Yaroslavka123/rfict-schedule/contents/public/schedule/course_3
 ```
 
 Вернёт массив файлов (`1.json`..`14.json`) с их SHA и download URL.
+
+---
+
+## Расписание звонков
+
+| Пара | Время |
+|:----:|-------|
+| 1 | 08:30 – 10:00 |
+| 2 | 10:10 – 11:40 |
+| 3 | 12:10 – 13:40 |
+| 4 | 13:50 – 15:20 |
+| 5 | 15:30 – 17:00 |
+| 6 | 17:10 – 18:40 |
+| 7 | 18:50 – 20:20 |
+| 8 | 20:30 – 22:00 |
+
+> При `duration > 1` поле `time` содержит время первой пары. Фактическое окончание = время конца пары `pair + duration - 1`.
+
+---
+
+## Устранение неполадок
+
+| Проблема | Решение |
+|----------|---------|
+| Меню «Расписание» не появилось | Открой Apps Script → запусти `onOpen` вручную (выбери функцию → «Запустить») |
+| Sidebar без кнопок | Проверь, что файл называется **именно `Sidebar`** (без расширения, регистрозависимо) |
+| Форма не сохраняет | Проверь, что ячейка выбрана в Google Sheets (подсвечена) |
+| Скрипт просит разрешения | Нажми «Дополнительно» → «Перейти к проекту (небезопасно)» → «Разрешить» |
+| `GitHub API: 409` | Конфликт SHA — нажми «Обновить расписание сейчас» ещё раз |
+| `GitHub API: 403` | Токен без прав `Contents: Read and write` — пересоздай PAT |
+| Расписание не обновляется | Проверь: 1) `GITHUB_TOKEN` в Script Properties, 2) триггер `onSheetEdit` в Triggers |
+| Отложенный экспорт не срабатывает | Проверь Executions (часы слева) — ищи `runDelayedExport_`. Удали мёртвые триггеры в Triggers |
+| Фронтенд не грузит данные | `raw.githubusercontent.com` кэширует ~5 мин. Подожди или очисти кэш браузера |
+| Хочу откатить скрипт | Apps Script → правый клик на `Code.gs` → «Удалить». Данные в таблице останутся |
+
+---
+
+## OAuth Scopes
+
+Скрипт использует минимальные scopes (определены в `appsscript.json`):
+
+| Scope | Зачем |
+|-------|-------|
+| `spreadsheets.currentonly` | Чтение и запись только в текущую таблицу |
+| `script.container.ui` | Отображение sidebar и меню |
+| `script.external_request` | HTTP-запросы к GitHub API и webhook |
