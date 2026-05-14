@@ -79,7 +79,7 @@
     .content {
       width: 100%;
       margin: 0 auto;
-      padding: 20px 24px;
+      padding: 16px 12px;
     }
 
     .stats {
@@ -352,51 +352,56 @@
     .room-legend-dot.comp { background: #58a6ff; }
     .room-legend-dot.reg { background: #3fb950; }
     .room-table-wrap {
-      overflow-x: auto;
+      overflow: auto;
       width: 100%;
+      max-height: calc(100vh - 190px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
     }
     .room-table {
-      table-layout: fixed;
+      table-layout: auto;
       border-collapse: collapse;
-      width: 100%;
-      min-width: 1100px;
+      width: max-content;
+      min-width: 100%;
       background: var(--card);
-      border: 1px solid var(--border);
     }
     .room-table th {
       background: #1c2128;
-      padding: 7px 6px;
+      padding: 5px 6px;
       text-align: center;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       color: var(--text2);
       border: 1px solid var(--border);
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 25;
       white-space: nowrap;
     }
     .room-table .th-day {
       position: sticky;
       left: 0;
-      z-index: 15;
+      z-index: 35;
       background: #1c2128;
-      width: 62px;
-      min-width: 62px;
-      font-size: 12px;
+      width: 34px;
+      min-width: 34px;
+      font-size: 10px;
     }
     .room-table .th-pair {
       position: sticky;
-      left: 62px;
-      z-index: 15;
+      left: 34px;
+      z-index: 35;
       background: #1c2128;
-      width: 90px;
-      min-width: 90px;
-      font-size: 12px;
+      width: 30px;
+      min-width: 30px;
+      font-size: 10px;
     }
     .th-room-name {
-      overflow: hidden;
-      text-overflow: ellipsis;
+      min-width: 52px;
+      max-width: 72px;
+      overflow: visible;
+      text-overflow: clip;
+      color: var(--text);
     }
     .th-cat-lecture { color: #f0883e !important; border-bottom: 3px solid #f0883e !important; }
     .th-cat-computer { color: #58a6ff !important; border-bottom: 3px solid #58a6ff !important; }
@@ -404,12 +409,13 @@
     .room-cat-start { border-left: 3px solid var(--border-strong) !important; }
 
     .room-table td {
-      padding: 4px 5px;
+      padding: 3px 4px;
       border: 1px solid var(--border);
       text-align: left;
       vertical-align: middle;
-      min-width: 84px;
-      height: 34px;
+      min-width: 52px;
+      max-width: 72px;
+      height: 30px;
       cursor: default;
     }
     .room-table .td-day {
@@ -418,9 +424,11 @@
       background: #1c2128;
       position: sticky;
       left: 0;
-      z-index: 5;
-      font-size: 13px;
-      padding: 0 8px;
+      z-index: 20;
+      width: 34px;
+      min-width: 34px;
+      font-size: 11px;
+      padding: 0 3px;
       text-align: center;
     }
     .room-table .td-pair {
@@ -428,9 +436,11 @@
       color: var(--text2);
       background: #1c2128;
       position: sticky;
-      left: 62px;
-      z-index: 5;
-      font-size: 12px;
+      left: 34px;
+      z-index: 20;
+      width: 30px;
+      min-width: 30px;
+      font-size: 10px;
       text-align: center;
     }
     .day-separator td { border-top: 2px solid var(--accent) !important; }
@@ -503,6 +513,11 @@
     .room-tooltip .tt-subject { font-weight: 700; color: var(--accent); }
     .room-tooltip .tt-teacher { color: var(--text2); }
     .room-tooltip .tt-group { color: var(--green); }
+    .room-tooltip .tt-groups {
+      color: var(--green);
+      font-size: 12px;
+      margin-top: 2px;
+    }
     .room-tooltip .tt-type { color: var(--purple); font-size: 12px; }
     .room-tooltip .tt-subgroup { color: var(--orange); font-size: 12px; }
     .room-tooltip .tt-time { color: var(--text2); font-size: 12px; }
@@ -510,13 +525,13 @@
     @media (max-width: 768px) {
       .filters { flex-direction: column; align-items: stretch; }
       .header { padding: 12px 16px; }
-      .content { padding: 12px 16px; }
+      .content { padding: 12px 8px; }
       .schedule-table th, .schedule-table td { padding: 6px 8px; font-size: 13px; }
       .stats { gap: 8px; }
       .stat { min-width: 100px; padding: 8px 12px; }
       .room-legend { margin-left: 0; }
-      .room-table { min-width: 980px; }
-      .room-table td { min-width: 74px; font-size: 11px; padding: 3px 4px; }
+      .room-table-wrap { max-height: none; }
+      .room-table td { min-width: 52px; font-size: 11px; padding: 3px 4px; }
     }
   </style>
 </head>
@@ -944,6 +959,37 @@
       return html;
     }
 
+    function compactLessonKey(entry) {
+      return [
+        entry.subject || '',
+        entry.teacher || '',
+        entry.type || '',
+        entry.subgroup || '',
+        entry.time || ''
+      ].join('|');
+    }
+
+    function mergeRoomTooltipEntries(entries) {
+      var map = {};
+      entries.forEach(function(entry) {
+        var key = compactLessonKey(entry);
+        if (!map[key]) {
+          map[key] = {
+            subject: entry.subject || '',
+            teacher: entry.teacher || '',
+            type: entry.type || '',
+            subgroup: entry.subgroup || '',
+            time: entry.time || '',
+            groups: []
+          };
+        }
+        if (entry.group && map[key].groups.indexOf(entry.group) === -1) {
+          map[key].groups.push(entry.group);
+        }
+      });
+      return Object.keys(map).map(function(key) { return map[key]; });
+    }
+
     var currentRoomWeek = null;
 
     function renderRoomTab() {
@@ -1041,12 +1087,13 @@
         var entries = JSON.parse(cell.dataset.tt.replace(/&quot;/g, '"'));
       } catch(err) { return; }
       if (!Array.isArray(entries)) entries = [entries];
+      var merged = mergeRoomTooltipEntries(entries);
       var html = '';
-      entries.forEach(function(e, i) {
+      merged.forEach(function(e, i) {
         if (i > 0) html += '<hr style="border:none;border-top:1px solid var(--border);margin:6px 0">';
         html += '<div class="tt-subject">' + esc(e.subject || '—') + '</div>';
         html += '<div class="tt-teacher">' + esc(e.teacher || '—') + '</div>';
-        html += '<div class="tt-group">Группа: ' + esc(e.group || '—') + '</div>';
+        html += '<div class="tt-groups">Группы: ' + esc(e.groups.length ? e.groups.join(', ') : '—') + '</div>';
         if (e.subgroup) html += '<div class="tt-subgroup">ПГ: ' + esc(e.subgroup) + '</div>';
         html += '<div class="tt-type">' + esc(TYPE_LABELS[e.type] || e.type || '') + '</div>';
       });
