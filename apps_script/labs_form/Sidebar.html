@@ -93,27 +93,28 @@
 
     /* Subgroup blocks */
     .subgroup-block {
-      border-left: 3px solid var(--primary);
+      border-left: 4px solid var(--primary);
       border-radius: 0 6px 6px 0;
-      padding: 12px;
-      margin-top: 10px;
-      background: #f8f9fa;
+      padding: 14px;
+      margin-top: 12px;
+      background: #e8edf2;
       position: relative;
     }
     .subgroup-block.cancelled-block {
       border-left-color: var(--danger);
-      background: #fef7f6;
+      background: #fce8e6;
     }
     .subgroup-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
     .subgroup-title {
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 16px;
+      font-weight: 700;
       color: var(--primary);
+      letter-spacing: 0.3px;
     }
     .subgroup-block.cancelled-block .subgroup-title { color: var(--danger); }
     .icon-btn {
@@ -304,11 +305,13 @@
     </div>
 
     <label>Подгруппа</label>
-    <div class="checkbox-row">
+    <div class="checkbox-row" style="flex-wrap:wrap">
       <label><input type="checkbox" name="sg" value="1ПГ"> 1ПГ</label>
       <label><input type="checkbox" name="sg" value="2ПГ"> 2ПГ</label>
       <label><input type="checkbox" name="sg" value="3ПГ"> 3ПГ</label>
       <label><input type="checkbox" name="sg" value="4ПГ"> 4ПГ</label>
+      <label><input type="checkbox" name="sg" value="5ПГ"> 5ПГ</label>
+      <label><input type="checkbox" name="sg" value="6ПГ"> 6ПГ</label>
     </div>
     <select id="cycle">
       <option value="">каждую неделю</option>
@@ -395,7 +398,8 @@
       b.classList.toggle('active', b.dataset.code === code);
     });
     const isLab = code === 'lab';
-    const useMulti = isLab || state.use_multi;
+    const isDO = code === 'additional';
+    const useMulti = isLab || isDO || state.use_multi;
     document.getElementById('single-block').classList.toggle('hidden', useMulti);
     document.getElementById('multi-block').classList.toggle('hidden', !useMulti);
     if (isLab) {
@@ -453,7 +457,7 @@
     // Subgroup selector: chips for NПГ
     block.appendChild(el('label', null, 'Подгруппа'));
     const sgRow = el('div', {class: 'sg-selector'});
-    ['1ПГ', '2ПГ', '3ПГ', '4ПГ'].forEach(pg => {
+    ['1ПГ', '2ПГ', '3ПГ', '4ПГ', '5ПГ', '6ПГ'].forEach(pg => {
       const chip = el('span', {class: 'sg-chip', 'data-pg': pg}, pg);
       chip.onclick = () => { chip.classList.toggle('active'); buildSubgroupText(block); validate(); };
       sgRow.appendChild(chip);
@@ -596,7 +600,7 @@
   }
 
   function collectData() {
-    const useMulti = state.lesson_type === 'lab' || state.use_multi;
+    const useMulti = state.lesson_type === 'lab' || state.lesson_type === 'additional' || state.use_multi;
     if (useMulti) {
       const subgroups = collectSubgroups();
       let subject = '';
@@ -636,7 +640,7 @@
   function validate() {
     let ok = false;
     if (state.lesson_type) {
-      const useMulti = state.lesson_type === 'lab' || state.use_multi;
+      const useMulti = state.lesson_type === 'lab' || state.lesson_type === 'additional' || state.use_multi;
       if (useMulti) {
         const subs = [...document.querySelectorAll('.sg-subject')].map(el => el.value.trim());
         ok = subs.length > 0 && subs.every(s => s);
@@ -790,7 +794,7 @@
       setSpanRows(info.spanRows);
     }
 
-    if (parsed.lesson_type === 'lab') {
+    if (parsed.lesson_type === 'lab' || parsed.lesson_type === 'additional') {
       tryFillLabSubgroups(info);
     } else if (parsed.lab_subgroups && parsed.lab_subgroups.length > 1) {
       // Multi-subject non-lab (e.g. lecture for 2 groups)
@@ -834,6 +838,8 @@
     if (/2ПГ/i.test(sub)) ck('2ПГ');
     if (/3ПГ/i.test(sub)) ck('3ПГ');
     if (/4ПГ/i.test(sub)) ck('4ПГ');
+    if (/5ПГ/i.test(sub)) ck('5ПГ');
+    if (/6ПГ/i.test(sub)) ck('6ПГ');
     const cycleSel = document.getElementById('cycle');
     if (/нечет|нечёт/i.test(sub)) cycleSel.value = 'нечет';
     else if (/чет|чёт/i.test(sub)) cycleSel.value = 'чет';
