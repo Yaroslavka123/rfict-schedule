@@ -1,6 +1,6 @@
 {
   "name": "11.05-16.05(14-я неделя)",
-  "generated_at": "2026-05-14T14:41:56.000Z",
+  "generated_at": "2026-05-14T14:48:54.139Z",
   "course": 3,
   "semester": 6,
   "week_number": 14,
@@ -3515,7 +3515,7 @@
       "frequency": null,
       "period_start": null,
       "period_end": null,
-      "comment": "22.05",
+      "comment": null,
       "cancelled": false
     },
     {
@@ -3526,14 +3526,14 @@
       "time": "09:00 - 10:25",
       "group": "601",
       "type": "additional",
-      "subject": "БИС",
+      "subject": "БИС 2ПГ",
       "teacher": "ст.пр. ЩербакИ.Н.",
       "room": "ДО",
       "subgroup": "2ПГ",
       "frequency": null,
       "period_start": null,
       "period_end": null,
-      "comment": "15.05,29.05",
+      "comment": null,
       "cancelled": false
     },
     {
