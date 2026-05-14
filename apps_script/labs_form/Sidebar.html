@@ -275,16 +275,11 @@
   </style>
 </head>
 <body>
-  <h2>Занятие</h2>
-  <div class="hint">Выбери ячейку → заполни → «Применить» (Ctrl+Enter).</div>
-
   <div class="cell-info" id="cell-info">
     <span id="cell-loading">Читаю ячейку…</span>
     <span id="cell-addr" style="display:none"></span>
-    <button type="button" class="icon-btn" id="refresh-cell" title="Перечитать ячейку" style="float:right;font-size:16px;display:none">↻</button>
+    <button type="button" id="refresh-cell" title="Перечитать ячейку" style="float:right;padding:4px 12px;font-size:13px;font-weight:600;background:var(--primary);color:#fff;border:none;border-radius:4px;cursor:pointer;display:none">↻ Считать</button>
   </div>
-
-  <label>Тип занятия *</label>
   <div class="types" id="types"></div>
   <div id="do-toggle" style="margin-top:6px;display:none">
     <label style="display:flex;align-items:center;gap:6px;font-weight:500;color:#7b1fa2;cursor:pointer">
@@ -346,19 +341,12 @@
 
   <!-- Несколько предметов / подгрупп -->
   <div id="multi-block" class="hidden">
-    <label>Количество пар (строк)</label>
-    <div class="span-row" style="display:flex;gap:6px;margin-bottom:8px;">
-      <span class="sg-chip active" data-span="1">1</span>
-      <span class="sg-chip" data-span="2">2</span>
-      <span class="sg-chip" data-span="3">3</span>
-    </div>
     <div id="subgroup-list"></div>
     <button type="button" class="add-row-btn" id="add-subgroup">+ ещё предмет/подгруппа</button>
   </div>
 
-  <div class="actions">
-    <button class="primary" id="submit" disabled>Применить</button>
-    <button class="secondary" id="next-cell" title="Применить и перейти вниз" disabled>↓ След.</button>
+  <div class="actions" style="position:sticky;bottom:0;background:var(--bg);padding:10px 0;z-index:20;border-top:1px solid var(--border)">
+    <button class="primary" id="submit" disabled>Применить (Ctrl+Enter)</button>
     <button class="secondary" id="clear" title="Очистить ячейку и форму">Очистить</button>
   </div>
 
@@ -662,7 +650,6 @@
       }
     }
     document.getElementById('submit').disabled = !ok;
-    document.getElementById('next-cell').disabled = !ok;
   }
 
   // ─── Autocomplete ────────────────────────────────────────────────────
@@ -1000,7 +987,6 @@
     document.getElementById('multi-block').classList.add('hidden');
     setSpanRows(1);
     document.getElementById('submit').disabled = true;
-    document.getElementById('next-cell').disabled = true;
   }
 
   function refreshCellInfo() {
@@ -1018,7 +1004,6 @@
 
   function setSubmitEnabled(enabled) {
     document.getElementById('submit').disabled = !enabled;
-    document.getElementById('next-cell').disabled = !enabled;
   }
 
   function submitForm(andMoveDown) {
@@ -1046,7 +1031,6 @@
 
   // ─── Event handlers ──────────────────────────────────────────────────
   document.getElementById('submit').onclick = () => submitForm(false);
-  document.getElementById('next-cell').onclick = () => submitForm(true);
 
   document.getElementById('clear').onclick = () => {
     resetForm();
