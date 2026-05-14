@@ -289,6 +289,171 @@
       border-color: var(--text2);
     }
 
+    /* ─── Tabs ─── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 0;
+      border-bottom: 2px solid var(--border);
+      margin-top: 10px;
+    }
+    .tab-btn {
+      padding: 8px 20px;
+      border: none;
+      background: transparent;
+      color: var(--text2);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.15s;
+    }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ─── Room Occupancy ─── */
+    .room-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .day-tabs {
+      display: flex;
+      gap: 4px;
+    }
+    .day-tab {
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text2);
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .day-tab.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: #0d2744;
+    }
+    .day-tab:hover { border-color: var(--text2); }
+
+    .room-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .room-table th {
+      background: #1c2128;
+      padding: 8px 10px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text2);
+      border: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .room-table th:first-child {
+      text-align: left;
+      min-width: 100px;
+      position: sticky;
+      left: 0;
+      z-index: 11;
+    }
+    .room-table td {
+      padding: 4px 6px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      text-align: center;
+      vertical-align: middle;
+      min-width: 50px;
+      height: 36px;
+      position: relative;
+      cursor: default;
+    }
+    .room-table td:first-child {
+      text-align: left;
+      font-weight: 600;
+      color: var(--orange);
+      background: var(--card);
+      position: sticky;
+      left: 0;
+      z-index: 5;
+      white-space: nowrap;
+      padding: 8px 10px;
+    }
+    .room-table tr:hover td {
+      filter: brightness(1.1);
+    }
+
+    .room-category-row td {
+      background: #1c2128 !important;
+      font-weight: 700;
+      font-size: 13px;
+      text-align: left !important;
+      padding: 10px 12px;
+      border-bottom: 2px solid var(--accent);
+    }
+    .room-category-row .cat-icon { margin-right: 6px; }
+
+    .slot-free {
+      background: rgba(255,255,255,0.03);
+      color: var(--border);
+      font-size: 10px;
+    }
+    .slot-busy {
+      background: #1a3a1a;
+      color: var(--green);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 11px;
+    }
+    .slot-busy:hover {
+      background: #254d25;
+    }
+
+    /* Tooltip */
+    .room-tooltip {
+      display: none;
+      position: fixed;
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--text);
+      z-index: 1000;
+      pointer-events: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      max-width: 300px;
+      line-height: 1.5;
+    }
+    .room-tooltip.visible { display: block; }
+    .room-tooltip .tt-subject { font-weight: 700; color: var(--accent); }
+    .room-tooltip .tt-teacher { color: var(--text2); }
+    .room-tooltip .tt-group { color: var(--green); }
+    .room-tooltip .tt-type { color: var(--purple); font-size: 12px; }
+    .room-tooltip .tt-subgroup { color: var(--orange); font-size: 12px; }
+    .room-tooltip .tt-time { color: var(--text2); font-size: 12px; }
+
+    .room-table-wrap {
+      overflow-x: auto;
+      border-radius: 8px;
+    }
+
     @media (max-width: 768px) {
       .filters { flex-direction: column; align-items: stretch; }
       .header { padding: 12px 16px; }
@@ -296,6 +461,7 @@
       .schedule-table th, .schedule-table td { padding: 6px 8px; font-size: 13px; }
       .stats { gap: 8px; }
       .stat { min-width: 100px; padding: 8px 12px; }
+      .room-table td { min-width: 40px; font-size: 11px; padding: 3px 4px; }
     }
   </style>
 </head>
@@ -329,17 +495,41 @@
       </div>
     </div>
     <div class="week-nav" id="weekNav" style="margin-top: 12px;"></div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="schedule" onclick="switchTab('schedule')">Расписание</button>
+      <button class="tab-btn" data-tab="rooms" onclick="switchTab('rooms')">Кабинеты</button>
+    </div>
   </div>
 
   <div class="content">
-    <div class="stats" id="stats"></div>
-    <div id="tableContainer">
-      <div class="loading">
-        <div class="loading-spinner"></div>
-        <div>Загрузка расписания...</div>
+    <!-- Schedule tab -->
+    <div class="tab-panel active" id="panel-schedule">
+      <div class="stats" id="stats"></div>
+      <div id="tableContainer">
+        <div class="loading">
+          <div class="loading-spinner"></div>
+          <div>Загрузка расписания...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rooms tab -->
+    <div class="tab-panel" id="panel-rooms">
+      <div class="room-controls">
+        <div class="filter-group">
+          <label>День:</label>
+          <div class="day-tabs" id="dayTabs"></div>
+        </div>
+      </div>
+      <div class="room-table-wrap">
+        <div id="roomTableContainer">
+          <div class="no-data">Выберите неделю для просмотра занятости кабинетов</div>
+        </div>
       </div>
     </div>
   </div>
+
+  <div class="room-tooltip" id="roomTooltip"></div>
 
   <script>
     const REPO = 'Yaroslavka123/rfict-schedule';
@@ -614,6 +804,198 @@
 
     function showError(msg) {
       document.getElementById('tableContainer').innerHTML = '<div class="error">' + esc(msg) + '</div>';
+    }
+
+    // ─── Tab switching ────────────────────────────────────────────────
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.tab === tab);
+      });
+      document.querySelectorAll('.tab-panel').forEach(function(p) {
+        p.classList.toggle('active', p.id === 'panel-' + tab);
+      });
+      if (tab === 'rooms') renderRoomTab();
+    }
+
+    // ─── Room occupancy ──────────────────────────────────────────────
+    var PAIR_TIMES = {
+      1: '8:30–10:00', 2: '10:10–11:40', 3: '12:10–13:40', 4: '13:50–15:20',
+      5: '15:30–17:00', 6: '17:10–18:40', 7: '18:50–20:20', 8: '20:30–22:00'
+    };
+    var LECTURE_HALLS = ['115', '117', '119'];
+    var currentRoomDay = 'Пн';
+
+    function normalizeRoom(r) {
+      if (!r) return '';
+      return r.replace(/[KkКк](\d)/g, 'К$1').trim();
+    }
+
+    function classifyRoom(room) {
+      if (LECTURE_HALLS.indexOf(room) !== -1) return 'lecture_hall';
+      if (/К\d/.test(room)) return 'computer';
+      return 'regular';
+    }
+
+    function getRoomSortKey(room) {
+      var cls = classifyRoom(room);
+      var order = cls === 'lecture_hall' ? 0 : cls === 'computer' ? 1 : 2;
+      var numMatch = room.match(/^(\d+)/);
+      var num = numMatch ? parseInt(numMatch[1]) : 9999;
+      return order * 100000 + num;
+    }
+
+    function buildRoomOccupancy() {
+      var weekData = allData.find(function(w) { return w.week_number === currentWeek; });
+      if (!weekData) return {};
+      var occ = {};
+      weekData.lessons.forEach(function(l) {
+        if (l.cancelled) return;
+        var room = normalizeRoom(l.room);
+        if (!room || room === 'ДО') return;
+        if (!occ[room]) occ[room] = {};
+        var day = l.day;
+        if (!occ[room][day]) occ[room][day] = {};
+        var dur = l.duration || 1;
+        for (var p = l.pair; p < l.pair + dur; p++) {
+          var weekData2 = allData.find(function(w) { return w.week_number === currentWeek; });
+          var groupName = l.group;
+          if (weekData2 && weekData2.groups) {
+            var g = weekData2.groups.find(function(g) { return g.id === l.group; });
+            if (g) groupName = g.name;
+          }
+          if (!occ[room][day][p]) occ[room][day][p] = [];
+          occ[room][day][p].push({
+            subject: l.subject || '',
+            teacher: l.teacher || '',
+            group: groupName,
+            type: l.type || '',
+            subgroup: l.subgroup || '',
+            time: PAIR_TIMES[p] || '',
+            pair: p
+          });
+        }
+      });
+      return occ;
+    }
+
+    function renderDayTabs() {
+      var container = document.getElementById('dayTabs');
+      container.innerHTML = '';
+      var days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      days.forEach(function(d) {
+        var btn = document.createElement('button');
+        btn.className = 'day-tab' + (d === currentRoomDay ? ' active' : '');
+        btn.textContent = d;
+        btn.onclick = function() {
+          currentRoomDay = d;
+          document.querySelectorAll('.day-tab').forEach(function(b) {
+            b.classList.toggle('active', b.textContent === d);
+          });
+          renderRoomTable();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function renderRoomTab() {
+      renderDayTabs();
+      renderRoomTable();
+    }
+
+    function renderRoomTable() {
+      var container = document.getElementById('roomTableContainer');
+      var weekData = allData.find(function(w) { return w.week_number === currentWeek; });
+      if (!weekData) {
+        container.innerHTML = '<div class="no-data">Нет данных за выбранную неделю</div>';
+        return;
+      }
+
+      var occ = buildRoomOccupancy();
+      var rooms = Object.keys(occ).sort(function(a, b) {
+        return getRoomSortKey(a) - getRoomSortKey(b);
+      });
+
+      if (!rooms.length) {
+        container.innerHTML = '<div class="no-data">Нет данных о кабинетах</div>';
+        return;
+      }
+
+      var html = '<table class="room-table"><thead><tr>';
+      html += '<th>Кабинет</th>';
+      for (var p = 1; p <= 8; p++) {
+        html += '<th>' + p + ' пара<br><span style="font-weight:400;font-size:10px;color:var(--text2)">' + (PAIR_TIMES[p] || '') + '</span></th>';
+      }
+      html += '</tr></thead><tbody>';
+
+      var lastCategory = null;
+      var CATEGORY_LABELS = {
+        lecture_hall: 'Поточные аудитории',
+        computer: 'Компьютерные классы',
+        regular: 'Обычные аудитории'
+      };
+      var CATEGORY_ICONS = {
+        lecture_hall: '&#127979;',
+        computer: '&#128187;',
+        regular: '&#128196;'
+      };
+
+      rooms.forEach(function(room) {
+        var cat = classifyRoom(room);
+        if (cat !== lastCategory) {
+          lastCategory = cat;
+          html += '<tr class="room-category-row"><td colspan="9"><span class="cat-icon">' + (CATEGORY_ICONS[cat] || '') + '</span>' + (CATEGORY_LABELS[cat] || cat) + '</td></tr>';
+        }
+
+        html += '<tr>';
+        html += '<td>' + esc(room) + '</td>';
+
+        for (var p = 1; p <= 8; p++) {
+          var entries = (occ[room] && occ[room][currentRoomDay] && occ[room][currentRoomDay][p]) || [];
+          if (entries.length > 0) {
+            var ttData = JSON.stringify(entries).replace(/"/g, '&quot;');
+            html += '<td class="slot-busy" data-tt="' + ttData + '"';
+            html += ' onmouseenter="showRoomTooltip(event, this)" onmouseleave="hideRoomTooltip()">';
+            html += entries.length === 1 ? esc(entries[0].group) : entries.length + ' зан.';
+            html += '</td>';
+          } else {
+            html += '<td class="slot-free"></td>';
+          }
+        }
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    function showRoomTooltip(event, cell) {
+      var tt = document.getElementById('roomTooltip');
+      try {
+        var entries = JSON.parse(cell.dataset.tt.replace(/&quot;/g, '"'));
+      } catch(e) { return; }
+      var html = '';
+      entries.forEach(function(e, i) {
+        if (i > 0) html += '<hr style="border:none;border-top:1px solid var(--border);margin:6px 0">';
+        html += '<div class="tt-subject">' + esc(e.subject || '—') + '</div>';
+        html += '<div class="tt-teacher">' + esc(e.teacher || '—') + '</div>';
+        html += '<div class="tt-group">Группа: ' + esc(e.group || '—') + '</div>';
+        if (e.subgroup) html += '<div class="tt-subgroup">ПГ: ' + esc(e.subgroup) + '</div>';
+        html += '<div class="tt-type">' + (TYPE_LABELS[e.type] || e.type || '') + '</div>';
+        html += '<div class="tt-time">' + esc(e.time || '') + '</div>';
+      });
+      tt.innerHTML = html;
+      tt.classList.add('visible');
+
+      var x = event.clientX + 12;
+      var y = event.clientY + 12;
+      if (x + 300 > window.innerWidth) x = event.clientX - 310;
+      if (y + tt.offsetHeight > window.innerHeight) y = event.clientY - tt.offsetHeight - 12;
+      tt.style.left = x + 'px';
+      tt.style.top = y + 'px';
+    }
+
+    function hideRoomTooltip() {
+      document.getElementById('roomTooltip').classList.remove('visible');
     }
 
     document.getElementById('groupFilter').addEventListener('change', render);
