@@ -352,17 +352,39 @@
     .room-legend-dot.comp { background: #58a6ff; }
     .room-legend-dot.reg { background: #3fb950; }
     .room-table-wrap {
-      overflow: auto;
+      overflow-y: auto;
+      overflow-x: hidden;
       width: 100%;
       max-height: calc(100vh - 190px);
       border: 1px solid var(--border);
       border-radius: 8px;
     }
+    .room-section {
+      border-bottom: 1px solid var(--border);
+    }
+    .room-section:last-child { border-bottom: none; }
+    .room-section-title {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: #161b22;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .room-section-title span {
+      color: var(--text2);
+      font-weight: 500;
+    }
     .room-table {
-      table-layout: auto;
+      table-layout: fixed;
       border-collapse: collapse;
-      width: max-content;
-      min-width: 100%;
+      width: 100%;
       background: var(--card);
     }
     .room-table th {
@@ -374,7 +396,7 @@
       color: var(--text2);
       border: 1px solid var(--border);
       position: sticky;
-      top: 0;
+      top: 30px;
       z-index: 25;
       white-space: nowrap;
     }
@@ -397,8 +419,8 @@
       font-size: 10px;
     }
     .th-room-name {
-      min-width: 52px;
-      max-width: 72px;
+      min-width: 0;
+      max-width: none;
       overflow: visible;
       text-overflow: clip;
       color: var(--text);
@@ -413,8 +435,8 @@
       border: 1px solid var(--border);
       text-align: left;
       vertical-align: middle;
-      min-width: 52px;
-      max-width: 72px;
+      min-width: 0;
+      max-width: none;
       height: 30px;
       cursor: default;
     }
@@ -531,7 +553,7 @@
       .stat { min-width: 100px; padding: 8px 12px; }
       .room-legend { margin-left: 0; }
       .room-table-wrap { max-height: none; }
-      .room-table td { min-width: 52px; font-size: 11px; padding: 3px 4px; }
+      .room-table th, .room-table td { font-size: 11px; padding: 3px 4px; }
     }
   </style>
 </head>
@@ -1037,47 +1059,61 @@
       var grouped = {lecture_hall: [], computer: [], regular: []};
       rooms.forEach(function(r) { grouped[classifyRoom(r)].push(r); });
       var catOrder = ['lecture_hall', 'computer', 'regular'];
-      var orderedRooms = [];
-      catOrder.forEach(function(c) { orderedRooms = orderedRooms.concat(grouped[c]); });
-
-      // Header: День | Пара | room1 | room2 | ...
-      var html = '<table class="room-table"><thead><tr>';
-      html += '<th class="th-day" rowspan="1">Д</th><th class="th-pair" rowspan="1">П</th>';
-      orderedRooms.forEach(function(r) {
-        var cat = classifyRoom(r);
-        var catStart = grouped[cat][0] === r ? ' room-cat-start' : '';
-        html += '<th class="th-room-name th-cat-' + CAT_CSS[cat] + catStart + '">' + esc(r) + '</th>';
-      });
-      html += '</tr></thead><tbody>';
-
+      var catNames = {
+        lecture_hall: 'Поточные',
+        computer: 'Компьютерные классы',
+        regular: 'Кабинеты'
+      };
       var days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-      days.forEach(function(day, di) {
-        for (var p = 1; p <= 8; p++) {
-          html += '<tr' + (p === 1 && di > 0 ? ' class="day-separator"' : '') + '>';
-          if (p === 1) {
-            html += '<td class="td-day" rowspan="8">' + day + '</td>';
-          }
-          html += '<td class="td-pair">' + p + '</td>';
+      var maxRoomsPerSection = window.innerWidth < 900 ? 8 : 12;
+      var html = '';
 
-          orderedRooms.forEach(function(room) {
-            var entries = (occ[room] && occ[room][day] && occ[room][day][p]) || [];
-            var cat = classifyRoom(room);
-            var catStart = grouped[cat][0] === room ? ' room-cat-start' : '';
-            if (entries.length > 0) {
-              var ttData = JSON.stringify(entries).replace(/"/g, '&quot;');
-              var slotClass = entries.length > 1 ? 'slot-multi' : SLOT_CSS[cat];
-              html += '<td class="slot-busy ' + slotClass + catStart + '" data-tt="' + ttData + '"';
-              html += ' onmouseenter="showRoomTooltip(event,this)" onmouseleave="hideRoomTooltip()">';
-              html += formatSlotContent(entries) + '</td>';
-            } else {
-              html += '<td class="slot-free' + catStart + '"></td>';
+      catOrder.forEach(function(catKey) {
+        var catRooms = grouped[catKey];
+        if (!catRooms.length) return;
+        for (var start = 0; start < catRooms.length; start += maxRoomsPerSection) {
+          var roomChunk = catRooms.slice(start, start + maxRoomsPerSection);
+          var chunkNum = Math.floor(start / maxRoomsPerSection) + 1;
+          var chunkTotal = Math.ceil(catRooms.length / maxRoomsPerSection);
+          html += '<section class="room-section">';
+          html += '<div class="room-section-title">' + catNames[catKey];
+          if (chunkTotal > 1) html += ' ' + chunkNum + '/' + chunkTotal;
+          html += ' <span>' + roomChunk.length + '</span></div>';
+          html += '<table class="room-table"><thead><tr>';
+          html += '<th class="th-day" rowspan="1">Д</th><th class="th-pair" rowspan="1">П</th>';
+          roomChunk.forEach(function(r) {
+            html += '<th class="th-room-name th-cat-' + CAT_CSS[catKey] + '">' + esc(r) + '</th>';
+          });
+          html += '</tr></thead><tbody>';
+
+          days.forEach(function(day, di) {
+            for (var p = 1; p <= 8; p++) {
+              html += '<tr' + (p === 1 && di > 0 ? ' class="day-separator"' : '') + '>';
+              if (p === 1) {
+                html += '<td class="td-day" rowspan="8">' + day + '</td>';
+              }
+              html += '<td class="td-pair">' + p + '</td>';
+
+              roomChunk.forEach(function(room) {
+                var entries = (occ[room] && occ[room][day] && occ[room][day][p]) || [];
+                if (entries.length > 0) {
+                  var ttData = JSON.stringify(entries).replace(/"/g, '&quot;');
+                  var slotClass = entries.length > 1 ? 'slot-multi' : SLOT_CSS[catKey];
+                  html += '<td class="slot-busy ' + slotClass + '" data-tt="' + ttData + '"';
+                  html += ' onmouseenter="showRoomTooltip(event,this)" onmouseleave="hideRoomTooltip()">';
+                  html += formatSlotContent(entries) + '</td>';
+                } else {
+                  html += '<td class="slot-free"></td>';
+                }
+              });
+              html += '</tr>';
             }
           });
-          html += '</tr>';
+
+          html += '</tbody></table></section>';
         }
       });
 
-      html += '</tbody></table>';
       container.innerHTML = html;
     }
 
