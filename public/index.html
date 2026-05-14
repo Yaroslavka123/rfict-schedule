@@ -624,23 +624,8 @@
 
     function selectBestWeek() {
       if (!allData.length) return;
-      var today = new Date();
-      var bestWeek = allData[allData.length - 1].week_number;
-      for (var i = 0; i < allData.length; i++) {
-        var dr = allData[i].date_range || '';
-        var parts = dr.split(/\s*-\s*/);
-        if (parts.length === 2) {
-          var endParts = parts[1].split('.');
-          if (endParts.length >= 2) {
-            var endDate = new Date(today.getFullYear(), parseInt(endParts[1], 10) - 1, parseInt(endParts[0], 10));
-            if (today <= endDate) {
-              bestWeek = allData[i].week_number;
-              break;
-            }
-          }
-        }
-      }
-      currentWeek = bestWeek;
+      // По умолчанию — последняя неделя
+      currentWeek = allData[allData.length - 1].week_number;
       document.querySelectorAll('.week-btn').forEach(function(b, idx) {
         b.classList.toggle('active', allData[idx] && allData[idx].week_number === currentWeek);
       });
