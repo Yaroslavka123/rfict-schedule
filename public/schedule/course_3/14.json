@@ -1,6 +1,6 @@
 {
   "name": "11.05-16.05(14-я неделя)",
-  "generated_at": "2026-05-14T23:19:06.343Z",
+  "generated_at": "2026-05-15T12:09:57.607Z",
   "course": 3,
   "semester": 6,
   "week_number": 14,
@@ -654,7 +654,7 @@
       "period_start": null,
       "period_end": "20.05",
       "comment": null,
-      "cancelled": false
+      "cancelled": true
     },
     {
       "day": "Пн",
@@ -671,8 +671,8 @@
       "frequency": "чет/нечет",
       "period_start": null,
       "period_end": null,
-      "comment": null,
-      "cancelled": false
+      "comment": "17.05",
+      "cancelled": true
     },
     {
       "day": "Пн",
@@ -879,12 +879,30 @@
       "duration": 2,
       "time": "15:35 - 17:00",
       "group": "601",
-      "type": "lab",
-      "subject": "ЦОС",
-      "teacher": "ст.пр. БолотькоТ.П.",
-      "room": "42/К1",
-      "subgroup": "3ПГ нечет",
+      "type": "lecture",
+      "subject": "Программирование",
+      "teacher": "асс. Захарчук Д.А.",
+      "room": "115",
+      "subgroup": null,
       "frequency": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "отмена 17.05",
+      "cancelled": false
+    },
+    {
+      "day": "Пн",
+      "day_number": 1,
+      "pair": 5,
+      "duration": 2,
+      "time": "15:35 - 17:00",
+      "group": "602",
+      "type": "lab",
+      "subject": "прогр",
+      "teacher": "",
+      "room": "",
+      "subgroup": "1ПГ/2ПГ нечет/чет",
+      "frequency": "нечет/чет",
       "period_start": null,
       "period_end": null,
       "comment": null,
@@ -3426,6 +3444,24 @@
       "period_start": null,
       "period_end": null,
       "comment": null,
+      "cancelled": false
+    },
+    {
+      "day": "Чт",
+      "day_number": 4,
+      "pair": 7,
+      "duration": 2,
+      "time": "18:55  -   20:20",
+      "group": "3",
+      "type": "lab",
+      "subject": "Системы НОиР",
+      "teacher": "пр.ст Пидоренко",
+      "room": "117",
+      "subgroup": null,
+      "frequency": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": "пара будут в 117",
       "cancelled": false
     },
     {
