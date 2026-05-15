@@ -315,7 +315,7 @@
   <div id="single-block">
     <label>Предмет *</label>
     <div class="ac-wrap">
-      <input type="text" id="subject" placeholder="Начни печатать..." autocomplete="off" />
+      <input type="text" id="subject" placeholder="Начните печатать..." autocomplete="off" />
       <div class="ac-list" id="ac-subjects"></div>
     </div>
 
@@ -685,27 +685,45 @@
     dictData.rooms = d.rooms || [];
   }
 
+  // Нормализация: нижний регистр + всё кроме букв/цифр выбрасываем.
+  // Это позволяет набирать «docjevnyak» и находить «доц. Жевняк О.Г.» (по рус/англ. раскладкам не работает —
+  // только алфавит входящей строки), и вообще игнорить пробелы/точки/регистр.
+  function normalizeKey(s) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9а-яё]/gi, '');
+  }
+
+  function renderAcItem(v, query) {
+    const div = document.createElement('div');
+    div.className = 'ac-item';
+    const q = (query || '').toLowerCase().trim();
+    if (q) {
+      // Прямой substring (по левому регистру) — подсвечиваем; иначе просто текст.
+      const idx = v.toLowerCase().indexOf(q);
+      if (idx >= 0) {
+        div.innerHTML = esc(v.substring(0, idx)) + '<b>' + esc(v.substring(idx, idx + q.length)) + '</b>' + esc(v.substring(idx + q.length));
+      } else {
+        div.textContent = v;
+      }
+    } else {
+      div.textContent = v;
+    }
+    return div;
+  }
+
   function setupAutocomplete(inputId, listId, getItems) {
     const inp = document.getElementById(inputId);
     const list = document.getElementById(listId);
     let selectedIdx = -1;
 
     function render(query) {
-      const q = (query || '').toLowerCase();
+      const qNorm = normalizeKey(query);
       const items = getItems();
-      const filtered = q ? items.filter(v => v.toLowerCase().includes(q)) : items;
+      const filtered = qNorm ? items.filter(v => normalizeKey(v).includes(qNorm)) : items;
       list.innerHTML = '';
       selectedIdx = -1;
       if (!filtered.length) { list.classList.remove('open'); return; }
-      filtered.slice(0, 15).forEach((v, i) => {
-        const div = document.createElement('div');
-        div.className = 'ac-item';
-        if (q) {
-          const idx = v.toLowerCase().indexOf(q);
-          div.innerHTML = esc(v.substring(0, idx)) + '<b>' + esc(v.substring(idx, idx + q.length)) + '</b>' + esc(v.substring(idx + q.length));
-        } else {
-          div.textContent = v;
-        }
+      filtered.slice(0, 15).forEach((v) => {
+        const div = renderAcItem(v, query);
         div.onmousedown = (e) => { e.preventDefault(); inp.value = v; list.classList.remove('open'); validate(); };
         list.appendChild(div);
       });
@@ -751,21 +769,14 @@
     let selectedIdx = -1;
 
     function render(query) {
-      const q = (query || '').toLowerCase();
+      const qNorm = normalizeKey(query);
       const items = getItems();
-      const filtered = q ? items.filter(v => v.toLowerCase().includes(q)) : items;
+      const filtered = qNorm ? items.filter(v => normalizeKey(v).includes(qNorm)) : items;
       list.innerHTML = '';
       selectedIdx = -1;
       if (!filtered.length) { list.classList.remove('open'); return; }
       filtered.slice(0, 15).forEach((v) => {
-        const div = document.createElement('div');
-        div.className = 'ac-item';
-        if (q) {
-          const idx = v.toLowerCase().indexOf(q);
-          div.innerHTML = esc(v.substring(0, idx)) + '<b>' + esc(v.substring(idx, idx + q.length)) + '</b>' + esc(v.substring(idx + q.length));
-        } else {
-          div.textContent = v;
-        }
+        const div = renderAcItem(v, query);
         div.onmousedown = (e) => { e.preventDefault(); inp.value = v; list.classList.remove('open'); validate(); };
         list.appendChild(div);
       });
