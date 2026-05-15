@@ -38,11 +38,50 @@ const SUBJECT_COL = 1; // A
 const TEACHER_COL = 2; // B
 const ROOM_COL = 3;    // C
 
+// Ключи в DocumentProperties
+const PROP_COURSE_OVERRIDE = 'COURSE_OVERRIDE';
+const PROP_PUSH_ENABLED    = 'PUSH_ENABLED';
+
+// ──────────────────────────────────────────────────────────────────────────
+// Настройки таблицы (курс + push-режим)
+// ──────────────────────────────────────────────────────────────────────────
+
+/** Явно указанный курс (1..8) или null. */
+function getCourseOverride_() {
+  var raw = PropertiesService.getDocumentProperties().getProperty(PROP_COURSE_OVERRIDE);
+  if (!raw) return null;
+  var n = parseInt(raw, 10);
+  return (n >= 1 && n <= 8) ? n : null;
+}
+
+function setCourseOverride_(course) {
+  var props = PropertiesService.getDocumentProperties();
+  if (course === null || course === undefined || course === '') {
+    props.deleteProperty(PROP_COURSE_OVERRIDE);
+  } else {
+    props.setProperty(PROP_COURSE_OVERRIDE, String(course));
+  }
+}
+
+/** Push в GitHub включён? По умолчанию ВЫКЛ. */
+function isPushEnabled_() {
+  return PropertiesService.getDocumentProperties().getProperty(PROP_PUSH_ENABLED) === 'true';
+}
+
+function setPushEnabled_(enabled) {
+  PropertiesService.getDocumentProperties().setProperty(PROP_PUSH_ENABLED, enabled ? 'true' : 'false');
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Меню и sidebar
 // ──────────────────────────────────────────────────────────────────────────
 
 function onOpen() {
+  var course = getCourseOverride_();
+  var pushOn = isPushEnabled_();
+  var courseLabel = '🎓 Курс: ' + (course ? String(course) : 'не указан');
+  var pushLabel   = '🚀 Push в GitHub: ' + (pushOn ? 'ВКЛ' : 'ВЫКЛ');
+
   SpreadsheetApp.getUi()
     .createMenu('Расписание')
     .addItem('➕ Добавить / редактировать занятие', 'showSidebar')
@@ -51,8 +90,123 @@ function onOpen() {
     .addItem('📋 Открыть справочник', 'openDictionarySheet')
     .addItem('🔄 Пересоздать справочник из таблицы', 'rebuildDictionaryFromSheet')
     .addSeparator()
-    .addItem('⚡ Обновить расписание сейчас', 'manualDispatch')
+    .addItem(courseLabel, 'promptSetCourse')
+    .addItem(pushLabel,   'togglePushEnabled')
+    .addSeparator()
+    .addItem('🧪 Тестовый прогон (parse без push)', 'testParseRun')
+    .addItem('⚡ Обновить расписание сейчас',       'manualDispatch')
     .addToUi();
+}
+
+/** Пересоздаёт меню после смены настроек (чтобы лейблы обновились). */
+function rebuildMenu_() {
+  try { onOpen(); } catch (_) { /* не в контексте таблицы */ }
+}
+
+/** Меню → 🎓 Курс: … */
+function promptSetCourse() {
+  var ui = SpreadsheetApp.getUi();
+  var current = getCourseOverride_();
+  var resp = ui.prompt(
+    'Курс расписания',
+    'Укажи номер курса (1–8). Текущее значение: ' + (current ? current : 'не указан') +
+      '.\n\nОставь пустым и нажми OK, чтобы сбросить (тогда курс будет браться из ячейки A2 как раньше).',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (resp.getSelectedButton() !== ui.Button.OK) return;
+  var txt = (resp.getResponseText() || '').trim();
+  if (!txt) {
+    setCourseOverride_(null);
+    rebuildMenu_();
+    ui.alert('Курс сброшен. Будет использоваться значение из ячейки A2.');
+    return;
+  }
+  var n = parseInt(txt, 10);
+  if (!(n >= 1 && n <= 8)) {
+    ui.alert('Нужно целое число от 1 до 8. Введено: «' + txt + '».');
+    return;
+  }
+  setCourseOverride_(n);
+  rebuildMenu_();
+  ui.alert('Курс установлен: ' + n + '.\nТеперь Push можно включать через меню «Расписание».');
+}
+
+/** Меню → 🚀 Push в GitHub: ВКЛ/ВЫКЛ */
+function togglePushEnabled() {
+  var ui = SpreadsheetApp.getUi();
+  if (isPushEnabled_()) {
+    var off = ui.alert(
+      'Выключить Push?',
+      'JSON больше не будет автоматически отправляться в GitHub после правок.\nРедактирование таблицы и тестовый прогон продолжат работать.',
+      ui.ButtonSet.YES_NO
+    );
+    if (off !== ui.Button.YES) return;
+    setPushEnabled_(false);
+    rebuildMenu_();
+    ui.alert('Push выключен. Тестовый режим — изменения не уходят в GitHub.');
+    return;
+  }
+  // Включение
+  var course = getCourseOverride_();
+  if (!course) {
+    ui.alert(
+      'Сначала укажи курс',
+      'Открой «🎓 Курс: …» в меню «Расписание» и введи номер курса (1–8). Без явного курса Push нельзя включить — это защита от записи в чужую папку.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+  var on = ui.alert(
+    'Включить Push?',
+    'JSON будет автоматически отправляться в GitHub через 2 минуты после каждого изменения.\n\n' +
+      'Курс: ' + course + '\n' +
+      'Репозиторий: ' + GH_REPO_OWNER + '/' + GH_REPO_NAME + '\n' +
+      'Каталог: ' + SCHEDULE_DIR + 'course_' + course + '/\n\n' +
+      'Включить?',
+    ui.ButtonSet.YES_NO
+  );
+  if (on !== ui.Button.YES) return;
+  setPushEnabled_(true);
+  rebuildMenu_();
+  ui.alert('Push включён. JSON будет уходить в GitHub через 2 минуты после каждой правки.');
+}
+
+/** Меню → 🧪 Тестовый прогон — парсит активный лист, показывает summary без push. */
+function testParseRun() {
+  var ui = SpreadsheetApp.getUi();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) { ui.alert('Активной таблицы нет.'); return; }
+  var sheet = ss.getActiveSheet();
+  var sheetName = sheet.getName();
+  if (sheetName === DICT_SHEET_NAME) {
+    ui.alert('Активный лист — справочник. Переключись на лист недели и повтори.');
+    return;
+  }
+  if (!/неделя\)?\s*$/.test(sheetName)) {
+    ui.alert('Активный лист «' + sheetName + '» не похож на лист недели («…(N-я неделя)»).');
+    return;
+  }
+  try {
+    var meta = getSheetMeta_(ss);
+    var groups = discoverGroups_(sheet);
+    var lessons = parseWeekSheet_(sheet, groups);
+    var byType = {};
+    lessons.forEach(function(l) { byType[l.type] = (byType[l.type] || 0) + 1; });
+    var typesStr = Object.keys(byType).sort().map(function(k) { return '  • ' + k + ': ' + byType[k]; }).join('\n');
+    var override = getCourseOverride_();
+    var effectiveCourse = override || meta.course || '—';
+    ui.alert(
+      'Тестовый прогон — «' + sheetName + '»',
+      'Курс (effective): ' + effectiveCourse + (override ? ' (override)' : ' (из A2)') +
+        '\nГрупп: ' + ((meta.groupsMeta || []).length) +
+        '\nЗанятий: ' + lessons.length +
+        '\n\nПо типам:\n' + (typesStr || '  —') +
+        '\n\nPush в GitHub НЕ выполнен. Push enabled: ' + (isPushEnabled_() ? 'ВКЛ' : 'ВЫКЛ') + '.',
+      ui.ButtonSet.OK
+    );
+  } catch (err) {
+    ui.alert('Ошибка теста: ' + err.message);
+  }
 }
 
 function showSidebar() {
@@ -324,7 +478,9 @@ function applyLesson(data) {
   });
 
   SpreadsheetApp.flush();
-  scheduleDelayedExport_(sheet.getName());
+  if (isPushEnabled_()) {
+    scheduleDelayedExport_(sheet.getName());
+  }
   return {ok: true, cell: cellAddress_(row, col)};
 }
 
@@ -355,8 +511,29 @@ function applyLessonAndMoveDown(data) {
 }
 
 function manualDispatch() {
-  const result = dispatchScheduleUpdate_('manual-menu', '');
-  SpreadsheetApp.getUi().alert(dispatchResultMessage_(result));
+  var ui = SpreadsheetApp.getUi();
+  if (!isPushEnabled_()) {
+    ui.alert(
+      'Push выключен',
+      'Чтобы отправить JSON в GitHub, включи «🚀 Push в GitHub» в меню «Расписание».\n\n' +
+        'Чтобы только проверить, что напарсилось, без отправки — «🧪 Тестовый прогон (parse без push)».',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+  var course = getCourseOverride_();
+  if (!course) {
+    ui.alert('Курс не указан. Открой «🎓 Курс: …» в меню и введи номер.');
+    return;
+  }
+  var resp = ui.alert(
+    'Отправить расписание в GitHub?',
+    'Будут запушены все листы недели текущей таблицы.\n\nКурс: ' + course + '\nКаталог: ' + SCHEDULE_DIR + 'course_' + course + '/\n\nПродолжить?',
+    ui.ButtonSet.YES_NO
+  );
+  if (resp !== ui.Button.YES) return;
+  var result = dispatchScheduleUpdate_('manual-menu', '');
+  ui.alert(dispatchResultMessage_(result));
 }
 
 function dispatchResultMessage_(result) {
@@ -829,6 +1006,7 @@ function onSheetEdit(e) {
   if (!e || !e.source || !e.range) return;
   const sheetName = e.range.getSheet().getName();
   if (sheetName === DICT_SHEET_NAME) return;
+  if (!isPushEnabled_()) return; // тестовый режим — ничего не пушим
   scheduleDelayedExport_(sheetName);
 }
 
@@ -967,8 +1145,15 @@ function getSheetMeta_(ss) {
   if (!weekSheets.length) throw new Error('Не найдены листы расписания');
 
   var firstSheet = weekSheets[0];
-  var courseVal = firstSheet.getRange('A2').getValue();
-  var course = typeof courseVal === 'number' ? courseVal : parseInt(courseVal, 10) || null;
+  // Курс: явный override (из меню «🎓 Курс: …») имеет приоритет над A2.
+  var override = getCourseOverride_();
+  var course;
+  if (override) {
+    course = override;
+  } else {
+    var courseVal = firstSheet.getRange('A2').getValue();
+    course = typeof courseVal === 'number' ? courseVal : parseInt(courseVal, 10) || null;
+  }
   var semesterMatch = String(firstSheet.getRange('D1').getValue() || '').match(/(\d+)\s*семестр/);
   var semester = semesterMatch ? parseInt(semesterMatch[1], 10) : null;
   var groups = discoverGroups_(firstSheet);
