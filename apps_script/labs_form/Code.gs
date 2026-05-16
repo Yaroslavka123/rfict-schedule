@@ -82,6 +82,13 @@ function onOpen() {
   var courseLabel = course ? ('🎓 Курс: ' + course) : '🎓 Курс не выбран';
   var pushLabel   = '🌐 Автосохранение на сайт: ' + (pushOn ? 'вкл' : 'выкл');
 
+  var templateMenu = SpreadsheetApp.getUi()
+    .createMenu('🧱 Шаблон листа')
+    .addItem('Снять шаблон с активного листа', 'extractActiveSheetAsTemplate')
+    .addItem('Создать лист по шаблону', 'createSheetFromTemplate')
+    .addSeparator()
+    .addItem('Тест round-trip шаблона', 'verifyTemplateRoundTrip');
+
   SpreadsheetApp.getUi()
     .createMenu('Расписание')
     .addItem('➕ Добавить или изменить занятие', 'showSidebar')
@@ -94,6 +101,8 @@ function onOpen() {
     .addItem(pushLabel,   'togglePushEnabled')
     .addSeparator()
     .addItem('💾 Сохранить расписание сейчас', 'manualDispatch')
+    .addSeparator()
+    .addSubMenu(templateMenu)
     .addToUi();
 }
 
