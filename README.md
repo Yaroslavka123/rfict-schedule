@@ -657,6 +657,7 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 {
   "day": "Пн",
   "day_number": 1,
+  "date": "2026-05-11",
   "pair": 1,
   "duration": 2,
   "time": "09:00 - 10:25",
@@ -678,6 +679,7 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 |------|-----|:--------:|----------|
 | `day` | `string` | — | День недели (`"Пн"`, `"Вт"`, `"Ср"`, `"Чт"`, `"Пт"`, `"Сб"`) |
 | `day_number` | `int` | — | Номер дня (1=Пн, 6=Сб) |
+| `date` | `string` | ✓ | Дата занятия в формате `YYYY-MM-DD`; `null`, если в ячейке дня нет даты или года для восстановления |
 | `pair` | `int` | — | Номер пары (1-8) |
 | `duration` | `int` | — | Длительность в парах (1, 2 или 3) |
 | `time` | `string` | — | Время начала и конца (см. таблицу звонков) |
@@ -722,6 +724,7 @@ type WebhookPayload struct {
 type Lesson struct {
     Day         string  `json:"day"`
     DayNumber   int     `json:"day_number"`
+    Date        *string `json:"date"`
     Pair        int     `json:"pair"`
     Duration    int     `json:"duration"`
     Time        string  `json:"time"`

@@ -597,8 +597,9 @@ function rebuildDictionaryFromSheet() {
 
   ss.getSheets().forEach(s => {
     if (s.getName() === DICT_SHEET_NAME) return;
-    const values = s.getDataRange().getValues();
-    const richValues = s.getDataRange().getRichTextValues();
+    const dataRange = s.getDataRange();
+    const values = dataRange.getValues();
+    const richValues = dataRange.getRichTextValues();
     values.forEach((row, rowIdx) => {
       row.forEach((cellValue, colIdx) => {
         const str = String(cellValue || '').trim();
@@ -1042,17 +1043,7 @@ function onSheetEdit(e) {
 function scheduleDelayedExport_(sheetName) {
   const props = PropertiesService.getScriptProperties();
 
-  // Удаляем предыдущий запланированный триггер (сброс таймера)
-  const existingId = props.getProperty('_pendingExportTriggerId');
-  if (existingId) {
-    var triggers = ScriptApp.getProjectTriggers();
-    for (var i = 0; i < triggers.length; i++) {
-      if (triggers[i].getUniqueId() === existingId) {
-        ScriptApp.deleteTrigger(triggers[i]);
-        break;
-      }
-    }
-  }
+  deleteProjectTriggerById_(props.getProperty('_pendingExportTriggerId'));
 
   // Сохраняем ID таблицы (нужен для openById в time-based триггере)
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1082,18 +1073,9 @@ function scheduleDelayedExport_(sheetName) {
 function runDelayedExport_() {
   const props = PropertiesService.getScriptProperties();
 
-  // Чистим триггер
   var triggerId = props.getProperty('_pendingExportTriggerId');
   props.deleteProperty('_pendingExportTriggerId');
-  if (triggerId) {
-    var triggers = ScriptApp.getProjectTriggers();
-    for (var i = 0; i < triggers.length; i++) {
-      if (triggers[i].getUniqueId() === triggerId) {
-        ScriptApp.deleteTrigger(triggers[i]);
-        break;
-      }
-    }
-  }
+  deleteProjectTriggerById_(triggerId);
 
   var ssId = props.getProperty('_pendingExportSpreadsheetId');
   props.deleteProperty('_pendingExportSpreadsheetId');
@@ -1110,6 +1092,18 @@ function runDelayedExport_() {
   } else {
     dispatchScheduleUpdate_('delayed-export', '', sheetName, ssId);
   }
+}
+
+function deleteProjectTriggerById_(triggerId) {
+  if (!triggerId) return false;
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getUniqueId() === triggerId) {
+      ScriptApp.deleteTrigger(triggers[i]);
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -1170,15 +1164,11 @@ const DAY_NAMES_ = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 function parseDayCell_(raw) {
   var s = String(raw || '').trim();
   if (!s) return {dayIndex: -1, dayName: '', date: ''};
-  // Берём первый «токен» — до пробела/переноса.
   var match = s.match(/^\s*([А-ЯЁа-яё]{2,3})/);
   if (!match) return {dayIndex: -1, dayName: '', date: ''};
-  var first = match[1];
-  // Нормализуем: «пн» → «Пн».
-  var normalized = first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  var normalized = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
   var idx = DAY_NAMES_.indexOf(normalized);
   if (idx < 0) return {dayIndex: -1, dayName: '', date: ''};
-  // Ищем дату в остатке.
   var rest = s.slice(match[0].length);
   var dateMatch = rest.match(/(\d{1,2}\.\d{1,2}(?:\.\d{2,4})?)/);
   return {
@@ -1186,6 +1176,53 @@ function parseDayCell_(raw) {
     dayName: normalized,
     date: dateMatch ? dateMatch[1] : ''
   };
+}
+
+function parseAcademicYear_(sheet) {
+  var header = '';
+  try { header = String(sheet.getRange('D1').getDisplayValue() || sheet.getRange('D1').getValue() || ''); } catch (_) {}
+  var match = header.match(/(\d{4})\s*[-–—]\s*(\d{4})/);
+  if (!match) return null;
+  var startYear = Number(match[1]);
+  var endYear = Number(match[2]);
+  if (isNaN(startYear) || isNaN(endYear)) return null;
+  return {start_year: startYear, end_year: endYear};
+}
+
+function pad2Json_(n) {
+  n = String(n);
+  return n.length < 2 ? '0' + n : n;
+}
+
+function parseLessonDateParts_(raw) {
+  var match = String(raw || '').trim().match(/^(\d{1,2})\.(\d{1,2})(?:\.(\d{2}|\d{4}))?$/);
+  if (!match) return null;
+  var day = Number(match[1]);
+  var month = Number(match[2]);
+  if (!(day >= 1 && day <= 31 && month >= 1 && month <= 12)) return null;
+  var year = null;
+  if (match[3]) {
+    year = Number(match[3]);
+    if (year < 100) year += 2000;
+  }
+  return {day: day, month: month, year: year};
+}
+
+function inferLessonDateYear_(month, academicYear) {
+  if (!academicYear) return null;
+  return month >= 8 ? academicYear.start_year : academicYear.end_year;
+}
+
+function normalizeLessonDate_(raw, academicYear) {
+  var parts = parseLessonDateParts_(raw);
+  if (!parts) return null;
+  var year = parts.year || inferLessonDateYear_(parts.month, academicYear);
+  if (!year) return null;
+  var utc = new Date(Date.UTC(year, parts.month - 1, parts.day));
+  if (utc.getUTCFullYear() !== year || utc.getUTCMonth() !== parts.month - 1 || utc.getUTCDate() !== parts.day) {
+    return null;
+  }
+  return year + '-' + pad2Json_(parts.month) + '-' + pad2Json_(parts.day);
 }
 
 /**
@@ -1228,7 +1265,7 @@ function pushSheet_(ws, meta, token) {
   var dateMatch = sheetName.match(/^([\d.]+\s*-\s*[\d.]+)/);
   var dateRange = dateMatch ? dateMatch[1] : '';
 
-  var lessons = parseWeekSheet_(ws, meta.groups);
+  var lessons = parseWeekSheet_(ws, meta.groups, parseAcademicYear_(ws));
 
   var json = {
     name: sheetName,
@@ -1348,7 +1385,7 @@ function discoverGroups_(sheet) {
 /**
  * Парсит один лист-неделю.
  */
-function parseWeekSheet_(sheet, groups) {
+function parseWeekSheet_(sheet, groups, academicYear) {
   var lastRow = sheet.getLastRow();
   var lastCol = sheet.getLastColumn();
   if (lastRow < 6 || lastCol < 4) return [];
@@ -1375,7 +1412,7 @@ function parseWeekSheet_(sheet, groups) {
   var lessons = [];
   var currentDay = '';
   var currentDayNum = 0;
-  var currentDate = '';  // строка DD.MM или DD.MM.YYYY, если день промечен датой
+  var currentDate = null;
 
   for (var r = 5; r < lastRow; r++) {
     var rawDay = String(allValues[r][0] || '');
@@ -1383,7 +1420,7 @@ function parseWeekSheet_(sheet, groups) {
     if (parsedDay.dayIndex >= 0) {
       currentDay = parsedDay.dayName;
       currentDayNum = parsedDay.dayIndex + 1;
-      currentDate = parsedDay.date;
+      currentDate = normalizeLessonDate_(parsedDay.date, academicYear);
     }
 
     var pair = allValues[r][1];
@@ -1420,7 +1457,7 @@ function parseWeekSheet_(sheet, groups) {
         lessons.push({
           day: currentDay,
           day_number: currentDayNum,
-          date: currentDate || null,
+          date: currentDate,
           pair: pair,
           duration: duration,
           time: time,
