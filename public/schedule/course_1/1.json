@@ -1,6 +1,6 @@
 {
   "name": "31.08-05.09 (1-я неделя)",
-  "generated_at": "2026-05-17T17:42:40.918Z",
+  "generated_at": "2026-05-17T17:43:46.173Z",
   "course": 1,
   "semester": 1,
   "week_number": 1,
@@ -193,6 +193,25 @@
       "period_start": "31.12",
       "period_end": "12.12",
       "comment": null,
+      "cancelled": false
+    },
+    {
+      "day": "Сб",
+      "day_number": 6,
+      "date": "2026-09-05",
+      "pair": 5,
+      "duration": 2,
+      "time": "15:40 - 17:05",
+      "group": "1",
+      "type": "lab",
+      "subject": "БИС (2 р)",
+      "teacher": "асс.захарчукд.а.",
+      "room": "41/К1",
+      "subgroup": "1ПГ/2ПГ",
+      "frequency": "чет/нечет",
+      "period_start": null,
+      "period_end": null,
+      "comment": "с 11. по 11.1",
       "cancelled": false
     }
   ]
