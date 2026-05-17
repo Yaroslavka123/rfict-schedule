@@ -16,11 +16,12 @@
 //     потом легко удалить вручную.
 //
 // Високосность: используется нативный JS Date, который корректно обрабатывает
-// 29 февраля и переходы через границу года.
+// 29 февраля и переходы через границу года. Календарные даты держим в полдень
+// и форматируем в timezone проекта, чтобы UTC-сдвиг не менял день недели.
 // ──────────────────────────────────────────────────────────────────────────
 
 var GENERATOR_DEFAULTS_ = {
-  year: null,            // вычислится в форме (текущий год)
+  year: null,            // вычислится в форме (год начала учебного года)
   course: 1,             // курс 1..4 (нужен только для шапки листа)
   semester: 1,           // 1 = осень, 2 = весна (в рамках курса)
   pair_min: 85,          // длительность пары, мин
@@ -54,11 +55,10 @@ function openSemesterGenerator() {
 /** Возвращает дефолты + источник шаблона — вызывается из GeneratorDialog.html при загрузке. */
 function getGeneratorDefaults() {
   var now = new Date();
-  var defaultYear = now.getFullYear();
-  // Если сейчас осень (август..декабрь) — генерим, скорее всего, текущий год.
-  // Если январь..июль — скорее всего, генерим текущий учебный год = year - 1 (для весны).
-  // По умолчанию подставляем «текущий год» как академический год начала.
   var defaultSemester = (now.getMonth() >= 7) ? 1 : 2;
+  // Осенью генерируется текущий учебный год, весной — учебный год,
+  // начавшийся прошлой осенью.
+  var defaultYear = defaultSemester === 1 ? now.getFullYear() : now.getFullYear() - 1;
   return {
     defaults: Object.assign({}, GENERATOR_DEFAULTS_, {
       year: defaultYear,
@@ -130,7 +130,7 @@ function runSemesterGenerator(rawParams) {
   }
   return {
     created: created,
-    start_iso: start.toISOString(),
+    start_iso: formatYYYYMMDD_(start),
     start_ddmmyyyy: formatDDMMYYYY_(start),
     course: params.course,
     semester_in_year: params.semester,
@@ -191,30 +191,73 @@ function parseGeneratorParams_(raw) {
  */
 function computeSemesterStart_(year, semester) {
   var target;
-  if (semester === 1) target = new Date(year,     8, 1);  // 1 сентября `year`
-  else                target = new Date(year + 1, 1, 8);  // 8 февраля `year + 1`
+  if (semester === 1) target = calendarDate_(year,     8, 1);  // 1 сентября `year`
+  else                target = calendarDate_(year + 1, 1, 8);  // 8 февраля `year + 1`
   return mondayOfWeek_(target);
+}
+
+function getGeneratorTimeZone_() {
+  try {
+    if (typeof Session !== 'undefined') {
+      var tz = Session.getScriptTimeZone();
+      if (tz) return tz;
+    }
+  } catch (_) {}
+  return 'Europe/Minsk';
+}
+
+function calendarDate_(year, month, day) {
+  return new Date(year, month, day, 12, 0, 0, 0);
+}
+
+function cloneCalendarDate_(date) {
+  return calendarDate_(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function weekdayIndex_(date) {
+  try {
+    if (typeof Utilities !== 'undefined') {
+      var iso = Number(Utilities.formatDate(date, getGeneratorTimeZone_(), 'u'));
+      if (!isNaN(iso) && iso >= 1 && iso <= 7) return iso - 1;
+    }
+  } catch (_) {}
+  var dow = date.getDay(); // 0 = вс, 1 = пн, …, 6 = сб
+  return dow === 0 ? 6 : dow - 1;
 }
 
 /** Возвращает понедельник недели, содержащей указанную дату. */
 function mondayOfWeek_(date) {
-  var d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  var dow = d.getDay(); // 0 = вс, 1 = пн, …, 6 = сб
-  var diff = (dow === 0) ? -6 : (1 - dow);
-  d.setDate(d.getDate() + diff);
-  return d;
+  var d = cloneCalendarDate_(date);
+  d.setDate(d.getDate() - weekdayIndex_(d));
+  return cloneCalendarDate_(d);
 }
 
 function addDays_(date, n) {
-  var d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  var d = cloneCalendarDate_(date);
   d.setDate(d.getDate() + n);
-  return d;
+  return cloneCalendarDate_(d);
 }
 
 function pad2_(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
 
-function formatDDMM_(d)      { return pad2_(d.getDate()) + '.' + pad2_(d.getMonth() + 1); }
-function formatDDMMYYYY_(d)  { return formatDDMM_(d) + '.' + d.getFullYear(); }
+function formatGeneratorDate_(date, pattern) {
+  try {
+    if (typeof Utilities !== 'undefined') {
+      return Utilities.formatDate(date, getGeneratorTimeZone_(), pattern);
+    }
+  } catch (_) {}
+  var dd = pad2_(date.getDate());
+  var mm = pad2_(date.getMonth() + 1);
+  var yyyy = String(date.getFullYear());
+  if (pattern === 'dd.MM') return dd + '.' + mm;
+  if (pattern === 'dd.MM.yyyy') return dd + '.' + mm + '.' + yyyy;
+  if (pattern === 'yyyy-MM-dd') return yyyy + '-' + mm + '-' + dd;
+  return dd + '.' + mm + '.' + yyyy;
+}
+
+function formatDDMM_(d)      { return formatGeneratorDate_(d, 'dd.MM'); }
+function formatDDMMYYYY_(d)  { return formatGeneratorDate_(d, 'dd.MM.yyyy'); }
+function formatYYYYMMDD_(d)  { return formatGeneratorDate_(d, 'yyyy-MM-dd'); }
 
 function formatHHMM_(totalMin) {
   totalMin = ((totalMin % (24 * 60)) + 24 * 60) % (24 * 60);
@@ -323,7 +366,14 @@ function customizeWeekSheet_(sheet, template, struct, params, weekNum, monday, s
     var dm = struct.day_merges[j];
     if (dm.day_index >= params.days_per_week) continue; // ВС не пишем если days_per_week = 6
     var date = addDays_(monday, dm.day_index);
-    var dayName = DAY_NAMES_[dm.day_index];
+    var actualDayIndex = weekdayIndex_(date);
+    if (actualDayIndex !== dm.day_index) {
+      throw new Error(
+        'Ошибка календаря: ' + formatDDMMYYYY_(date) + ' приходится на ' + DAY_NAMES_[actualDayIndex] +
+        ', а строка шаблона — ' + DAY_NAMES_[dm.day_index] + '. Проверьте год и timezone проекта.'
+      );
+    }
+    var dayName = DAY_NAMES_[actualDayIndex];
     var dateStr = params.date_format === 'full' ? formatDDMMYYYY_(date) : formatDDMM_(date);
     var text = dayName + '\n' + dateStr;
 
