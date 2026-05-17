@@ -1,6 +1,6 @@
 {
   "name": "31.08-05.09 (1-я неделя)",
-  "generated_at": "2026-05-17T17:03:46.952Z",
+  "generated_at": "2026-05-17T17:04:37.111Z",
   "course": 1,
   "semester": 1,
   "week_number": 1,
@@ -79,6 +79,25 @@
       "period_start": "12.12",
       "period_end": "12.12",
       "comment": "qweasdzxc",
+      "cancelled": false
+    },
+    {
+      "day": "Пн",
+      "day_number": 1,
+      "date": "2026-08-31",
+      "pair": 1,
+      "duration": 1,
+      "time": "09:00 - 10:25",
+      "group": "4",
+      "type": "practice",
+      "subject": "АТдПЭУ",
+      "teacher": "асс.захарчукд.а.",
+      "room": "117",
+      "subgroup": null,
+      "frequency": null,
+      "period_start": "11.11",
+      "period_end": "11.11",
+      "comment": "1231234",
       "cancelled": false
     },
     {
