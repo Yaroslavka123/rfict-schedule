@@ -94,6 +94,55 @@ function createSheetFromTemplate() {
 }
 
 /**
+ * Открывает модалку с JSON шаблона для вставки в `BundledTemplate.gs`.
+ * Если шаблон уже сохранён в `_TEMPLATE_` — берёт его. Иначе снимает с активного
+ * листа на лету.
+ */
+function exportTemplateToCode() {
+  var ui = SpreadsheetApp.getUi();
+  var template = loadTemplate_();
+  if (!template) {
+    var ss = SpreadsheetApp.getActive();
+    var src = ss.getActiveSheet();
+    if (src.getName().charAt(0) === '_') {
+      ui.alert('Откройте лист расписания (не служебный) или сначала снимите шаблон.');
+      return;
+    }
+    template = extractSheetTemplate_(src);
+  }
+  var json = JSON.stringify(template);
+  // Экранируем для JS-литерала: " и \ и переносы строк.
+  var escaped = json
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+  var literal = 'var BUNDLED_TEMPLATE_JSON_ = "' + escaped + '";';
+  var size = literal.length;
+
+  var html = HtmlService.createHtmlOutput(
+    '<style>body{font-family:Arial,sans-serif;margin:8px;}textarea{width:100%;height:380px;font-family:monospace;font-size:11px;}small{color:#666;}</style>' +
+    '<p>Скопируйте строку ниже и вставьте её в <code>BundledTemplate.gs</code>, заменив строку <code>var BUNDLED_TEMPLATE_JSON_ = null;</code>.</p>' +
+    '<small>Размер: ' + size + ' символов. Источник: ' + (getTemplateSource_() || 'active sheet') + '.</small>' +
+    '<textarea id="t" readonly onclick="this.select()"></textarea>' +
+    '<p><button onclick="copy()">Скопировать в буфер</button> ' +
+    '<span id="msg" style="margin-left:8px;color:green;"></span></p>' +
+    '<script>' +
+    'var data = ' + JSON.stringify(literal) + ';' +
+    'document.getElementById("t").value = data;' +
+    'function copy() {' +
+    '  var t = document.getElementById("t"); t.select(); t.setSelectionRange(0, 99999999);' +
+    '  try { document.execCommand("copy"); document.getElementById("msg").textContent = "Скопировано"; }' +
+    '  catch(e) { document.getElementById("msg").textContent = "Не получилось — выделите вручную и Ctrl+C"; }' +
+    '}' +
+    '</script>'
+  ).setWidth(720).setHeight(560);
+  ui.showModalDialog(html, 'BUNDLED_TEMPLATE_JSON_ для BundledTemplate.gs');
+}
+
+/**
  * Round-trip тест: снимает шаблон с активного листа, создаёт временный лист,
  * применяет к нему шаблон, снимает шаблон с временного листа, сравнивает.
  * Временный лист удаляется в конце.
@@ -487,19 +536,49 @@ function saveTemplate_(template) {
   sheet.getRange(1, 1, rows.length, 1).setValues(rows);
 }
 
+/**
+ * Загружает шаблон. Приоритет:
+ *   1. Скрытый лист `_TEMPLATE_` (per-spreadsheet override).
+ *   2. Встроенная константа `BUNDLED_TEMPLATE_JSON_` из BundledTemplate.gs.
+ *   3. null.
+ *
+ * @return {object|null}
+ */
 function loadTemplate_() {
   var ss = SpreadsheetApp.getActive();
   var sheet = ss.getSheetByName(TEMPLATE_STORE_SHEET_);
-  if (!sheet) return null;
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 2) return null;
-  var first = sheet.getRange(1, 1).getValue();
-  var n = parseInt(first, 10);
-  if (!(n > 0)) return null;
-  var parts = sheet.getRange(2, 1, n, 1).getValues();
-  var combined = '';
-  for (var i = 0; i < n; i++) combined += String(parts[i][0] || '');
-  try { return JSON.parse(combined); } catch (_) { return null; }
+  if (sheet) {
+    var lastRow = sheet.getLastRow();
+    if (lastRow >= 2) {
+      var first = sheet.getRange(1, 1).getValue();
+      var n = parseInt(first, 10);
+      if (n > 0) {
+        var parts = sheet.getRange(2, 1, n, 1).getValues();
+        var combined = '';
+        for (var i = 0; i < n; i++) combined += String(parts[i][0] || '');
+        try { return JSON.parse(combined); } catch (_) { /* fall through */ }
+      }
+    }
+  }
+  // Fallback на встроенный шаблон.
+  if (typeof BUNDLED_TEMPLATE_JSON_ === 'string' && BUNDLED_TEMPLATE_JSON_) {
+    try { return JSON.parse(BUNDLED_TEMPLATE_JSON_); } catch (_) { return null; }
+  }
+  return null;
+}
+
+/**
+ * Возвращает источник, из которого загрузился шаблон: 'sheet' | 'bundled' | null.
+ */
+function getTemplateSource_() {
+  var ss = SpreadsheetApp.getActive();
+  var sheet = ss.getSheetByName(TEMPLATE_STORE_SHEET_);
+  if (sheet && sheet.getLastRow() >= 2) {
+    var n = parseInt(sheet.getRange(1, 1).getValue(), 10);
+    if (n > 0) return 'sheet';
+  }
+  if (typeof BUNDLED_TEMPLATE_JSON_ === 'string' && BUNDLED_TEMPLATE_JSON_) return 'bundled';
+  return null;
 }
 
 function chunkString_(str, size) {

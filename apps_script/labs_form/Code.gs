@@ -87,6 +87,8 @@ function onOpen() {
     .addItem('Снять шаблон с активного листа', 'extractActiveSheetAsTemplate')
     .addItem('Создать лист по шаблону', 'createSheetFromTemplate')
     .addSeparator()
+    .addItem('📤 Экспортировать шаблон в код', 'exportTemplateToCode')
+    .addSeparator()
     .addItem('Тест round-trip шаблона', 'verifyTemplateRoundTrip');
 
   SpreadsheetApp.getUi()
@@ -102,6 +104,7 @@ function onOpen() {
     .addSeparator()
     .addItem('💾 Сохранить расписание сейчас', 'manualDispatch')
     .addSeparator()
+    .addItem('📅 Сгенерировать пустой семестр', 'openSemesterGenerator')
     .addSubMenu(templateMenu)
     .addToUi();
 }
@@ -1156,6 +1159,36 @@ const COLOR_TO_TYPE_MAP_ = {
 const DAY_NAMES_ = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 /**
+ * Парсит ячейку колонки A: возвращает индекс дня (0..6 или -1), нормализованное
+ * имя дня и строку даты (если есть). Терпим к форматам:
+ *   • "Пн"
+ *   • "Пн\n09.02"
+ *   • "Пн\n09.02.2026"
+ *   • "Пн 09.02" (через пробел)
+ * Регистронезависим для имени дня.
+ */
+function parseDayCell_(raw) {
+  var s = String(raw || '').trim();
+  if (!s) return {dayIndex: -1, dayName: '', date: ''};
+  // Берём первый «токен» — до пробела/переноса.
+  var match = s.match(/^\s*([А-ЯЁа-яё]{2,3})/);
+  if (!match) return {dayIndex: -1, dayName: '', date: ''};
+  var first = match[1];
+  // Нормализуем: «пн» → «Пн».
+  var normalized = first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  var idx = DAY_NAMES_.indexOf(normalized);
+  if (idx < 0) return {dayIndex: -1, dayName: '', date: ''};
+  // Ищем дату в остатке.
+  var rest = s.slice(match[0].length);
+  var dateMatch = rest.match(/(\d{1,2}\.\d{1,2}(?:\.\d{2,4})?)/);
+  return {
+    dayIndex: idx,
+    dayName: normalized,
+    date: dateMatch ? dateMatch[1] : ''
+  };
+}
+
+/**
  * Метаданные таблицы: курс, семестр, группы.
  */
 function getSheetMeta_(ss) {
@@ -1342,13 +1375,15 @@ function parseWeekSheet_(sheet, groups) {
   var lessons = [];
   var currentDay = '';
   var currentDayNum = 0;
+  var currentDate = '';  // строка DD.MM или DD.MM.YYYY, если день промечен датой
 
   for (var r = 5; r < lastRow; r++) {
-    var dayVal = String(allValues[r][0] || '').trim();
-    var dayIdx = DAY_NAMES_.indexOf(dayVal);
-    if (dayIdx >= 0) {
-      currentDay = dayVal;
-      currentDayNum = dayIdx + 1;
+    var rawDay = String(allValues[r][0] || '');
+    var parsedDay = parseDayCell_(rawDay);
+    if (parsedDay.dayIndex >= 0) {
+      currentDay = parsedDay.dayName;
+      currentDayNum = parsedDay.dayIndex + 1;
+      currentDate = parsedDay.date;
     }
 
     var pair = allValues[r][1];
@@ -1385,6 +1420,7 @@ function parseWeekSheet_(sheet, groups) {
         lessons.push({
           day: currentDay,
           day_number: currentDayNum,
+          date: currentDate || null,
           pair: pair,
           duration: duration,
           time: time,
