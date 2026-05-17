@@ -1,6 +1,6 @@
 {
   "name": "31.08-05.09 (1-я неделя)",
-  "generated_at": "2026-05-17T17:43:46.173Z",
+  "generated_at": "2026-05-17T17:45:28.626Z",
   "course": 1,
   "semester": 1,
   "week_number": 1,
@@ -193,6 +193,25 @@
       "period_start": "31.12",
       "period_end": "12.12",
       "comment": null,
+      "cancelled": false
+    },
+    {
+      "day": "Сб",
+      "day_number": 6,
+      "date": "2026-09-05",
+      "pair": 3,
+      "duration": 1,
+      "time": "12:10 - 13:35",
+      "group": "1",
+      "type": "curator_hour",
+      "subject": "Безопасность информационных систем",
+      "teacher": "доц.бурмакdhsvkва.п.",
+      "room": "129",
+      "subgroup": null,
+      "frequency": null,
+      "period_start": "31.02",
+      "period_end": "12.12",
+      "comment": "gggggggggg",
       "cancelled": false
     },
     {
