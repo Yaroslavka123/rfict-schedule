@@ -31,7 +31,7 @@ const GH_REPO_NAME  = 'rfict-schedule';
 const SCHEDULE_DIR  = 'public/schedule/';
 
 // Задержка перед экспортом после последнего изменения (мс).
-const EXPORT_DELAY_MS = 2 * 60 * 1000; // 2 минуты
+const EXPORT_DELAY_MS = 1 * 1000; // 1 секунда
 const SUBJECT_COL = 1; // A
 const TEACHER_COL = 2; // B
 const ROOM_COL = 3;    // C
@@ -72,6 +72,8 @@ function onOpen() {
     .addItem('💾 Сохранить расписание сейчас', 'manualDispatch')
     .addSeparator()
     .addItem('🗓 Генератор пустого семестра', 'openSemesterGenerator')
+    .addSeparator()
+    .addItem('⚙️ Установить триггер автосохранения', 'installEditTrigger')
     .addToUi();
 }
 
@@ -97,7 +99,7 @@ function togglePushEnabled() {
   }
   var on = ui.alert(
     'Включить автосохранение?',
-    'Расписание будет автоматически сохраняться на сайт через 2 минуты после любого изменения.',
+    'Расписание будет автоматически сохраняться на сайт через ~1 сек после любого изменения.',
     ui.ButtonSet.YES_NO
   );
   if (on !== ui.Button.YES) return;
@@ -191,7 +193,7 @@ function getDictionaries_() {
     }
     if (responses[1].getResponseCode() === 200) {
       result.teachers = JSON.parse(responses[1].getContentText()).teachers
-        .map(function(t) { return t.PostFullName; }).filter(Boolean).sort();
+        .map(function(t) { return formatTeacherName_(t.PostFullName); }).filter(Boolean).sort();
     }
     if (responses[2].getResponseCode() === 200) {
       result.rooms = JSON.parse(responses[2].getContentText()).rooms
@@ -446,11 +448,22 @@ function clearActiveCell() {
   var sheet = SpreadsheetApp.getActiveSheet();
   var range = sheet.getActiveRange();
   if (!range) throw new Error('Сначала выберите ячейки.');
-  range.clearContent();
-  range.setBackground(null);
+
   var startRow = range.getRow();
   var numRows = range.getNumRows();
-  var roomCol = range.getColumn() + range.getNumColumns();
+  var startCol = range.getColumn();
+  var numCols = range.getNumColumns();
+  var roomCol = startCol + numCols;
+
+  // Разбиваем merge-ячейки в выделении и соседнем столбце аудиторий
+  var extRange = sheet.getRange(startRow, startCol, numRows, numCols + 1);
+  var merged = extRange.getMergedRanges();
+  for (var i = 0; i < merged.length; i++) {
+    try { merged[i].breakApart(); } catch (_) {}
+  }
+
+  range.clearContent();
+  range.setBackground(null);
   var roomRange = sheet.getRange(startRow, roomCol, numRows, 1);
   roomRange.clearContent();
   roomRange.setBackground(null);
@@ -460,6 +473,51 @@ function clearActiveCell() {
 // ──────────────────────────────────────────────────────────────────────────
 // Утилиты
 // ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * Форматирует имя преподавателя с бэкенда.
+ * Вход: "асс.захарчукд.а." → Выход: "асс.Захарчук Д.А."
+ */
+function formatTeacherName_(raw) {
+  if (!raw) return '';
+  var s = String(raw).trim();
+  if (!s) return '';
+
+  // Известные префиксы (длинные сначала)
+  var prefixPattern = /^(\u0441\u0442\.?\s*\u043f\u0440\.|\u043f\u0440\.?\s*\u0441\u0442\.|\u0434\u043e\u0446\.|\u043f\u0440\u043e\u0444\.|\u0430\u0441\u0441\.|\u043f\u0440\.)\s*/i;
+  var prefixMatch = s.match(prefixPattern);
+  var prefix = '';
+  var rest = s;
+  if (prefixMatch) {
+    prefix = prefixMatch[1].toLowerCase();
+    rest = s.substring(prefixMatch[0].length);
+  }
+
+  // Инициалы в конце: д.а. или д.  
+  var twoInit = rest.match(/([\u0430-\u044f\u0451a-z])\.\s*([\u0430-\u044f\u0451a-z])\.\s*$/i);
+  var initials = '';
+  var surname = rest;
+  if (twoInit) {
+    initials = twoInit[1].toUpperCase() + '.' + twoInit[2].toUpperCase() + '.';
+    surname = rest.substring(0, twoInit.index);
+  } else {
+    var oneInit = rest.match(/([\u0430-\u044f\u0451a-z])\.\s*$/i);
+    if (oneInit) {
+      initials = oneInit[1].toUpperCase() + '.';
+      surname = rest.substring(0, oneInit.index);
+    }
+  }
+
+  surname = surname.trim();
+  if (surname) {
+    surname = surname.charAt(0).toUpperCase() + surname.slice(1).toLowerCase();
+  }
+
+  var result = prefix;
+  if (surname) result += surname;
+  if (initials) result += ' ' + initials;
+  return result || s;
+}
 
 function uniqueNonEmpty_(arr) {
   const seen = new Set();
@@ -770,7 +828,7 @@ function onSheetEdit(e) {
 }
 
 /**
- * Планирует отложенный экспорт через 2 минуты (debounce).
+ * Планирует отложенный экспорт (debounce).
  * При каждом новом изменении таймер сбрасывается.
  */
 function scheduleDelayedExport_(sheetName) {
@@ -792,7 +850,7 @@ function scheduleDelayedExport_(sheetName) {
     props.setProperty('_pendingExportSheet', sheetName || '__ALL__');
   }
 
-  // Новый триггер через 2 минуты
+  // Новый триггер через EXPORT_DELAY_MS
   var trigger = ScriptApp.newTrigger('runDelayedExport_')
     .timeBased()
     .after(EXPORT_DELAY_MS)
@@ -1054,7 +1112,10 @@ function postToBackend_(json) {
       muteHttpExceptions: true,
     });
     var code = resp.getResponseCode();
-    if (code !== 200 && code !== 201) {
+    if (code === 200 || code === 201) {
+      // Инвалидируем кэш справочников — бэкенд обновил данные
+      try { CacheService.getScriptCache().remove('dictionaries'); } catch (_) {}
+    } else {
       console.warn('postToBackend_ error: ' + code + ' ' + resp.getContentText().substring(0, 200));
     }
   } catch (err) {
@@ -1421,4 +1482,27 @@ function pushFileToGitHub_(path, content, token) {
 function testDispatch() {
   var result = dispatchScheduleUpdate_('manual-test', 'A1');
   SpreadsheetApp.getUi().alert(dispatchResultMessage_(result));
+}
+
+/**
+ * Устанавливает триггер onSheetEdit для автосохранения.
+ * Безопасно вызывать повторно — дублей не создаёт.
+ */
+function installEditTrigger() {
+  var existing = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < existing.length; i++) {
+    if (existing[i].getHandlerFunction() === 'onSheetEdit') {
+      SpreadsheetApp.getUi().alert('Триггер уже установлен. Всё готово!');
+      return;
+    }
+  }
+  ScriptApp.newTrigger('onSheetEdit')
+    .forSpreadsheet(SpreadsheetApp.getActive())
+    .onEdit()
+    .create();
+  SpreadsheetApp.getUi().alert(
+    'Триггер установлен!\n\n' +
+    'Теперь при любом изменении ячеек расписание будет автоматически сохраняться ' +
+    '(если автосохранение включено в меню).'
+  );
 }

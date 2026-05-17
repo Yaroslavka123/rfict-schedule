@@ -361,7 +361,10 @@ function customizeWeekSheet_(sheet, template, struct, params, weekNum, monday, s
     sheet.getRange(pr.row, 3).setValue(entry.label);
   }
 
-  // 3. Дни недели + дата (колонка A) — пишем через RichText: день жирнее, дата мельче.
+  // 3. Расширяем колонку A чтобы дата (например "31.08") не переносилась на следующую строку.
+  sheet.setColumnWidth(1, 60);
+
+  // 4. Дни недели + дата (колонка A) — пишем через RichText: день жирнее, дата мельче.
   for (var j = 0; j < struct.day_merges.length; j++) {
     var dm = struct.day_merges[j];
     if (dm.day_index >= params.days_per_week) continue; // ВС не пишем если days_per_week = 6
