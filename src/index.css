@@ -8,6 +8,7 @@
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
     --muted: 210 40% 94%;
     --muted-foreground: 215 16% 47%;
     --border: 214 32% 91%;
@@ -23,6 +24,7 @@
     --foreground: 210 40% 98%;
     --card: 222 47% 10%;
     --card-foreground: 210 40% 98%;
+    --popover: 222 47% 8%;
     --muted: 217 33% 16%;
     --muted-foreground: 215 20% 65%;
     --border: 217 33% 18%;
@@ -44,95 +46,135 @@
 }
 
 @layer components {
-  .bg-page-gradient {
-    background:
-      radial-gradient(circle at top left, rgba(14, 165, 233, 0.25), transparent 32rem),
-      radial-gradient(circle at top right, rgba(124, 58, 237, 0.18), transparent 28rem);
-  }
-
-  .bg-hero {
-    background:
-      linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card)) 55%, rgba(14, 165, 233, 0.14) 100%);
-  }
-
   .filter-chip {
-    @apply rounded-full border border-border bg-card px-3 py-1.5 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground;
+    @apply rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground transition hover:border-muted-foreground/40 hover:text-foreground;
   }
 
   .filter-chip-active {
-    @apply border-primary bg-primary text-primary-foreground shadow-glow;
+    @apply border-primary bg-primary/10 text-primary;
   }
 
   .inline-link {
     @apply inline-flex items-center gap-1 font-semibold text-primary hover:underline;
   }
 
-  .schedule-table,
-  .rooms-table {
+  /* Dense table used for schedule and analytics */
+  .dense-table {
     @apply w-full border-collapse text-sm;
   }
 
-  .schedule-table th,
-  .schedule-table td,
-  .rooms-table th,
-  .rooms-table td {
-    @apply border-b border-border px-4 py-3 text-left align-top;
+  .dense-table th,
+  .dense-table td {
+    @apply border-b border-border px-2.5 py-1.5 text-left align-middle;
   }
 
-  .schedule-table th,
-  .rooms-table th {
-    @apply bg-muted text-xs font-bold uppercase tracking-widest text-muted-foreground;
+  .dense-table th {
+    @apply bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground;
   }
 
-  .schedule-table tbody tr,
-  .rooms-table tbody tr {
-    @apply transition hover:bg-muted/60;
+  .dense-table tbody tr {
+    @apply transition hover:bg-muted/40;
   }
 
-  .rooms-table th,
-  .rooms-table td {
-    @apply min-w-room text-center;
+  .dense-table .day-header td {
+    @apply bg-primary/10 text-sm font-bold uppercase tracking-wider text-primary;
   }
 
-  .rooms-table .sticky-col {
-    @apply sticky left-0 z-10 min-w-sticky bg-card text-left;
+  .dense-table tr.day-header:hover td {
+    @apply bg-primary/15;
   }
 
-  .rooms-table .sticky-col.second {
-    @apply left-sticky-second min-w-pair;
+  /* Type badge */
+  .type-badge {
+    @apply inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider;
   }
 
-  .room-cell {
-    @apply text-xs font-semibold;
+  .type-lecture { @apply bg-emerald-500/15 text-emerald-500; }
+  .type-lab { @apply bg-amber-500/15 text-amber-500; }
+  .type-practice { @apply bg-sky-500/15 text-sky-500; }
+  .type-seminar { @apply bg-slate-500/15 text-slate-400; }
+  .type-curator_hour,
+  .type-additional { @apply bg-purple-500/15 text-purple-400; }
+  .type-unknown { @apply bg-muted text-muted-foreground; }
+
+  /* Room matrix */
+  .room-matrix-wrap {
+    @apply max-h-[calc(100vh-14rem)] overflow-auto rounded-lg border border-border bg-card;
   }
 
-  .room-free {
-    @apply text-muted-foreground;
+  .room-matrix {
+    @apply min-w-full border-collapse text-xs;
   }
 
-  .room-busy {
-    @apply rounded-lg border text-center;
+  .room-matrix th,
+  .room-matrix td {
+    @apply border-b border-r border-border;
   }
 
-  .room-lecture-hall {
-    @apply border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100;
+  .room-matrix thead th {
+    @apply sticky top-0 z-30 bg-muted px-1 py-1.5 text-center font-bold text-muted-foreground;
   }
 
-  .room-computer {
-    @apply border-sky-200 bg-sky-100 text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-100;
+  .room-matrix .th-day {
+    @apply sticky left-0 z-40 min-w-[2rem] bg-muted;
   }
 
-  .room-regular {
-    @apply border-slate-200 bg-slate-100 text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100;
+  .room-matrix .th-pair {
+    @apply sticky left-[2rem] z-40 min-w-[2rem] bg-muted;
   }
 
-  .room-multi {
-    @apply border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-100;
+  .room-matrix .th-room {
+    @apply min-w-[3.5rem] px-1 text-[11px];
   }
 
+  .room-matrix .th-cat-lecture-hall { @apply text-amber-500; }
+  .room-matrix .th-cat-computer { @apply text-sky-500; }
+  .room-matrix .th-cat-regular { @apply text-emerald-500; }
+
+  .room-matrix .td-day {
+    @apply sticky left-0 z-20 bg-card text-center align-middle text-sm font-bold text-foreground;
+  }
+
+  .room-matrix .td-pair {
+    @apply sticky left-[2rem] z-20 bg-card text-center align-middle text-xs font-bold text-muted-foreground;
+  }
+
+  .room-matrix tr.day-separator > td {
+    @apply border-t-2 border-t-primary/40;
+  }
+
+  .room-matrix .room-cat-start {
+    @apply border-l-2 border-l-primary/40;
+  }
+
+  .slot-free {
+    @apply h-9 min-w-[3.5rem] bg-transparent;
+  }
+
+  .slot-busy {
+    @apply relative h-9 min-w-[3.5rem] cursor-help overflow-hidden p-0.5 text-[10px] leading-tight;
+  }
+
+  .slot-busy .slot-content {
+    @apply flex h-full flex-col justify-center;
+  }
+
+  .slot-main { @apply truncate font-bold; }
+  .slot-meta { @apply truncate text-[9px] opacity-80; }
+
+  .slot-count {
+    @apply absolute right-0.5 top-0.5 inline-flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-purple-500 px-1 text-[9px] font-bold text-white;
+  }
+
+  .slot-lecture-hall { @apply bg-amber-500/15 text-amber-500; }
+  .slot-computer { @apply bg-sky-500/15 text-sky-500; }
+  .slot-regular { @apply bg-emerald-500/15 text-emerald-500; }
+  .slot-multi { @apply bg-purple-500/20 text-purple-400; }
+
+  /* Teacher cells */
   .teacher-busy-cell,
   .teacher-free-cell {
-    @apply flex h-8 items-center justify-center rounded-lg text-xs font-bold;
+    @apply flex h-8 items-center justify-center rounded text-xs font-bold;
   }
 
   .teacher-busy-cell {
@@ -140,10 +182,6 @@
   }
 
   .teacher-free-cell {
-    @apply bg-card text-muted-foreground;
-  }
-
-  .plan-placeholder {
-    @apply rounded-full bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground;
+    @apply bg-muted text-muted-foreground;
   }
 }

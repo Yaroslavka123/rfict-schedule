@@ -1,6 +1,6 @@
 export type LessonType = 'lecture' | 'lab' | 'practice' | 'seminar' | 'curator_hour' | 'additional' | 'unknown'
 
-export type DataSource = 'backend' | 'json-fallback'
+export type DataSource = 'backend' | 'github' | 'local'
 
 export interface ScheduleGroup {
   id: string
@@ -28,6 +28,7 @@ export interface ScheduleLesson {
   comment: string | null
   cancelled: boolean
   google_sheet_id?: string | null
+  week_number?: number
 }
 
 export interface WeekSchedule {
@@ -41,8 +42,12 @@ export interface WeekSchedule {
   lessons: ScheduleLesson[]
 }
 
-export interface ScheduleResult {
-  schedule: WeekSchedule
+export interface CourseSchedule {
+  course: number
+  generated_at: string
+  groups: ScheduleGroup[]
+  weeks: WeekSchedule[]
+  lessons: ScheduleLesson[]
   source: DataSource
 }
 
@@ -50,24 +55,38 @@ export interface FiltersState {
   course: number
   week: number
   group: string
+  subgroup: string
   lessonTypes: LessonType[]
   search: string
 }
 
-export interface PlanEntry {
-  key: string
+export interface CoursePlanEntry {
   course: number
-  group: string
-  subgroup: string | null
   subject: string
-  type: LessonType
-  teacher: string | null
-  google_sheet_id: string | null
-  planned_pairs: number | null
+  planned_pairs: number
 }
 
-export interface PlanFactEntry extends PlanEntry {
-  fact_pairs: number
-  remaining_pairs: number | null
-  status: 'ok' | 'warning' | 'over' | 'empty-plan'
+export type CoursePlanMap = Record<string, number>
+
+export interface AnalyticsCell {
+  planned: number | null
+  scheduled: number
+  done: number
+}
+
+export interface AnalyticsRow {
+  subject: string
+  cell: AnalyticsCell
+}
+
+export interface AnalyticsSubgroup {
+  subgroup: string | null
+  rows: AnalyticsRow[]
+}
+
+export interface AnalyticsGroup {
+  groupId: string
+  groupName: string
+  department?: string
+  subgroups: AnalyticsSubgroup[]
 }

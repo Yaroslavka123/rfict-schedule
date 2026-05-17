@@ -1,6 +1,19 @@
-import { DAY_ORDER, LESSON_TYPE_LABELS, PAIRS } from '@/lib/constants'
+import { DAY_ORDER, LECTURE_HALLS, LESSON_TYPE_LABELS, PAIRS } from '@/lib/constants'
 import { normalizeText } from '@/lib/utils'
-import type { FiltersState, LessonType, PlanEntry, PlanFactEntry, ScheduleLesson, WeekSchedule } from '@/types/schedule'
+import { planKey } from '@/api/scheduleClient'
+import type {
+  AnalyticsCell,
+  AnalyticsGroup,
+  AnalyticsRow,
+  AnalyticsSubgroup,
+  CoursePlanMap,
+  CourseSchedule,
+  FiltersState,
+  LessonType,
+  ScheduleGroup,
+  ScheduleLesson,
+  WeekSchedule,
+} from '@/types/schedule'
 
 export function getLessonTypeLabel(type: LessonType) {
   return LESSON_TYPE_LABELS[type] || LESSON_TYPE_LABELS.unknown
@@ -16,14 +29,26 @@ export function getGoogleSheetUrl(lesson: Pick<ScheduleLesson, 'google_sheet_id'
   return `https://docs.google.com/spreadsheets/d/${lesson.google_sheet_id}/edit`
 }
 
-export function getGroupName(schedule: WeekSchedule, groupId: string) {
-  return schedule.groups.find((group) => group.id === groupId)?.name || `Группа ${groupId}`
+export function getGroupNameById(groups: ScheduleGroup[], groupId: string) {
+  return groups.find((group) => group.id === groupId)?.name || `Группа ${groupId}`
 }
 
-export function applyLessonFilters(schedule: WeekSchedule, filters: FiltersState, search: string) {
+export function getWeekByNumber(course: CourseSchedule, week: number): WeekSchedule | null {
+  return course.weeks.find((entry) => entry.week_number === week) || null
+}
+
+export function applyLessonFilters(
+  lessons: ScheduleLesson[],
+  groups: ScheduleGroup[],
+  filters: FiltersState,
+  search: string,
+) {
   const query = normalizeText(search)
-  return schedule.lessons.filter((lesson) => {
+  return lessons.filter((lesson) => {
     if (filters.group !== 'all' && lesson.group !== filters.group) return false
+    if (filters.subgroup && filters.subgroup !== 'all') {
+      if ((lesson.subgroup || '') !== filters.subgroup) return false
+    }
     if (filters.lessonTypes.length > 0 && !filters.lessonTypes.includes(lesson.type)) return false
     if (!query) return true
     const haystack = [
@@ -38,7 +63,7 @@ export function applyLessonFilters(schedule: WeekSchedule, filters: FiltersState
       lesson.period_start,
       lesson.period_end,
       lesson.comment,
-      getGroupName(schedule, lesson.group),
+      getGroupNameById(groups, lesson.group),
     ]
       .map(normalizeText)
       .join(' ')
@@ -66,21 +91,39 @@ export function buildStats(lessons: ScheduleLesson[]) {
   }
 }
 
-export function getRooms(lessons: ScheduleLesson[]) {
-  return Array.from(new Set(lessons.map((lesson) => lesson.room).filter((room): room is string => Boolean(room))))
-    .sort((a, b) => categorizeRoom(a).order - categorizeRoom(b).order || a.localeCompare(b, 'ru'))
+export function normalizeRoom(room: string | null | undefined): string {
+  if (!room) return ''
+  return String(room).replace(/[KkКк](\s*)(\d)/g, 'К$2').trim()
 }
 
 export function categorizeRoom(room: string) {
-  if (['115', '117', '119'].includes(room)) return { label: 'Лекционный зал', order: 1, tone: 'lecture-hall' as const }
-  if (/^к\s*\d+|k\s*\d+/i.test(room) || /к/i.test(room)) return { label: 'Компьютерный класс', order: 2, tone: 'computer' as const }
+  const normalized = normalizeRoom(room)
+  if (LECTURE_HALLS.includes(normalized)) return { label: 'Лекционный зал', order: 1, tone: 'lecture-hall' as const }
+  if (/К\s*\d/.test(normalized)) return { label: 'Компьютерный класс', order: 2, tone: 'computer' as const }
   return { label: 'Кабинет', order: 3, tone: 'regular' as const }
+}
+
+export function getRooms(lessons: ScheduleLesson[]) {
+  const set = new Set<string>()
+  lessons.forEach((lesson) => {
+    const room = normalizeRoom(lesson.room)
+    if (room && room !== 'ДО') set.add(room)
+  })
+  return Array.from(set).sort((a, b) => {
+    const orderA = categorizeRoom(a).order
+    const orderB = categorizeRoom(b).order
+    if (orderA !== orderB) return orderA - orderB
+    const numA = parseInt(a.replace(/\D+/g, ''), 10)
+    const numB = parseInt(b.replace(/\D+/g, ''), 10)
+    if (!Number.isNaN(numA) && !Number.isNaN(numB)) return numA - numB
+    return a.localeCompare(b, 'ru')
+  })
 }
 
 export function findRoomLessons(lessons: ScheduleLesson[], room: string, day: string, pair: number) {
   return lessons.filter((lesson) => {
     const lastPair = lesson.pair + Math.max(lesson.duration, 1) - 1
-    return lesson.room === room && lesson.day === day && pair >= lesson.pair && pair <= lastPair
+    return normalizeRoom(lesson.room) === room && lesson.day === day && pair >= lesson.pair && pair <= lastPair
   })
 }
 
@@ -116,52 +159,6 @@ export function findTeacherConflicts(lessons: ScheduleLesson[]) {
   return Array.from(conflicts.values()).filter((group) => group.length > 1)
 }
 
-function buildPositionKey(lesson: ScheduleLesson) {
-  return [lesson.group, lesson.subgroup || 'all', lesson.subject, lesson.type, normalizeTeacherName(lesson.teacher)].join('|')
-}
-
-export function buildPlanFact(schedule: WeekSchedule): PlanFactEntry[] {
-  const entries = new Map<string, PlanEntry & { fact_pairs: number }>()
-  schedule.lessons.forEach((lesson) => {
-    const key = buildPositionKey(lesson)
-    const current = entries.get(key)
-    const fact = lesson.cancelled ? 0 : lesson.duration
-    if (current) {
-      current.fact_pairs += fact
-      if (!current.google_sheet_id && lesson.google_sheet_id) current.google_sheet_id = lesson.google_sheet_id
-      return
-    }
-    entries.set(key, {
-      key,
-      course: schedule.course,
-      group: lesson.group,
-      subgroup: lesson.subgroup,
-      subject: lesson.subject,
-      type: lesson.type,
-      teacher: lesson.teacher,
-      google_sheet_id: lesson.google_sheet_id || null,
-      planned_pairs: null,
-      fact_pairs: fact,
-    })
-  })
-
-  return Array.from(entries.values())
-    .map((entry) => ({
-      ...entry,
-      remaining_pairs: entry.planned_pairs === null ? null : entry.planned_pairs - entry.fact_pairs,
-      status: 'empty-plan' as const,
-    }))
-    .sort((a, b) => a.subject.localeCompare(b.subject, 'ru') || a.group.localeCompare(b.group, 'ru'))
-}
-
-export function buildAnalyticsChart(entries: PlanFactEntry[]) {
-  return entries.slice(0, 12).map((entry) => ({
-    name: entry.subject.length > 18 ? `${entry.subject.slice(0, 18)}…` : entry.subject,
-    fact: entry.fact_pairs,
-    plan: entry.planned_pairs || 0,
-  }))
-}
-
 export function getBusyPairsForTeacher(lessons: ScheduleLesson[]) {
   const busy = new Set<string>()
   lessons.forEach((lesson) => {
@@ -170,4 +167,105 @@ export function getBusyPairsForTeacher(lessons: ScheduleLesson[]) {
     }
   })
   return PAIRS.flatMap((pair) => DAY_ORDER.map((day) => ({ day, pair, busy: busy.has(`${day}-${pair}`) })))
+}
+
+export function getSubgroupsForGroup(lessons: ScheduleLesson[], groupId: string) {
+  const set = new Set<string>()
+  lessons.forEach((lesson) => {
+    if (lesson.group !== groupId) return
+    if (lesson.subgroup) set.add(lesson.subgroup)
+  })
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'ru', { numeric: true }))
+}
+
+function isLessonBeforeToday(lesson: ScheduleLesson, today: Date): boolean {
+  if (!lesson.date) return false
+  const parsed = new Date(lesson.date)
+  if (Number.isNaN(parsed.getTime())) return false
+  return parsed.getTime() <= today.getTime()
+}
+
+function pairsFor(lesson: ScheduleLesson) {
+  return lesson.cancelled ? 0 : Math.max(lesson.duration, 1)
+}
+
+function matchesSubgroup(lessonSubgroup: string | null, target: string | null) {
+  if (!target) return true
+  if (!lessonSubgroup) return true
+  return lessonSubgroup.split(/[\s,/]+/).some((token) => token.trim() === target.trim())
+}
+
+export interface AnalyticsOptions {
+  course: number
+  plan: CoursePlanMap
+  today?: Date
+  groups: ScheduleGroup[]
+  lessons: ScheduleLesson[]
+}
+
+export function buildCourseAnalytics({ plan, today = new Date(), groups, lessons }: AnalyticsOptions): AnalyticsGroup[] {
+  const subjectSet = new Set<string>()
+  lessons.forEach((lesson) => {
+    if (lesson.subject) subjectSet.add(lesson.subject)
+  })
+  const subjects = Array.from(subjectSet).sort((a, b) => a.localeCompare(b, 'ru'))
+
+  const result: AnalyticsGroup[] = []
+
+  groups.forEach((group) => {
+    const groupLessons = lessons.filter((lesson) => lesson.group === group.id)
+    const subgroups = getSubgroupsForGroup(groupLessons, group.id)
+    const subgroupSlots: (string | null)[] = subgroups.length > 0 ? [null, ...subgroups] : [null]
+
+    const subgroupRows: AnalyticsSubgroup[] = subgroupSlots
+      .map<AnalyticsSubgroup>((subgroup) => {
+        const rows: AnalyticsRow[] = subjects.map((subject) => {
+          const subjectLessons = groupLessons.filter((lesson) => {
+            if (lesson.subject !== subject) return false
+            return matchesSubgroup(lesson.subgroup, subgroup)
+          })
+          const scheduled = subjectLessons.reduce((sum, lesson) => sum + pairsFor(lesson), 0)
+          const done = subjectLessons.reduce((sum, lesson) => sum + (isLessonBeforeToday(lesson, today) ? pairsFor(lesson) : 0), 0)
+          const planned = plan[planKey(subject)]
+          const cell: AnalyticsCell = {
+            planned: typeof planned === 'number' && Number.isFinite(planned) ? planned : null,
+            scheduled,
+            done,
+          }
+          return { subject, cell }
+        }).filter((row) => row.cell.scheduled > 0 || row.cell.done > 0 || row.cell.planned !== null)
+        return { subgroup, rows }
+      })
+      .filter((entry) => entry.rows.length > 0)
+
+    if (subgroupRows.length === 0) return
+    result.push({
+      groupId: group.id,
+      groupName: group.name,
+      department: group.department,
+      subgroups: subgroupRows,
+    })
+  })
+
+  return result
+}
+
+export function getCourseSubjects(lessons: ScheduleLesson[]): string[] {
+  const set = new Set<string>()
+  lessons.forEach((lesson) => {
+    if (lesson.subject) set.add(lesson.subject)
+  })
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'ru'))
+}
+
+export function statusColor(cell: AnalyticsCell): 'green' | 'orange' | 'red' | 'muted' | 'blue' {
+  if (cell.planned === null) return 'muted'
+  if (cell.scheduled < cell.planned) return 'red'
+  if (cell.scheduled > cell.planned) return 'orange'
+  return 'green'
+}
+
+export function progress(cell: AnalyticsCell): number {
+  if (cell.planned === null || cell.planned <= 0) return 0
+  return Math.round((cell.done / cell.planned) * 100)
 }
