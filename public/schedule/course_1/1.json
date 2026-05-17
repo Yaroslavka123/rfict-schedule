@@ -1,6 +1,6 @@
 {
   "name": "31.08-05.09 (1-я неделя)",
-  "generated_at": "2026-05-17T17:09:31.264Z",
+  "generated_at": "2026-05-17T17:18:38.189Z",
   "course": 1,
   "semester": 1,
   "week_number": 1,
@@ -174,7 +174,7 @@
       "period_start": "12.12",
       "period_end": "12.12",
       "comment": null,
-      "cancelled": true
+      "cancelled": false
     },
     {
       "day": "Пн",
