@@ -1,6 +1,6 @@
 {
   "name": "31.08-05.09 (1-я неделя)",
-  "generated_at": "2026-05-17T17:42:09.444Z",
+  "generated_at": "2026-05-17T17:42:40.918Z",
   "course": 1,
   "semester": 1,
   "week_number": 1,
@@ -62,6 +62,25 @@
     }
   ],
   "lessons": [
+    {
+      "day": "Пн",
+      "day_number": 1,
+      "date": "2026-08-31",
+      "pair": 2,
+      "duration": 1,
+      "time": "10:35 - 12:00",
+      "group": "7",
+      "type": "lecture",
+      "subject": "Безопасность информационных систем",
+      "teacher": "доц.бурмакdhsvkва.п.",
+      "room": "129",
+      "subgroup": null,
+      "frequency": null,
+      "period_start": "31.02",
+      "period_end": "12.12",
+      "comment": "gggggggggg",
+      "cancelled": false
+    },
     {
       "day": "Пн",
       "day_number": 1,
