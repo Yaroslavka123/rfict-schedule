@@ -1,11 +1,12 @@
 # rfict-schedule
 
-Система управления расписанием **РФиКТ БГУ**. Apps Script расширение для Google Sheets + автоматический экспорт JSON в GitHub + webhook для Go backend + веб-интерфейс расписания.
+Система управления расписанием **РФиКТ БГУ**. Apps Script расширение для Google Sheets + автоматический экспорт JSON в GitHub/backend + React frontend для расписания, кабинетов, преподавателей и аналитики.
 
 ---
 
 ## Содержание
 
+- [Документация](#документация)
 - [Архитектура](#архитектура)
 - [Структура репозитория](#структура-репозитория)
 - [Быстрый старт](#быстрый-старт)
@@ -23,9 +24,8 @@
   - [Структура ячейки](#структура-ячейки)
   - [RichText формат](#richtext-формат)
   - [Серверные функции (Code.gs)](#серверные-функции-codegs)
-- [Фронтенд (index.html)](#фронтенд-indexhtml)
-  - [Вкладка «Расписание»](#вкладка-расписание)
-  - [Вкладка «Кабинеты»](#вкладка-кабинеты)
+- [Фронтенд (React)](#фронтенд-react)
+  - [Вкладки](#вкладки)
   - [Загрузка данных](#загрузка-данных)
 - [API для Go Backend](#api-для-go-backend)
   - [Webhook](#webhook-получение-обновлений)
@@ -35,6 +35,15 @@
   - [Получение JSON из GitHub](#получение-json-из-github)
 - [Расписание звонков](#расписание-звонков)
 - [Устранение неполадок](#устранение-неполадок)
+
+---
+
+## Документация
+
+- [`docs/FRONTEND_GUIDE.md`](docs/FRONTEND_GUIDE.md) — запуск frontend, установка Node/npm, env-переменные, структура React-кода, локальная проверка.
+- [`docs/BACKEND_HANDOFF.md`](docs/BACKEND_HANDOFF.md) — что нужно реализовать на backend: endpoints, parser payload, плановые показатели, минимальная задержка обновлений.
+- [`BACKEND_REQUESTS.md`](BACKEND_REQUESTS.md) — краткий контракт frontend/backend.
+- [`apps_script/labs_form/README.md`](apps_script/labs_form/README.md) — подробная документация Apps Script parser/sidebar.
 
 ---
 
@@ -52,23 +61,24 @@
                                     ┌────────────────┼────────────────┐
                                     ▼                                  ▼
                            ┌──────────────┐                  ┌──────────────┐
-                           │   GitHub     │                  │  Go Backend   │
-                           │  (JSON)      │                  │  (webhook)    │
-                           └──────┬───────┘                  └──────────────┘
-                                  │
-                                  ▼
-                           ┌──────────────┐
-                           │  Frontend    │
-                           │  (index.html)│
-                           └──────────────┘
+                           │   GitHub     │                  │  Backend API  │
+                           │ JSON fallback│                  │ rfict.up...   │
+                           └──────┬───────┘                  └──────┬───────┘
+                                  │                                  │
+                                  └──────────────┬───────────────────┘
+                                                 ▼
+                                           ┌──────────┐
+                                           │ React UI │
+                                           └──────────┘
 ```
 
 **Поток данных:**
 
-1. Пользователь заполняет расписание через **sidebar-форму** или напрямую в ячейках
-2. Apps Script (**debounce 2 мин** после последнего изменения) парсит таблицу, генерирует JSON и пушит в GitHub через Contents API
-3. Apps Script вызывает **webhook** Go backend с метаданными обновления (опционально)
-4. Фронтенд (`index.html`) читает JSON из `raw.githubusercontent.com` и отображает расписание + таблицу занятости кабинетов
+1. Пользователь заполняет расписание через **sidebar-форму** или напрямую в ячейках.
+2. Apps Script (**debounce 2 мин** после последнего изменения) парсит таблицу, генерирует JSON и пушит fallback-файл в GitHub через Contents API.
+3. Apps Script отправляет полное расписание в backend: `POST https://rfict.up.railway.app/api/v1/schedule`.
+4. React frontend сначала пробует backend API, при ошибке берёт статический JSON fallback из `public/schedule`.
+5. Для минимальной задержки backend должен отдавать SSE/WebSocket или polling-version endpoint, чтобы frontend сразу refetch расписание после обновления.
 
 ---
 
@@ -81,13 +91,21 @@ rfict-schedule/
 │   ├── Sidebar.html       # UI формы ввода занятий (sidebar в Google Sheets)
 │   ├── appsscript.json    # Манифест Apps Script (OAuth scopes, timezone)
 │   └── README.md          # Документация Apps Script (подробная)
+├── docs/
+│   ├── FRONTEND_GUIDE.md  # Запуск, env, структура и проверка React frontend
+│   └── BACKEND_HANDOFF.md # Справка для backend-команды
 ├── public/
-│   ├── index.html         # Фронтенд: расписание + таблица кабинетов
 │   └── schedule/
-│       └── course_{N}/    # JSON файлы по курсам (1-4)
-│           ├── 1.json     # Неделя 1
-│           ├── 2.json     # Неделя 2
-│           └── ...        # до 14.json
+│       └── course_{N}/    # JSON fallback по курсам (1-4), недели 1-14
+├── src/                   # React/Vite/TypeScript frontend
+│   ├── api/               # Загрузка backend-first + JSON fallback
+│   ├── components/        # Layout и UI-компоненты
+│   ├── features/          # Расписание, кабинеты, преподаватели, аналитика
+│   ├── hooks/
+│   ├── lib/
+│   └── types/
+├── package.json
+├── BACKEND_REQUESTS.md
 ├── .gitignore
 ├── LICENSE
 └── README.md              # Этот файл
@@ -97,14 +115,41 @@ rfict-schedule/
 
 ## Быстрый старт
 
-1. Скопируй `Code.gs` и `Sidebar.html` в Apps Script проект таблицы расписания
-2. Настрой `GITHUB_TOKEN` в Script Properties
-3. Добавь installable trigger `onSheetEdit` (On edit)
-4. Обнови страницу таблицы → появится меню **«Расписание»**
-5. Нажми **«Расписание → 🔄 Обновить справочник из таблицы»** для инициализации словарей
-6. Открой фронтенд `public/index.html` (или задеплой на GitHub Pages)
+### Frontend
 
-Подробные инструкции: [`apps_script/labs_form/README.md`](apps_script/labs_form/README.md)
+```bash
+git clone https://github.com/Yaroslavka123/rfict-schedule.git
+cd rfict-schedule
+npm install
+npm run dev
+```
+
+Открыть:
+
+```text
+http://localhost:5173
+```
+
+Проверки:
+
+```bash
+npm run lint
+npm run build
+npm run preview
+```
+
+Подробно: [`docs/FRONTEND_GUIDE.md`](docs/FRONTEND_GUIDE.md)
+
+### Apps Script
+
+1. Скопируй `Code.gs` и `Sidebar.html` в Apps Script проект таблицы расписания.
+2. Настрой `GITHUB_TOKEN` в Script Properties.
+3. При необходимости настрой `BACKEND_API_URL`; default — `https://rfict.up.railway.app`.
+4. Добавь installable trigger `onSheetEdit` (On edit).
+5. Обнови страницу таблицы → появится меню **«Расписание»**.
+6. Нажми **«Расписание → 🔄 Обновить справочник из таблицы»** для инициализации словарей.
+
+Подробно: [`apps_script/labs_form/README.md`](apps_script/labs_form/README.md)
 
 ---
 
@@ -469,79 +514,38 @@ rfict-schedule/
 
 ---
 
-## Фронтенд (index.html)
+## Фронтенд (React)
 
-Одностраничное веб-приложение (HTML + vanilla JS, без фреймворков) с тёмной темой.
+React/Vite/TypeScript приложение. Вся пользовательская логика, которую можно считать на клиенте, остаётся на frontend: фильтры, группировки, кабинетная матрица, преподаватели и базовая аналитика.
 
-### Вкладка «Расписание»
+### Вкладки
 
-Таблица расписания с фильтрами:
-
-| Фильтр | Описание |
-|--------|----------|
-| Курс | Выбор курса (1-4). Загружает данные из `course_{N}/` |
-| Группа | Фильтр по группе |
-| Тип | Фильтр по типу занятия |
-| Неделя | Навигация по неделям (1-14) |
-| Поиск | Полнотекстовый поиск по предмету, преподавателю, группе |
-
-**Особенности:**
-- Таблица сгруппирована по дням и парам
-- Занятия на 2-3 пары отображаются как `1-2` или `1-3`
-- Отменённые занятия — зачёркнутый текст + красная метка «ОТМЕНА»
-- Статистика: общее кол-во занятий, кол-во отмен
-- Текущая неделя выбирается автоматически
-
-### Вкладка «Кабинеты»
-
-Таблица занятости кабинетов (матрица):
-
-| Ось | Содержимое |
-|-----|-----------|
-| **X (столбцы)** | Кабинеты, сгруппированные по категориям |
-| **Y (строки)** | Дни × Пары (Пн 1-8, Вт 1-8, ..., Сб 1-8 = 48 строк) |
-
-**Категории кабинетов:**
-
-| Категория | Кабинеты | Цвет заголовка | Цвет ячейки |
-|-----------|----------|---------------|-------------|
-| Поточные | 115, 117, 119 | 🟠 оранжевый | `#3d2800` |
-| Компьютерные | */К1, */К2 | 🔵 синий | `#0d2744` |
-| Обычные | Все остальные | ⚪ серый | `#1a3a1a` |
-
-Порядок столбцов: поточные → комп. классы → обычные.
-
-**Ячейки:**
-- Без текста — только цветовые маркеры
-- Фиолетовый (`#3b1f5e`) = несколько групп в одном слоте
-- При наведении — tooltip с предметом, преподавателем, группой, типом
-- Отменённые занятия = кабинет свободен (не отображается)
-
-**Неделя:** собственный селектор недели (независимый от вкладки «Расписание»). По умолчанию — **последняя доступная неделя**.
-
-**Sticky-элементы:**
-- Столбец «День» — sticky слева
-- Столбец «Пара» — sticky слева (правее дня)
-- Заголовки кабинетов — sticky сверху
+- **Расписание** — занятия по дням с фильтрами курс/неделя/группа/тип/search.
+- **Кабинеты** — матрица занятости аудиторий.
+- **Преподаватели** — поиск преподавателя и его занятий.
+- **Аналитика** — сводки и план-факт поверх расписания.
 
 ### Загрузка данных
 
-Фронтенд загружает JSON напрямую из `raw.githubusercontent.com` (без API, без rate limit проблем):
+Frontend сначала пробует backend API:
 
+```http
+GET {VITE_API_BASE_URL}/api/v1/schedule?course={course}&week={week}
 ```
-https://raw.githubusercontent.com/Yaroslavka123/rfict-schedule/main/public/schedule/course_{N}/{week}.json
+
+Если backend недоступен, используется JSON fallback:
+
+```text
+/schedule/course_{course}/{week}.json
 ```
 
-При инициализации:
-1. Проверяет наличие каждого курса (HEAD-запрос на `1.json`)
-2. Загружает все 14 недель параллельно (`Promise.all`)
-3. Заполняет фильтры из загруженных данных
-
-> **Кэш CDN:** `raw.githubusercontent.com` кэширует файлы на ~5 минут. После экспорта данные обновляются с небольшой задержкой.
+Для минимальной задержки обновлений нужен backend endpoint событий или polling-version. Подробно: [`docs/BACKEND_HANDOFF.md`](docs/BACKEND_HANDOFF.md) и [`docs/FRONTEND_GUIDE.md`](docs/FRONTEND_GUIDE.md).
 
 ---
 
 ## API для Go Backend
+
+Актуальный подробный handoff для backend-команды: [`docs/BACKEND_HANDOFF.md`](docs/BACKEND_HANDOFF.md). Краткий контракт: [`BACKEND_REQUESTS.md`](BACKEND_REQUESTS.md).
 
 ### Webhook: получение обновлений
 
