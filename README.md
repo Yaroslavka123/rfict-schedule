@@ -58,27 +58,34 @@
                                                      │
                                           debounce 2 мин
                                                      │
-                                    ┌────────────────┼────────────────┐
-                                    ▼                                  ▼
-                           ┌──────────────┐                  ┌──────────────┐
-                           │   GitHub     │                  │  Backend API  │
-                           │ JSON fallback│                  │ rfict.up...   │
-                           └──────┬───────┘                  └──────┬───────┘
-                                  │                                  │
-                                  └──────────────┬───────────────────┘
-                                                 ▼
+                          POST /api/v1/schedule (главный канал)
+                                                     ▼
+                                            ┌──────────────┐
+                                            │  Backend API  │  ← основное хранилище
+                                            │ rfict.up...   │     (расписание + план)
+                                            └──────┬───────┘
+                                                   ▼
                                            ┌──────────┐
-                                           │ React UI │
+                                           │ React UI │ ← backend-first
                                            └──────────┘
+
+                          [test-fallback] GitHub raw / public/schedule — только для разработки
 ```
 
-**Поток данных:**
+**Поток данных (production):**
 
-1. Пользователь заполняет расписание через **sidebar-форму** или напрямую в ячейках.
-2. Apps Script (**debounce 2 мин** после последнего изменения) парсит таблицу, генерирует JSON и пушит fallback-файл в GitHub через Contents API.
-3. Apps Script отправляет полное расписание в backend: `POST https://rfict.up.railway.app/api/v1/schedule`.
-4. React frontend сначала пробует backend API, при ошибке берёт статический JSON fallback из `public/schedule`.
-5. Для минимальной задержки backend должен отдавать SSE/WebSocket или polling-version endpoint, чтобы frontend сразу refetch расписание после обновления.
+1. Пользователь заполняет расписание через sidebar-форму или напрямую в ячейках.
+2. Apps Script (debounce 2 мин после последнего изменения) парсит таблицу и отправляет полное расписание в backend: `POST https://rfict.up.railway.app/api/v1/schedule`.
+3. Backend — основное хранилище: расписание + план (`planned_pairs` по предметам).
+4. Frontend читает расписание из `GET /api/v1/schedule?course=N` и план из `GET /api/v1/plan?course=N`.
+5. Для realtime backend должен отдавать SSE/WebSocket-канал или polling-version endpoint, чтобы frontend сразу refetch после обновления (см. [Backend handoff](docs/BACKEND_HANDOFF.md#обновления-с-минимальной-задержкой)).
+
+**GitHub и `public/schedule` — только тестовый fallback.** Используются, когда:
+
+- разработчик локально тестирует UI без поднятого backend;
+- backend временно недоступен и нужно убедиться, что страница вообще рендерится.
+
+Парсер по-прежнему пушит JSON в GitHub (это часть истории / удобство ручной проверки), но frontend в production должен всегда ходить в backend. GitHub-raw кэширует файлы несколько минут и не подходит как production-источник.
 
 ---
 

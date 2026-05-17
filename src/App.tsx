@@ -1,26 +1,24 @@
-import { AlertCircle, Database, Github, Loader2, RefreshCw } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { AlertCircle, Loader2 } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { AppShell, type AppTab } from '@/components/layout/AppShell'
 import { GlobalFilters } from '@/components/layout/GlobalFilters'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { AnalyticsView } from '@/features/analytics/AnalyticsView'
 import { RoomsView } from '@/features/rooms/RoomsView'
 import { ScheduleView } from '@/features/schedule/ScheduleView'
 import { TeachersView } from '@/features/teachers/TeachersView'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { useSchedule } from '@/hooks/useSchedule'
+import { useCoursePlan, useCourseSchedule } from '@/hooks/useSchedule'
 import { useTheme } from '@/hooks/useTheme'
-import { applyLessonFilters } from '@/lib/schedule'
-import { formatUpdatedAt } from '@/lib/utils'
+import { applyLessonFilters, getWeekByNumber } from '@/lib/schedule'
 import type { FiltersState } from '@/types/schedule'
 
 const defaultFilters: FiltersState = {
   course: 1,
   week: 1,
   group: 'all',
+  subgroup: 'all',
   lessonTypes: [],
   search: '',
 }
@@ -29,66 +27,74 @@ export default function App() {
   const { theme, toggleTheme } = useTheme()
   const [activeTab, setActiveTab] = useState<AppTab>('schedule')
   const [filters, setFilters] = useState<FiltersState>(defaultFilters)
+  const [refreshKey, setRefreshKey] = useState(0)
   const debouncedSearch = useDebouncedValue(filters.search)
-  const { schedule, source, loading, error } = useSchedule(filters.course, filters.week)
+  const { schedule, loading, error, loadedAt } = useCourseSchedule(filters.course, refreshKey)
+  const { plan, updateEntry: updatePlanEntry } = useCoursePlan(filters.course, refreshKey)
 
-  const filteredLessons = useMemo(() => {
+  const refresh = useCallback(() => setRefreshKey((value) => value + 1), [])
+
+  const week = schedule ? getWeekByNumber(schedule, filters.week) : null
+
+  const filteredWeekLessons = useMemo(() => {
+    if (!week || !schedule) return []
+    return applyLessonFilters(week.lessons, schedule.groups, filters, debouncedSearch)
+  }, [week, schedule, filters, debouncedSearch])
+
+  const filteredAllLessons = useMemo(() => {
     if (!schedule) return []
-    return applyLessonFilters(schedule, filters, debouncedSearch)
+    return applyLessonFilters(schedule.lessons, schedule.groups, filters, debouncedSearch)
   }, [schedule, filters, debouncedSearch])
 
   return (
-    <AppShell activeTab={activeTab} onTabChange={setActiveTab} theme={theme} onToggleTheme={toggleTheme}>
-      <Hero />
-      <GlobalFilters filters={filters} groups={schedule?.groups || []} onFiltersChange={setFilters} />
+    <AppShell
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      theme={theme}
+      onToggleTheme={toggleTheme}
+      onRefresh={refresh}
+      refreshing={loading}
+      source={schedule?.source ?? null}
+      loadedAt={loadedAt}
+    >
+      <GlobalFilters
+        filters={filters}
+        groups={schedule?.groups || []}
+        weeks={schedule?.weeks || []}
+        lessons={schedule?.lessons || []}
+        activeTab={activeTab}
+        onFiltersChange={setFilters}
+      />
 
-      {loading && <LoadingState />}
-      {!loading && error && <ErrorState error={error} />}
-      {!loading && schedule && (
+      {loading && !schedule && <LoadingState />}
+      {!loading && error && !schedule && <ErrorState error={error} />}
+      {schedule && (
         <>
-          <DataStatus scheduleName={schedule.name} updatedAt={schedule.generated_at} source={source} total={filteredLessons.length} />
-          {activeTab === 'schedule' && <ScheduleView schedule={schedule} lessons={filteredLessons} />}
-          {activeTab === 'rooms' && <RoomsView lessons={filteredLessons} />}
-          {activeTab === 'teachers' && <TeachersView lessons={filteredLessons} />}
-          {activeTab === 'analytics' && <AnalyticsView schedule={{ ...schedule, lessons: filteredLessons }} />}
+          {activeTab === 'schedule' && (
+            <ScheduleView
+              groups={schedule.groups}
+              lessons={filteredWeekLessons}
+              weekName={week?.name || `${filters.week}-я неделя`}
+              dateRange={week?.date_range || ''}
+            />
+          )}
+          {activeTab === 'rooms' && (
+            <RoomsView weeks={schedule.weeks} groups={schedule.groups} selectedWeek={filters.week} onWeekChange={(week) => setFilters((current) => ({ ...current, week }))} />
+          )}
+          {activeTab === 'teachers' && <TeachersView lessons={filteredAllLessons} />}
+          {activeTab === 'analytics' && (
+            <AnalyticsView
+              course={schedule.course}
+              groups={schedule.groups}
+              lessons={schedule.lessons}
+              plan={plan}
+              onPlanChange={updatePlanEntry}
+              groupFilter={filters.group}
+            />
+          )}
         </>
       )}
     </AppShell>
-  )
-}
-
-function Hero() {
-  return (
-    <section className="overflow-hidden rounded-3xl border border-border bg-hero p-6 shadow-card md:p-8">
-      <div className="max-w-3xl">
-        <Badge tone="blue">React MVP · backend-ready · JSON fallback</Badge>
-        <h2 className="mt-4 text-3xl font-black tracking-tight md:text-5xl">Быстрое расписание для методистов и администраторов</h2>
-        <p className="mt-4 text-base leading-7 text-muted-foreground md:text-lg">
-          Один интерфейс для занятий, кабинетов, преподавателей и план-факт аналитики. Сейчас работает на текущих JSON, а при появлении API переключится без переписывания UI.
-        </p>
-      </div>
-    </section>
-  )
-}
-
-function DataStatus({ scheduleName, updatedAt, source, total }: { scheduleName: string; updatedAt: string; source: string | null; total: number }) {
-  const SourceIcon = source === 'backend' ? Database : Github
-  return (
-    <Card>
-      <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-semibold">{scheduleName}</h2>
-            <Badge tone={source === 'backend' ? 'green' : 'purple'}>
-              <SourceIcon className="mr-1 h-3 w-3" />
-              {source === 'backend' ? 'Backend API' : 'JSON fallback'}
-            </Badge>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">{formatUpdatedAt(updatedAt)} · найдено занятий: {total}</p>
-        </div>
-        <Button variant="secondary" onClick={() => window.location.reload()}><RefreshCw className="h-4 w-4" />Обновить</Button>
-      </CardContent>
-    </Card>
   )
 }
 

@@ -1,72 +1,272 @@
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DAY_ORDER, PAIRS } from '@/lib/constants'
-import { categorizeRoom, findRoomLessons, getRooms } from '@/lib/schedule'
-import type { ScheduleLesson } from '@/types/schedule'
+import { useMemo, useState } from 'react'
+
+import { Card, CardContent } from '@/components/ui/card'
+import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
+import { categorizeRoom, getGroupNameById, normalizeRoom } from '@/lib/schedule'
+import { cn } from '@/lib/utils'
+import type { LessonType, ScheduleGroup, WeekSchedule } from '@/types/schedule'
 
 interface RoomsViewProps {
-  lessons: ScheduleLesson[]
+  weeks: WeekSchedule[]
+  groups: ScheduleGroup[]
+  selectedWeek: number
+  onWeekChange: (week: number) => void
 }
 
-export function RoomsView({ lessons }: RoomsViewProps) {
-  const rooms = getRooms(lessons)
+interface SlotEntry {
+  subject: string
+  teacher: string
+  group: string
+  type: LessonType
+  subgroup: string
+  time: string
+  pair: number
+}
+
+const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+
+export function RoomsView({ weeks, groups, selectedWeek, onWeekChange }: RoomsViewProps) {
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; entries: SlotEntry[] } | null>(null)
+
+  const activeWeek = useMemo(() => {
+    if (weeks.length === 0) return null
+    return weeks.find((week) => week.week_number === selectedWeek) || weeks[weeks.length - 1]
+  }, [weeks, selectedWeek])
+
+  const { occupancy, orderedRooms, categoryStart } = useMemo(() => buildOccupancy(activeWeek, groups), [activeWeek, groups])
+
+  if (!activeWeek) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">Нет данных за выбранный курс.</CardContent>
+      </Card>
+    )
+  }
+
+  if (orderedRooms.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">Кабинеты не найдены.</CardContent>
+      </Card>
+    )
+  }
+
+  const showTooltip = (event: React.MouseEvent<HTMLTableCellElement>, entries: SlotEntry[]) => {
+    setTooltip({ x: event.clientX + 12, y: event.clientY + 12, entries })
+  }
+
+  const hideTooltip = () => setTooltip(null)
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="flex-row items-center justify-between">
-        <div>
-          <CardTitle>Занятость кабинетов</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">Матрица по дням, парам и аудиториям</p>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Неделя</div>
+        <div className="flex flex-wrap gap-1">
+          {weeks.map((week) => (
+            <button
+              key={week.week_number}
+              type="button"
+              className={
+                week.week_number === activeWeek.week_number
+                  ? 'rounded-md border border-primary bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary'
+                  : 'rounded-md border border-border bg-background px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground'
+              }
+              onClick={() => onWeekChange(week.week_number)}
+              title={week.name}
+            >
+              {week.week_number}-я
+            </button>
+          ))}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge tone="green">Лекционные</Badge>
-          <Badge tone="blue">Компьютерные</Badge>
-          <Badge tone="muted">Обычные</Badge>
-          <Badge tone="purple">Несколько занятий</Badge>
+        <div className="ml-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <Legend dotClass="bg-amber-500">Поточные</Legend>
+          <Legend dotClass="bg-sky-500">Комп. классы</Legend>
+          <Legend dotClass="bg-emerald-500">Кабинеты</Legend>
+          <Legend dotClass="bg-purple-500">Несколько</Legend>
         </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        {rooms.length === 0 ? (
-          <div className="py-12 text-center text-muted-foreground">Кабинеты не найдены.</div>
-        ) : (
-          <div className="overflow-auto">
-            <table className="rooms-table">
-              <thead>
-                <tr>
-                  <th className="sticky-col">День</th>
-                  <th className="sticky-col second">Пара</th>
-                  {rooms.map((room) => (
-                    <th key={room}>{room}</th>
-                  ))}
+      </div>
+
+      <div className="room-matrix-wrap">
+        <table className="room-matrix" onMouseLeave={hideTooltip}>
+          <thead>
+            <tr>
+              <th className="th-day">Д</th>
+              <th className="th-pair">П</th>
+              {orderedRooms.map((room) => {
+                const cat = categorizeRoom(room).tone
+                const start = categoryStart[room]
+                return (
+                  <th key={room} className={cn('th-room', `th-cat-${cat}`, start && 'room-cat-start')} title={room}>
+                    {room}
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {DAYS.map((day, dayIndex) =>
+              PAIRS.map((pair) => (
+                <tr key={`${day}-${pair}`} className={pair === 1 && dayIndex > 0 ? 'day-separator' : ''}>
+                  {pair === 1 && (
+                    <td className="td-day" rowSpan={8}>
+                      {day}
+                    </td>
+                  )}
+                  <td className="td-pair" title={PAIR_TIMES[pair]}>
+                    {pair}
+                  </td>
+                  {orderedRooms.map((room) => {
+                    const entries = occupancy[room]?.[day]?.[pair] || []
+                    const cat = categorizeRoom(room).tone
+                    const start = categoryStart[room]
+                    if (entries.length === 0) {
+                      return <td key={room} className={cn('slot-free', start && 'room-cat-start')} />
+                    }
+                    const slotClass = entries.length > 1 ? 'slot-multi' : `slot-${cat}`
+                    const first = entries[0]
+                    const groupSet = Array.from(new Set(entries.map((entry) => entry.group).filter(Boolean)))
+                    const meta = groupSet.length > 0 ? groupSet.join(', ') : first.teacher
+                    return (
+                      <td
+                        key={room}
+                        className={cn('slot-busy', slotClass, start && 'room-cat-start')}
+                        onMouseEnter={(event) => showTooltip(event, entries)}
+                        onMouseMove={(event) => showTooltip(event, entries)}
+                        onMouseLeave={hideTooltip}
+                      >
+                        <div className="slot-content">
+                          <div className="slot-main">{shortenSubject(first.subject)}</div>
+                          {meta && <div className="slot-meta">{meta}</div>}
+                        </div>
+                        {entries.length > 1 && <span className="slot-count">{entries.length}</span>}
+                      </td>
+                    )
+                  })}
                 </tr>
-              </thead>
-              <tbody>
-                {DAY_ORDER.flatMap((day) => PAIRS.map((pair) => (
-                  <tr key={`${day}-${pair}`}>
-                    <td className="sticky-col font-semibold">{day}</td>
-                    <td className="sticky-col second font-semibold">{pair}</td>
-                    {rooms.map((room) => {
-                      const roomLessons = findRoomLessons(lessons, room, day, pair)
-                      return <RoomCell key={room} room={room} lessons={roomLessons} />
-                    })}
-                  </tr>
-                )))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              )),
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {tooltip && <RoomTooltip x={tooltip.x} y={tooltip.y} entries={tooltip.entries} />}
+    </div>
   )
 }
 
-function RoomCell({ room, lessons }: { room: string; lessons: ScheduleLesson[] }) {
-  if (lessons.length === 0) return <td className="room-cell room-free">Свободно</td>
-  const category = categorizeRoom(room)
-  const title = lessons.map((lesson) => `${lesson.subject} · ${lesson.group} · ${lesson.teacher || 'без преподавателя'}`).join('\n')
+function Legend({ children, dotClass }: { children: React.ReactNode; dotClass: string }) {
   return (
-    <td className={`room-cell room-busy room-${lessons.length > 1 ? 'multi' : category.tone}`} title={title}>
-      <span>{lessons.length > 1 ? `${lessons.length} занятия` : lessons[0].subject}</span>
-    </td>
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/40 px-2 py-0.5">
+      <span className={cn('h-2 w-2 rounded-full', dotClass)} />
+      {children}
+    </span>
   )
+}
+
+function RoomTooltip({ x, y, entries }: { x: number; y: number; entries: SlotEntry[] }) {
+  const merged = mergeTooltipEntries(entries)
+  return (
+    <div
+      className="pointer-events-none fixed z-50 max-w-xs rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-xl"
+      style={{ left: x, top: y }}
+    >
+      {merged.map((entry, idx) => (
+        <div key={`${entry.subject}-${idx}`}>
+          {idx > 0 && <hr className="my-1.5 border-border" />}
+          <div className="font-bold text-primary">{entry.subject || '—'}</div>
+          <div className="text-muted-foreground">{entry.teacher || '—'}</div>
+          <div className="text-emerald-400">Группы: {entry.groups.length > 0 ? entry.groups.join(', ') : '—'}</div>
+          {entry.subgroup && <div className="text-amber-400">Подгруппа: {entry.subgroup}</div>}
+          {entry.type && <div className="text-purple-400">{LESSON_TYPE_LABELS[entry.type as LessonType] || entry.type}</div>}
+          {entry.time && <div className="text-muted-foreground">{entry.time}</div>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+interface MergedTooltipEntry {
+  subject: string
+  teacher: string
+  type: string
+  subgroup: string
+  time: string
+  groups: string[]
+}
+
+function mergeTooltipEntries(entries: SlotEntry[]): MergedTooltipEntry[] {
+  const map = new Map<string, MergedTooltipEntry>()
+  entries.forEach((entry) => {
+    const key = [entry.subject, entry.teacher, entry.type, entry.subgroup, entry.time].join('|')
+    const current = map.get(key)
+    if (current) {
+      if (entry.group && !current.groups.includes(entry.group)) current.groups.push(entry.group)
+      return
+    }
+    map.set(key, {
+      subject: entry.subject,
+      teacher: entry.teacher,
+      type: entry.type,
+      subgroup: entry.subgroup,
+      time: entry.time,
+      groups: entry.group ? [entry.group] : [],
+    })
+  })
+  return Array.from(map.values())
+}
+
+function shortenSubject(subject: string) {
+  if (!subject) return 'Занято'
+  return subject.length > 14 ? `${subject.slice(0, 13)}…` : subject
+}
+
+function buildOccupancy(week: WeekSchedule | null, groups: ScheduleGroup[]) {
+  const occupancy: Record<string, Record<string, Record<number, SlotEntry[]>>> = {}
+  if (!week) return { occupancy, orderedRooms: [] as string[], categoryStart: {} as Record<string, boolean> }
+
+  week.lessons.forEach((lesson) => {
+    if (lesson.cancelled) return
+    const room = normalizeRoom(lesson.room)
+    if (!room || room === 'ДО') return
+    if (!occupancy[room]) occupancy[room] = {}
+    const day = lesson.day
+    if (!occupancy[room][day]) occupancy[room][day] = {}
+    const duration = Math.max(lesson.duration || 1, 1)
+    for (let p = lesson.pair; p < lesson.pair + duration; p += 1) {
+      if (!occupancy[room][day][p]) occupancy[room][day][p] = []
+      occupancy[room][day][p].push({
+        subject: lesson.subject || '',
+        teacher: lesson.teacher || '',
+        group: getGroupNameById(groups, lesson.group),
+        type: lesson.type,
+        subgroup: lesson.subgroup || '',
+        time: PAIR_TIMES[p] || '',
+        pair: p,
+      })
+    }
+  })
+
+  const allRooms = Object.keys(occupancy)
+  const buckets: Record<'lecture-hall' | 'computer' | 'regular', string[]> = {
+    'lecture-hall': [],
+    computer: [],
+    regular: [],
+  }
+  allRooms.forEach((room) => {
+    buckets[categorizeRoom(room).tone].push(room)
+  })
+  const numericSort = (a: string, b: string) => {
+    const numA = parseInt(a.replace(/\D+/g, ''), 10)
+    const numB = parseInt(b.replace(/\D+/g, ''), 10)
+    if (!Number.isNaN(numA) && !Number.isNaN(numB) && numA !== numB) return numA - numB
+    return a.localeCompare(b, 'ru')
+  }
+  ;(Object.keys(buckets) as Array<keyof typeof buckets>).forEach((key) => buckets[key].sort(numericSort))
+  const orderedRooms = [...buckets['lecture-hall'], ...buckets.computer, ...buckets.regular]
+  const categoryStart: Record<string, boolean> = {}
+  ;(['lecture-hall', 'computer', 'regular'] as const).forEach((cat) => {
+    const first = buckets[cat][0]
+    if (first) categoryStart[first] = true
+  })
+  return { occupancy, orderedRooms, categoryStart }
 }

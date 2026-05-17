@@ -1,118 +1,143 @@
-import { ExternalLink, Info, Link2 } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { LESSON_TYPE_TONES } from '@/lib/constants'
-import { buildStats, getGoogleSheetUrl, getGroupName, getPairRange, groupLessonsByDay } from '@/lib/schedule'
-import { pluralPair } from '@/lib/utils'
-import type { ScheduleLesson, WeekSchedule } from '@/types/schedule'
+import { Card, CardContent } from '@/components/ui/card'
+import { LESSON_TYPE_LABELS, DAY_ORDER } from '@/lib/constants'
+import { buildStats, getGoogleSheetUrl, getGroupNameById, getPairRange } from '@/lib/schedule'
+import { cn } from '@/lib/utils'
+import type { ScheduleGroup, ScheduleLesson } from '@/types/schedule'
 
 interface ScheduleViewProps {
-  schedule: WeekSchedule
+  groups: ScheduleGroup[]
   lessons: ScheduleLesson[]
+  weekName: string
+  dateRange: string
 }
 
-export function ScheduleView({ schedule, lessons }: ScheduleViewProps) {
+export function ScheduleView({ groups, lessons, weekName, dateRange }: ScheduleViewProps) {
   const stats = buildStats(lessons)
-  const byDay = groupLessonsByDay(lessons)
+
+  const byDay: Record<string, ScheduleLesson[]> = {}
+  DAY_ORDER.forEach((day) => (byDay[day] = []))
+  lessons.forEach((lesson) => {
+    if (!byDay[lesson.day]) byDay[lesson.day] = []
+    byDay[lesson.day].push(lesson)
+  })
+  Object.values(byDay).forEach((list) =>
+    list.sort((a, b) => a.pair - b.pair || a.group.localeCompare(b.group, 'ru', { numeric: true })),
+  )
+  const populatedDays = DAY_ORDER.filter((day) => (byDay[day] || []).length > 0)
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <Stat label="Всего" value={String(stats.total)} />
-        <Stat label="Активных" value={String(stats.active)} />
-        <Stat label="Лекций" value={String(stats.lectures)} />
-        <Stat label="Лабораторных" value={String(stats.labs)} />
-        <Stat label="Отмен" value={String(stats.cancelled)} danger />
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Stat label="Занятий" value={stats.total} />
+        <Stat label="Лекций" value={stats.lectures} tone="green" />
+        <Stat label="Лаб" value={stats.labs} tone="orange" />
+        <Stat label="Практик" value={stats.practices} tone="blue" />
+        <Stat label="Отмен" value={stats.cancelled} tone="red" />
+        <span className="ml-auto text-xs text-muted-foreground">
+          {weekName}
+          {dateRange ? ` · ${dateRange}` : ''}
+        </span>
       </div>
-      {byDay.length === 0 ? (
-        <EmptySchedule />
+
+      {lessons.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">По выбранным фильтрам занятий нет.</CardContent>
+        </Card>
       ) : (
-        byDay.map((day) => (
-          <Card key={day.day} className="overflow-hidden">
-            <CardHeader className="sticky top-20 z-20 flex-row items-center justify-between bg-card/95 backdrop-blur">
-              <CardTitle>{day.day}</CardTitle>
-              <Badge tone="muted">{pluralPair(day.lessons.reduce((sum, lesson) => sum + lesson.duration, 0))}</Badge>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="schedule-table">
-                  <thead>
-                    <tr>
-                      <th>Пара</th>
-                      <th>Время</th>
-                      <th>Тип</th>
-                      <th>Предмет</th>
-                      <th>Преподаватель</th>
-                      <th>Аудитория</th>
-                      <th>Группа</th>
-                      <th>Период</th>
-                      <th>Инфо</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {day.lessons.map((lesson, index) => (
-                      <LessonRow key={`${lesson.day}-${lesson.pair}-${lesson.group}-${lesson.subject}-${index}`} lesson={lesson} schedule={schedule} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        ))
+        <div className="overflow-x-auto rounded-lg border border-border bg-card">
+          <table className="dense-table">
+            <thead>
+              <tr>
+                <th className="w-12">Пара</th>
+                <th className="w-24">Время</th>
+                <th className="w-24">Тип</th>
+                <th>Предмет</th>
+                <th>Преподаватель</th>
+                <th className="w-16">Ауд.</th>
+                <th>Группа</th>
+                <th>Подгруппа</th>
+                <th>Период</th>
+                <th>Инфо</th>
+              </tr>
+            </thead>
+            <tbody>
+              {populatedDays.map((day) => (
+                <DayBlock key={day} day={day} lessons={byDay[day]} groups={groups} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
 }
 
-function Stat({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {
+function DayBlock({ day, lessons, groups }: { day: string; lessons: ScheduleLesson[]; groups: ScheduleGroup[] }) {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
-        <p className={danger ? 'mt-2 text-3xl font-bold text-destructive' : 'mt-2 text-3xl font-bold'}>{value}</p>
-      </CardContent>
-    </Card>
+    <>
+      <tr className="day-header">
+        <td colSpan={10}>{day}</td>
+      </tr>
+      {lessons.map((lesson, index) => (
+        <LessonRow key={`${lesson.day}-${lesson.pair}-${lesson.group}-${lesson.subject}-${lesson.subgroup ?? ''}-${index}`} lesson={lesson} groups={groups} />
+      ))}
+    </>
   )
 }
 
-function LessonRow({ lesson, schedule }: { lesson: ScheduleLesson; schedule: WeekSchedule }) {
+function LessonRow({ lesson, groups }: { lesson: ScheduleLesson; groups: ScheduleGroup[] }) {
   const sheetUrl = getGoogleSheetUrl(lesson)
+  const period =
+    lesson.period_start && lesson.period_end
+      ? `с ${lesson.period_start} по ${lesson.period_end}`
+      : lesson.period_end
+      ? `по ${lesson.period_end}`
+      : lesson.period_start
+      ? `с ${lesson.period_start}`
+      : lesson.frequency || ''
+  const info = [lesson.comment, lesson.frequency && !lesson.subgroup ? lesson.frequency : null].filter(Boolean).join('; ')
   return (
-    <tr className={lesson.cancelled ? 'opacity-60' : ''}>
+    <tr className={lesson.cancelled ? 'opacity-50' : ''}>
       <td className="font-bold">{getPairRange(lesson)}</td>
-      <td>{lesson.time}</td>
-      <td><Badge tone={LESSON_TYPE_TONES[lesson.type]}>{lesson.type}</Badge></td>
+      <td className="whitespace-nowrap text-muted-foreground">{lesson.time || '—'}</td>
       <td>
-        <div className={lesson.cancelled ? 'line-through' : ''}>
-          <div className="flex items-center gap-2 font-semibold">
-            {lesson.subject}
-            {sheetUrl ? (
-              <a className="inline-link" href={sheetUrl} target="_blank" rel="noreferrer" aria-label="Открыть Google Таблицу">
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            ) : (
-              <span className="text-muted-foreground" title="google_sheet_id пока не пришёл из parser"><Link2 className="h-4 w-4" /></span>
-            )}
-          </div>
-          {lesson.cancelled && <Badge tone="red" className="mt-2">ОТМЕНА</Badge>}
+        <span className={cn('type-badge', `type-${lesson.type}`)}>{LESSON_TYPE_LABELS[lesson.type]}</span>
+      </td>
+      <td className="font-semibold">
+        <div className="flex items-center gap-1.5">
+          <span className={lesson.cancelled ? 'line-through' : ''}>{lesson.subject}</span>
+          {sheetUrl && (
+            <a className="inline-flex text-muted-foreground transition hover:text-primary" href={sheetUrl} target="_blank" rel="noreferrer" aria-label="Открыть Google Таблицу">
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
+          {lesson.cancelled && <span className="text-red-500 text-xs font-semibold">ОТМЕНА</span>}
         </div>
       </td>
-      <td>{lesson.teacher || '—'}</td>
-      <td>{lesson.room || '—'}</td>
-      <td>{getGroupName(schedule, lesson.group)}{lesson.subgroup ? ` · ${lesson.subgroup}` : ''}</td>
-      <td>{[lesson.period_start, lesson.period_end].filter(Boolean).join(' — ') || lesson.frequency || '—'}</td>
-      <td>
-        {lesson.comment ? <span className="inline-flex items-center gap-1 text-sm text-muted-foreground"><Info className="h-4 w-4" />{lesson.comment}</span> : '—'}
-      </td>
+      <td className="text-muted-foreground">{lesson.teacher || '—'}</td>
+      <td className="font-semibold text-amber-500">{lesson.room || '—'}</td>
+      <td>{getGroupNameById(groups, lesson.group)}</td>
+      <td className="text-purple-400 text-xs">{lesson.subgroup || ''}</td>
+      <td className="text-xs text-muted-foreground">{period}</td>
+      <td className="text-xs text-muted-foreground">{info}</td>
     </tr>
   )
 }
 
-function EmptySchedule() {
+function Stat({ label, value, tone = 'default' }: { label: string; value: number; tone?: 'default' | 'green' | 'orange' | 'blue' | 'red' }) {
+  const toneClass = {
+    default: 'text-primary',
+    green: 'text-emerald-500',
+    orange: 'text-amber-500',
+    blue: 'text-sky-500',
+    red: 'text-red-500',
+  }[tone]
   return (
-    <Card>
-      <CardContent className="py-12 text-center text-muted-foreground">По выбранным фильтрам занятий нет.</CardContent>
-    </Card>
+    <div className="flex items-baseline gap-2 rounded-md border border-border bg-card px-3 py-1.5">
+      <span className={cn('text-lg font-bold tabular-nums', toneClass)}>{value}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+    </div>
   )
 }

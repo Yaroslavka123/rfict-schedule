@@ -4,27 +4,29 @@
 
 ## Главный принцип архитектуры
 
-Frontend-heavy, backend-light.
+**Backend — основное хранилище.** GitHub и `public/schedule/*.json` используются только как тестовый fallback на время разработки. В production frontend всегда читает данные из backend, поэтому требования ниже обязательны.
+
+Frontend-heavy, backend-light: backend хранит и отдаёт данные, frontend сам считает аналитику и фильтрует.
 
 ### Frontend отвечает за
 
-- фильтры по курсу, неделе, группе, типу занятия и поиску;
+- фильтры по курсу, неделе, группе, подгруппе, типу занятия и поиску;
 - группировку занятий по дням, группам, кабинетам, преподавателям;
-- расчёт фактических часов из `lessons`;
-- базовую аналитику и план-факт;
+- расчёт фактических часов из `lessons` (план-факт);
 - отображение конфликтов и пустых состояний;
-- fallback на статические JSON, если backend временно недоступен.
+- кэширование плана в `localStorage` пока backend недоступен (только dev/test);
+- test-fallback на GitHub raw и `public/schedule`.
 
 ### Backend отвечает за
 
-- хранение расписания, которое присылает Apps Script parser;
-- выдачу расписания целиком по курсу и неделе;
-- справочники `subjects`, `teachers`, `rooms`;
-- хранение плановых показателей;
-- выдачу событий обновления расписания или polling-информации;
-- сохранение и возврат `google_sheet_id`, чтобы frontend мог открыть исходную Google таблицу.
+- приём расписания от Apps Script parser и его хранение;
+- выдачу расписания **целиком по курсу** (все недели, чтобы frontend не делал N запросов);
+- хранение и выдачу плана по предметам (`planned_pairs` на курс/предмет);
+- realtime-канал (SSE/WebSocket) или version-endpoint для polling, чтобы UI обновлялся без перезагрузки;
+- сохранение и возврат `google_sheet_id`, чтобы frontend мог открыть исходную Google таблицу;
+- CORS для frontend origins.
 
-Backend не должен реализовывать сложные UI-фильтры. Frontend получает достаточно полные данные и фильтрует их сам.
+Backend не должен реализовывать сложные UI-фильтры. Frontend получает полное расписание курса и фильтрует его сам.
 
 ## Production domain
 
@@ -40,66 +42,76 @@ BACKEND_API_URL=https://rfict.up.railway.app
 
 ## Минимальный набор endpoints
 
-### 1. Получить расписание
+### 1. Получить расписание курса (все недели сразу)
 
 ```http
-GET /api/v1/schedule?course=1&week=1
+GET /api/v1/schedule?course=1
 Accept: application/json
 ```
 
-Backend должен вернуть всё расписание для выбранного курса и недели. Фильтрация по группе, типу занятия, преподавателю, кабинету и поиску делается на frontend.
+Frontend запрашивает расписание **целиком по курсу** — все недели за один запрос. Это упрощает фильтры (фильтр по неделе делается на frontend) и нужно для вкладок «Кабинеты» и «Аналитика», где данные считаются по всему семестру.
 
 Рекомендуемый ответ:
 
 ```json
 {
-  "name": "3 курс, 14 неделя",
-  "generated_at": "2026-05-17T19:00:00Z",
   "course": 3,
-  "semester": 6,
-  "week_number": 14,
-  "date_range": "12.05.2026 — 18.05.2026",
+  "generated_at": "2026-05-17T19:00:00Z",
   "groups": [
-    { "name": "ИКБО-01-23", "count": 25 }
+    { "id": "g-1", "name": "ИКБО-01-23", "count": 25 }
   ],
-  "lessons": [
+  "weeks": [
     {
-      "day": "Понедельник",
-      "day_number": 1,
-      "date": "2026-05-12",
-      "pair": 1,
-      "duration": 2,
-      "time": "09:00-10:30",
-      "group": "ИКБО-01-23",
-      "type": "ЛК",
-      "subject": "Математика",
-      "teacher": "Иванов И.И.",
-      "room": "А-101",
-      "subgroup": null,
-      "frequency": null,
-      "period_start": null,
-      "period_end": null,
-      "comment": null,
-      "cancelled": false,
-      "google_sheet_id": "1abc...xyz"
+      "name": "14-я неделя",
+      "generated_at": "2026-05-17T19:00:00Z",
+      "course": 3,
+      "semester": 6,
+      "week_number": 14,
+      "date_range": "12.05.2026 — 18.05.2026",
+      "groups": [
+        { "id": "g-1", "name": "ИКБО-01-23", "count": 25 }
+      ],
+      "lessons": [
+        {
+          "day": "Пн",
+          "day_number": 1,
+          "date": "2026-05-12",
+          "pair": 1,
+          "duration": 2,
+          "time": "09:00-10:30",
+          "group": "g-1",
+          "type": "lecture",
+          "subject": "Математика",
+          "teacher": "Иванов И.И.",
+          "room": "А-101",
+          "subgroup": null,
+          "frequency": null,
+          "period_start": null,
+          "period_end": null,
+          "comment": null,
+          "cancelled": false,
+          "week_number": 14,
+          "google_sheet_id": "1abc...xyz"
+        }
+      ]
     }
   ]
 }
 ```
 
-Frontend также готов принять обёртку:
+Frontend также принимает:
 
 ```json
-{ "schedule": { } }
+{ "weeks": [ ... ] }
 ```
 
-или:
+или просто массив недель:
 
 ```json
-{ "data": { } }
+[ { "week_number": 1, ... }, { "week_number": 2, ... } ]
 ```
 
-но лучше отдавать сам объект расписания без лишней обёртки.
+Per-week endpoint `GET /api/v1/schedule?course=N&week=M` тоже поддерживается, но не используется UI — оставить как удобство для интеграций.
 
 ### 2. Принять расписание от Apps Script parser
 
@@ -195,48 +207,57 @@ Accept: application/json
 ]
 ```
 
-## Плановые показатели
+## План занятий (`planned_pairs`)
 
-Плановые показатели можно хранить на backend как справочник. Frontend забирает план и сам считает факт из расписания.
+Это **основное требование от методистов**: для каждого предмета на курсе хранится одно число — сколько пар по плану нужно провести (за семестр или за весь курс, на усмотрение методиста). План — общий для всех групп/подгрупп курса. Frontend сам считает факт: сколько пар стоит в расписании и сколько фактически прошло на текущую дату.
 
-### 6. Получить план
+Ключ записи плана — `(course, subject)`. Не нужны отдельные поля `group`, `teacher`, `type` — учёт идёт строго по предмету курса.
+
+### 6. Получить план курса
 
 ```http
-GET /api/v1/plan?course=3&semester=6
+GET /api/v1/plan?course=3
 Accept: application/json
 ```
 
-Ответ:
+Ответ (плоский массив или обёртка):
 
 ```json
-{
-  "course": 3,
-  "semester": 6,
-  "items": [
-    {
-      "group": "ИКБО-01-23",
-      "subject": "Математика",
-      "teacher": "Иванов И.И.",
-      "type": "ЛК",
-      "planned_hours": 36
-    }
-  ]
-}
+[
+  {
+    "course": 3,
+    "subject": "Математический анализ",
+    "planned_pairs": 24
+  },
+  {
+    "course": 3,
+    "subject": "Алгебра",
+    "planned_pairs": 18
+  }
+]
+```
+
+Также допустима обёртка (frontend разворачивает любой из вариантов):
+
+```json
+{ "plan":    [ ... ] }
+{ "data":    [ ... ] }
+{ "entries": [ ... ] }
 ```
 
 Обязательные поля элемента плана:
 
 ```ts
 {
-  group: string
+  course: number
   subject: string
-  teacher: string | null
-  type: string
-  planned_hours: number
+  planned_pairs: number  // целое неотрицательное
 }
 ```
 
-### 7. Обновить план
+### 7. Обновить запись плана (upsert по `course + subject`)
+
+Frontend отправляет PUT с одной записью за раз — при редактировании поля в таблице аналитики.
 
 ```http
 PUT /api/v1/plan
@@ -248,30 +269,36 @@ Payload:
 ```json
 {
   "course": 3,
-  "semester": 6,
-  "items": [
-    {
-      "group": "ИКБО-01-23",
-      "subject": "Математика",
-      "teacher": "Иванов И.И.",
-      "type": "ЛК",
-      "planned_hours": 36
-    }
-  ]
+  "subject": "Математический анализ",
+  "planned_pairs": 24
 }
 ```
 
-Ответ:
+Backend должен:
+
+1. найти запись с тем же `(course, subject)` (нормализуй `subject`: trim, lower);
+2. если нашёл — обновить `planned_pairs`;
+3. если не нашёл — создать запись;
+4. вернуть `200 OK` (тело произвольное, frontend смотрит только на статус).
+
+Если хочется поддержать batch upsert — массив:
+
+```http
+PUT /api/v1/plan/batch
+```
 
 ```json
-{
-  "ok": true,
-  "course": 3,
-  "semester": 6,
-  "items_count": 1,
-  "updated_at": "2026-05-17T19:00:00Z"
-}
+[
+  { "course": 3, "subject": "Математический анализ", "planned_pairs": 24 },
+  { "course": 3, "subject": "Алгебра",               "planned_pairs": 18 }
+]
 ```
+
+Не обязательно для MVP — пока хватает per-entry PUT.
+
+### Поведение frontend при недоступном backend
+
+Frontend кэширует план в `localStorage` под ключом `rfict-plan-course-{N}` — это **только для разработки и тестов**. В production backend обязан возвращать план; иначе у разных методистов будут разные числа.
 
 ## Обновления с минимальной задержкой
 
