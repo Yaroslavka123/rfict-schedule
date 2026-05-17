@@ -23,6 +23,10 @@
 var TEMPLATE_STORE_SHEET_ = '_TEMPLATE_';
 var TEMPLATE_VERSION_     = 1;
 var TEMPLATE_CHUNK_SIZE_  = 45000; // безопасный размер для одной ячейки
+// Размер одного куска для литерала в BundledTemplate.gs. Маленькие куски
+// нужны, чтобы редактор Apps Script (Monaco) корректно подсвечивал синтаксис
+// — длинные однострочные литералы он не вытягивает.
+var BUNDLED_LITERAL_CHUNK_SIZE_ = 200;
 
 // ──────────────────────────────────────────────────────────────────────────
 // Меню-обёртки (вызываются из onOpen)
@@ -113,21 +117,24 @@ function exportTemplateToCode() {
     template = extractSheetTemplate_(src);
   }
   var json = JSON.stringify(template);
-  // Экранируем для JS-литерала: " и \ и переносы строк.
-  var escaped = json
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/\r/g, '\\r')
-    .replace(/\n/g, '\\n')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
-  var literal = 'var BUNDLED_TEMPLATE_JSON_ = "' + escaped + '";';
+  // Разбиваем JSON на короткие куски и склеиваем через `.join('')`. Если
+  // вставить весь JSON одной длинной строкой, редактор Apps Script (Monaco)
+  // перестаёт подсвечивать синтаксис в файле — он не умеет обрабатывать
+  // строки длиной в сотни тысяч символов на одной физической линии.
+  var rawChunks = chunkString_(json, BUNDLED_LITERAL_CHUNK_SIZE_);
+  var literalLines = ['var BUNDLED_TEMPLATE_JSON_ = ['];
+  for (var i = 0; i < rawChunks.length; i++) {
+    var comma = (i === rawChunks.length - 1) ? '' : ',';
+    literalLines.push('  "' + escapeForJsLiteral_(rawChunks[i]) + '"' + comma);
+  }
+  literalLines.push("].join('');");
+  var literal = literalLines.join('\n');
   var size = literal.length;
 
   var html = HtmlService.createHtmlOutput(
     '<style>body{font-family:Arial,sans-serif;margin:8px;}textarea{width:100%;height:380px;font-family:monospace;font-size:11px;}small{color:#666;}</style>' +
-    '<p>Скопируйте строку ниже и вставьте её в <code>BundledTemplate.gs</code>, заменив строку <code>var BUNDLED_TEMPLATE_JSON_ = null;</code>.</p>' +
-    '<small>Размер: ' + size + ' символов. Источник: ' + (getTemplateSource_() || 'active sheet') + '.</small>' +
+    '<p>Скопируйте блок ниже и вставьте его в <code>BundledTemplate.gs</code>, заменив строку <code>var BUNDLED_TEMPLATE_JSON_ = null;</code>.</p>' +
+    '<small>Размер: ' + size + ' символов, кусков: ' + rawChunks.length + '. Источник: ' + (getTemplateSource_() || 'active sheet') + '.</small>' +
     '<textarea id="t" readonly onclick="this.select()"></textarea>' +
     '<p><button onclick="copy()">Скопировать в буфер</button> ' +
     '<span id="msg" style="margin-left:8px;color:green;"></span></p>' +
@@ -142,6 +149,17 @@ function exportTemplateToCode() {
     '</script>'
   ).setWidth(720).setHeight(560);
   ui.showModalDialog(html, 'BUNDLED_TEMPLATE_JSON_ для BundledTemplate.gs');
+}
+
+/** Экранирует один кусок JSON для подстановки внутрь двойных кавычек JS-литерала. */
+function escapeForJsLiteral_(s) {
+  return s
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
 }
 
 /**

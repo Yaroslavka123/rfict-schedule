@@ -25,7 +25,7 @@
   <h3>Генератор пустого семестра</h3>
   <div class="src" id="srcLine">шаблон: загружается…</div>
 
-  <form id="gen" onsubmit="event.preventDefault(); submit();">
+  <form id="gen">
     <fieldset>
       <legend>Период</legend>
       <div class="row">
@@ -99,6 +99,16 @@
   </form>
 
   <script>
+    // Используем addEventListener (а не inline onsubmit="submit()"), потому что
+    // в inline-обработчике форма вкладывается в scope chain, и идентификатор
+    // `submit` резолвится в HTMLFormElement.prototype.submit, а не в нашу
+    // функцию. Native form.submit() обходит submit-event и в модальном
+    // диалоге Apps Script отрабатывает молча — кнопка визуально «не нажимается».
+    document.getElementById('gen').addEventListener('submit', function(e) {
+      e.preventDefault();
+      runGenerate();
+    });
+
     google.script.run
       .withSuccessHandler(applyDefaults)
       .withFailureHandler(function(e){ document.getElementById('srcLine').textContent = 'ошибка: ' + e.message; })
@@ -124,7 +134,7 @@
       document.getElementById('srcLine').textContent = 'Шаблон: ' + srcLabel;
     }
 
-    function submit() {
+    function runGenerate() {
       var btn = document.getElementById('go');
       var status = document.getElementById('status');
       btn.disabled = true;
