@@ -22,8 +22,6 @@ const LESSON_TYPES = [
   {code: 'additional',   label: 'ДО',      short: 'ДО',  color: '#d9d2e9', isDO: true}, // ДО — надстройка
 ];
 
-const DICT_SHEET_NAME = 'Справочники';
-
 // ──────────────────────────────────────────────────────────────────────────
 // GitHub — экспорт schedule.json по событию
 // ──────────────────────────────────────────────────────────────────────────
@@ -38,30 +36,15 @@ const SUBJECT_COL = 1; // A
 const TEACHER_COL = 2; // B
 const ROOM_COL = 3;    // C
 
+// Backend API
+const BACKEND_API_URL = 'https://coursejob-production.up.railway.app';
+
 // Ключи в DocumentProperties
-const PROP_COURSE_OVERRIDE = 'COURSE_OVERRIDE';
-const PROP_PUSH_ENABLED    = 'PUSH_ENABLED';
+const PROP_PUSH_ENABLED = 'PUSH_ENABLED';
 
 // ──────────────────────────────────────────────────────────────────────────
-// Настройки таблицы (курс + push-режим)
+// Настройки таблицы (push-режим)
 // ──────────────────────────────────────────────────────────────────────────
-
-/** Явно указанный курс (1..8) или null. */
-function getCourseOverride_() {
-  var raw = PropertiesService.getDocumentProperties().getProperty(PROP_COURSE_OVERRIDE);
-  if (!raw) return null;
-  var n = parseInt(raw, 10);
-  return (n >= 1 && n <= 8) ? n : null;
-}
-
-function setCourseOverride_(course) {
-  var props = PropertiesService.getDocumentProperties();
-  if (course === null || course === undefined || course === '') {
-    props.deleteProperty(PROP_COURSE_OVERRIDE);
-  } else {
-    props.setProperty(PROP_COURSE_OVERRIDE, String(course));
-  }
-}
 
 /** Push в GitHub включён? По умолчанию ВЫКЛ. */
 function isPushEnabled_() {
@@ -77,68 +60,22 @@ function setPushEnabled_(enabled) {
 // ──────────────────────────────────────────────────────────────────────────
 
 function onOpen() {
-  var course = getCourseOverride_();
   var pushOn = isPushEnabled_();
-  var courseLabel = course ? ('🎓 Курс: ' + course) : '🎓 Курс не выбран';
-  var pushLabel   = '🌐 Автосохранение на сайт: ' + (pushOn ? 'вкл' : 'выкл');
-
-  var templateMenu = SpreadsheetApp.getUi()
-    .createMenu('🧱 Шаблон листа')
-    .addItem('Снять шаблон с активного листа', 'extractActiveSheetAsTemplate')
-    .addItem('Создать лист по шаблону', 'createSheetFromTemplate')
-    .addSeparator()
-    .addItem('📤 Экспортировать шаблон в код', 'exportTemplateToCode')
-    .addSeparator()
-    .addItem('Тест round-trip шаблона', 'verifyTemplateRoundTrip');
+  var pushLabel = '🌐 Автосохранение на сайт: ' + (pushOn ? 'вкл' : 'выкл');
 
   SpreadsheetApp.getUi()
     .createMenu('Расписание')
     .addItem('➕ Добавить или изменить занятие', 'showSidebar')
-    .addItem('🧹 Очистить ячейку', 'clearActiveCell')
+    .addItem('🧹 Очистить ячейки', 'clearActiveCell')
     .addSeparator()
-    .addItem('📋 Открыть справочник', 'openDictionarySheet')
-    .addItem('🔄 Обновить справочник из таблицы', 'rebuildDictionaryFromSheet')
-    .addSeparator()
-    .addItem(courseLabel, 'promptSetCourse')
-    .addItem(pushLabel,   'togglePushEnabled')
-    .addSeparator()
+    .addItem(pushLabel, 'togglePushEnabled')
     .addItem('💾 Сохранить расписание сейчас', 'manualDispatch')
-    .addSeparator()
-    .addItem('📅 Сгенерировать пустой семестр', 'openSemesterGenerator')
-    .addSubMenu(templateMenu)
     .addToUi();
 }
 
 /** Пересоздаёт меню после смены настроек (чтобы лейблы обновились). */
 function rebuildMenu_() {
   try { onOpen(); } catch (_) { /* не в контексте таблицы */ }
-}
-
-/** Меню → Курс */
-function promptSetCourse() {
-  var ui = SpreadsheetApp.getUi();
-  var current = getCourseOverride_();
-  var resp = ui.prompt(
-    'Номер курса',
-    'Введите номер курса (от 1 до 8).\n\nСейчас: ' + (current ? current : 'не выбран') + '.',
-    ui.ButtonSet.OK_CANCEL
-  );
-  if (resp.getSelectedButton() !== ui.Button.OK) return;
-  var txt = (resp.getResponseText() || '').trim();
-  if (!txt) {
-    setCourseOverride_(null);
-    rebuildMenu_();
-    ui.alert('Курс очищен. Он будет определяться автоматически по таблице.');
-    return;
-  }
-  var n = parseInt(txt, 10);
-  if (!(n >= 1 && n <= 8)) {
-    ui.alert('Нужно число от 1 до 8.');
-    return;
-  }
-  setCourseOverride_(n);
-  rebuildMenu_();
-  ui.alert('Курс сохранён: ' + n + '.');
 }
 
 /** Меню → Автосохранение на сайт: вкл/выкл */
@@ -156,19 +93,9 @@ function togglePushEnabled() {
     ui.alert('Автосохранение выключено.');
     return;
   }
-  // Включение
-  var course = getCourseOverride_();
-  if (!course) {
-    ui.alert(
-      'Сначала выберите курс',
-      'В меню «Расписание» откройте «Курс» и введите номер (от 1 до 8). Без этого автосохранение включить нельзя.',
-      ui.ButtonSet.OK
-    );
-    return;
-  }
   var on = ui.alert(
     'Включить автосохранение?',
-    'Расписание будет автоматически сохраняться на сайт через 2 минуты после любого изменения.\n\nКурс: ' + course + '.',
+    'Расписание будет автоматически сохраняться на сайт через 2 минуты после любого изменения.',
     ui.ButtonSet.YES_NO
   );
   if (on !== ui.Button.YES) return;
@@ -241,67 +168,41 @@ function getActiveCellInfo() {
 }
 
 /**
- * Словари для autocomplete (внутренняя). Кэш 60 сек.
- * Списки дедуплицируются по нормализованному ключу (нижний регистр, без пробелов/знаков).
+ * Словари для autocomplete. Загружаются с бэкенда Railway API. Кэш 60 сек.
  */
 function getDictionaries_() {
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get('dictionaries');
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('dictionaries');
   if (cached) {
-    try { return JSON.parse(cached); } catch (_) { /* fallthrough */ }
+    try { return JSON.parse(cached); } catch (_) {}
   }
-  const sheet = ensureDictionarySheet();
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
-    return {subjects: [], teachers: [], rooms: []};
+  var result = {subjects: [], teachers: [], rooms: []};
+  try {
+    var responses = UrlFetchApp.fetchAll([
+      {url: BACKEND_API_URL + '/api/v1/subjects', muteHttpExceptions: true},
+      {url: BACKEND_API_URL + '/api/v1/teachers', muteHttpExceptions: true},
+      {url: BACKEND_API_URL + '/api/v1/rooms',    muteHttpExceptions: true},
+    ]);
+    if (responses[0].getResponseCode() === 200) {
+      result.subjects = JSON.parse(responses[0].getContentText()).subjects
+        .map(function(s) { return s.Name; }).filter(Boolean).sort();
+    }
+    if (responses[1].getResponseCode() === 200) {
+      result.teachers = JSON.parse(responses[1].getContentText()).teachers
+        .map(function(t) { return t.PostFullName; }).filter(Boolean).sort();
+    }
+    if (responses[2].getResponseCode() === 200) {
+      result.rooms = JSON.parse(responses[2].getContentText()).rooms
+        .map(function(r) { return r.Name; }).filter(Boolean).sort();
+    }
+  } catch (err) {
+    console.warn('getDictionaries_ API error: ' + err.message);
   }
-  const range = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
-  const result = {
-    subjects: dedupeByNormalized_(range.map(r => r[0])),
-    teachers: dedupeByNormalized_(range.map(r => r[1])),
-    rooms:    dedupeByNormalized_(range.map(r => r[2])),
-  };
-  try { cache.put('dictionaries', JSON.stringify(result), 60); } catch (_) { /* ignore */ }
+  try { cache.put('dictionaries', JSON.stringify(result), 60); } catch (_) {}
   return result;
 }
 
-/**
- * Нормализация для сравнения: нижний регистр + убираем всё кроме букв/цифр.
- * «доц. Жевняк О.Г.» → «доцжевняког»
- * «ДОЦЖевнякО.Г.»  → «доцжевняког»
- */
-function normalizeForMatch_(s) {
-  return String(s || '').toLowerCase().replace(/[^a-z0-9а-яё]/gi, '');
-}
-
-/**
- * Оценка читаемости: предпочитаем варианты с пробелами/точками.
- */
-function readabilityScore_(s) {
-  var str = String(s || '');
-  var spaces = (str.match(/\s/g) || []).length;
-  var dots = (str.match(/\./g) || []).length;
-  return spaces * 10 + dots * 5 + str.length;
-}
-
-/**
- * Дедуплицирует список строк по normalized-ключу, оставляет самое «читабельное» представление.
- */
-function dedupeByNormalized_(arr) {
-  var byKey = {};
-  (arr || []).forEach(function(raw) {
-    var s = String(raw || '').trim();
-    if (!s) return;
-    var k = normalizeForMatch_(s);
-    if (!k) return;
-    if (!byKey[k] || readabilityScore_(s) > readabilityScore_(byKey[k])) byKey[k] = s;
-  });
-  return Object.keys(byKey).map(function(k) { return byKey[k]; }).sort(function(a, b) {
-    return a.localeCompare(b, 'ru');
-  });
-}
-
-/** Обратная совместимость: старый вызов словарей */
+/** Обратная совместимость */
 function getDictionaries() { return getDictionaries_(); }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -475,13 +376,6 @@ function applyLesson(data) {
     setRoomCell_(roomCell, data.room || '');
   }
 
-  // Справочник
-  appendToDictionary_({
-    subject: isMulti ? (data.teachers_by_subgroup[0] || {}).subject : data.subject,
-    teachers: collectTeachers_(data),
-    rooms: collectRooms_(data),
-  });
-
   SpreadsheetApp.flush();
   if (isPushEnabled_()) {
     scheduleDelayedExport_(sheet.getName());
@@ -525,14 +419,9 @@ function manualDispatch() {
     );
     return;
   }
-  var course = getCourseOverride_();
-  if (!course) {
-    ui.alert('Сначала выберите курс в меню.');
-    return;
-  }
   var resp = ui.alert(
     'Сохранить расписание сейчас?',
-    'Расписание будет обновлено на сайте.\n\nКурс: ' + course + '.',
+    'Расписание будет обновлено на сайте.',
     ui.ButtonSet.YES_NO
   );
   if (resp !== ui.Button.YES) return;
@@ -552,165 +441,23 @@ function dispatchResultMessage_(result) {
 }
 
 function clearActiveCell() {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const cell = sheet.getCurrentCell();
-  if (!cell) throw new Error('Сначала выберите ячейку.');
-  const roomCell = sheet.getRange(cell.getRow(), cell.getColumn() + 1);
-  cell.clearContent();
-  cell.setBackground(null);
-  roomCell.clearContent();
-  roomCell.setBackground(null);
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var range = sheet.getActiveRange();
+  if (!range) throw new Error('Сначала выберите ячейки.');
+  range.clearContent();
+  range.setBackground(null);
+  var startRow = range.getRow();
+  var numRows = range.getNumRows();
+  var roomCol = range.getColumn() + range.getNumColumns();
+  var roomRange = sheet.getRange(startRow, roomCol, numRows, 1);
+  roomRange.clearContent();
+  roomRange.setBackground(null);
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// Справочник предметов / преподов / аудиторий
-// ──────────────────────────────────────────────────────────────────────────
-
-function openDictionarySheet() {
-  const sheet = ensureDictionarySheet();
-  SpreadsheetApp.setActiveSheet(sheet);
-}
-
-function ensureDictionarySheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(DICT_SHEET_NAME);
-  if (sheet) return sheet;
-  sheet = ss.insertSheet(DICT_SHEET_NAME);
-  sheet.getRange(1, 1, 1, 3).setValues([['Предмет', 'Преподаватель', 'Аудитория']]);
-  sheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#f3f3f3');
-  sheet.setFrozenRows(1);
-  sheet.setColumnWidth(1, 280);
-  sheet.setColumnWidth(2, 200);
-  sheet.setColumnWidth(3, 100);
-  return sheet;
-}
-
-/** Пересоздаёт справочник из всех листов с занятиями (на случай первого запуска). */
-function rebuildDictionaryFromSheet() {
-  const sheet = ensureDictionarySheet();
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  // Собираем все варианты написания, дедуплицируем по normalized-ключу.
-  const subjects = [];
-  const teachers = [];
-  const rooms = [];
-
-  ss.getSheets().forEach(s => {
-    if (s.getName() === DICT_SHEET_NAME) return;
-    const dataRange = s.getDataRange();
-    const values = dataRange.getValues();
-    const richValues = dataRange.getRichTextValues();
-    values.forEach((row, rowIdx) => {
-      row.forEach((cellValue, colIdx) => {
-        const str = String(cellValue || '').trim();
-        if (!str) return;
-        const richCell = richValues[rowIdx] && richValues[rowIdx][colIdx];
-        const subj = extractSubjectFromRich_(richCell, str);
-        if (subj) subjects.push(subj);
-        str.split('\n').forEach(line => {
-          line = line.trim();
-          if (looksLikeTeacher_(line)) teachers.push(line);
-          if (looksLikeRoom_(line)) rooms.push(line);
-        });
-      });
-    });
-  });
-
-  const subjArr  = dedupeByNormalized_(subjects);
-  const teachArr = dedupeByNormalized_(teachers);
-  const roomArr  = dedupeByNormalized_(rooms);
-
-  // Очищаем (кроме шапки)
-  if (sheet.getLastRow() > 1) {
-    sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).clearContent();
-  }
-
-  const maxLen = Math.max(subjArr.length, teachArr.length, roomArr.length);
-  if (maxLen === 0) {
-    SpreadsheetApp.getUi().alert('В таблице пока нет данных для справочника.');
-    return;
-  }
-
-  const rows = [];
-  for (let i = 0; i < maxLen; i++) {
-    rows.push([
-      subjArr[i] || '',
-      teachArr[i] || '',
-      roomArr[i] || '',
-    ]);
-  }
-  sheet.getRange(2, 1, rows.length, 3).setValues(rows);
-  try { CacheService.getScriptCache().remove('dictionaries'); } catch (_) {}
-  SpreadsheetApp.getUi().alert(
-    'Справочник обновлён.\n\nПредметы: ' + subjArr.length +
-      '\nПреподаватели: ' + teachArr.length +
-      '\nАудитории: ' + roomArr.length
-  );
-}
-
-function appendToDictionary_(items) {
-  const sheet = ensureDictionarySheet();
-  const lastRow = Math.max(sheet.getLastRow(), 1);
-
-  // Строим карты normalized → best display по существующему справочнику.
-  const existingSubjects = {};
-  const existingTeachers = {};
-  const existingRooms = {};
-  if (lastRow > 1) {
-    const range = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
-    range.forEach(r => {
-      if (r[0]) existingSubjects[normalizeForMatch_(r[0])] = String(r[0]).trim();
-      if (r[1]) existingTeachers[normalizeForMatch_(r[1])] = String(r[1]).trim();
-      if (r[2]) existingRooms[normalizeForMatch_(r[2])]    = String(r[2]).trim();
-    });
-  }
-
-  function pickNew(value, existing) {
-    if (!value) return null;
-    var s = String(value).trim();
-    if (!s) return null;
-    var k = normalizeForMatch_(s);
-    if (!k || existing[k]) return null;
-    existing[k] = s; // отмечаем как добавленное в рамках текущего вызова
-    return s;
-  }
-
-  const toAddSubj  = [pickNew(items.subject, existingSubjects)].filter(Boolean);
-  const toAddTeach = (items.teachers || []).map(t => pickNew(t, existingTeachers)).filter(Boolean);
-  const toAddRooms = (items.rooms || []).map(r => pickNew(r, existingRooms)).filter(Boolean);
-
-  if (!toAddSubj.length && !toAddTeach.length && !toAddRooms.length) return;
-
-  const maxLen = Math.max(toAddSubj.length, toAddTeach.length, toAddRooms.length);
-  const rows = [];
-  for (let i = 0; i < maxLen; i++) {
-    rows.push([
-      toAddSubj[i] || '',
-      toAddTeach[i] || '',
-      toAddRooms[i] || '',
-    ]);
-  }
-  sheet.getRange(lastRow + 1, 1, rows.length, 3).setValues(rows);
-  try { CacheService.getScriptCache().remove('dictionaries'); } catch (_) {}
-}
 
 // ──────────────────────────────────────────────────────────────────────────
 // Утилиты
 // ──────────────────────────────────────────────────────────────────────────
-
-function collectTeachers_(data) {
-  const out = [];
-  if (data.teacher) out.push(data.teacher);
-  (data.teachers_by_subgroup || []).forEach(sg => sg.teacher && out.push(sg.teacher));
-  return out;
-}
-
-function collectRooms_(data) {
-  const out = [];
-  if (data.room) out.push(data.room);
-  (data.teachers_by_subgroup || []).forEach(sg => sg.room && out.push(sg.room));
-  return out;
-}
 
 function uniqueNonEmpty_(arr) {
   const seen = new Set();
@@ -974,21 +721,6 @@ function parseMultiSubjectLab_(allLines, subjectLines, firstLines, rawBoldSet) {
   return groups.length > 1 ? groups : null;
 }
 
-function extractSubjectFromRich_(richCell, fallbackStr) {
-  if (!richCell || typeof richCell.getRuns !== 'function') return null;
-  const runs = richCell.getRuns();
-  const boldParts = [];
-  runs.forEach(run => {
-    const ts = run.getTextStyle();
-    if (ts && ts.isBold()) boldParts.push(run.getText());
-  });
-  const result = boldParts.join('').trim();
-  if (!result) return null;
-  // отбрасываем «жирные дата-пометки» типа «по 01.06»
-  if (looksLikeNotes_(result)) return null;
-  return result;
-}
-
 function looksLikeTeacher_(s) {
   if (!s) return false;
   const t = s.trim();
@@ -1030,9 +762,8 @@ function looksLikeNotes_(s) {
  */
 function onSheetEdit(e) {
   if (!e || !e.source || !e.range) return;
-  const sheetName = e.range.getSheet().getName();
-  if (sheetName === DICT_SHEET_NAME) return;
-  if (!isPushEnabled_()) return; // тестовый режим — ничего не пушим
+  if (!isPushEnabled_()) return;
+  var sheetName = e.range.getSheet().getName();
   scheduleDelayedExport_(sheetName);
 }
 
@@ -1237,15 +968,8 @@ function getSheetMeta_(ss) {
   if (!weekSheets.length) throw new Error('Не найдены листы расписания');
 
   var firstSheet = weekSheets[0];
-  // Курс: явный override (из меню «🎓 Курс: …») имеет приоритет над A2.
-  var override = getCourseOverride_();
-  var course;
-  if (override) {
-    course = override;
-  } else {
-    var courseVal = firstSheet.getRange('A2').getValue();
-    course = typeof courseVal === 'number' ? courseVal : parseInt(courseVal, 10) || null;
-  }
+  var courseVal = firstSheet.getRange('A2').getValue();
+  var course = typeof courseVal === 'number' ? courseVal : parseInt(courseVal, 10) || null;
   var semesterMatch = String(firstSheet.getRange('D1').getValue() || '').match(/(\d+)\s*семестр/);
   var semester = semesterMatch ? parseInt(semesterMatch[1], 10) : null;
   var groups = discoverGroups_(firstSheet);
@@ -1284,6 +1008,7 @@ function pushSheet_(ws, meta, token) {
   var content = JSON.stringify(json, null, 2);
   pushFileToGitHub_(filePath, content, token);
   notifyWebhook_(filePath, json);
+  postToBackend_(json);
 }
 
 /**
@@ -1312,6 +1037,26 @@ function exportAllSheets_(ss, token) {
   var meta = getSheetMeta_(ss);
   for (var i = 0; i < meta.weekSheets.length; i++) {
     pushSheet_(meta.weekSheets[i], meta, token);
+  }
+}
+
+/**
+ * POST расписания на бэкенд Railway.
+ */
+function postToBackend_(json) {
+  try {
+    var resp = UrlFetchApp.fetch(BACKEND_API_URL + '/api/v1/schedule', {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(json),
+      muteHttpExceptions: true,
+    });
+    var code = resp.getResponseCode();
+    if (code !== 200 && code !== 201) {
+      console.warn('postToBackend_ error: ' + code + ' ' + resp.getContentText().substring(0, 200));
+    }
+  } catch (err) {
+    console.warn('postToBackend_ error: ' + err.message);
   }
 }
 
@@ -1543,8 +1288,9 @@ function parseRichLessonCell_(richText, roomValue) {
       // RED перед предметом = даты (период)
       extractPeriod_(line, current);
     } else if (isRed && foundSubject && !foundTeacher) {
-      // RED после предмета, до преподавателя = подгруппа
-      current.subgroup = line;
+      // RED после предмета, до преподавателя = подгруппа + частота
+      var pgParts = line.match(/\d\s*ПГ/gi);
+      current.subgroup = pgParts ? pgParts.map(function(p) { return p.replace(/\s/g, ''); }).join('/') : '';
       if (/нечет\/чет|чет\/нечет/.test(line)) current.frequency = line.match(/нечет\/чет|чет\/нечет/)[0];
       else if (/\bнечет\b/i.test(line)) current.frequency = 'нечет';
       else if (/\bчет\b/i.test(line)) current.frequency = 'чет';
