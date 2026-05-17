@@ -21,7 +21,8 @@
 
 var GENERATOR_DEFAULTS_ = {
   year: null,            // вычислится в форме (текущий год)
-  semester: 1,           // 1 = осень, 2 = весна
+  course: 1,             // курс 1..4 (нужен только для шапки листа)
+  semester: 1,           // 1 = осень, 2 = весна (в рамках курса)
   pair_min: 85,          // длительность пары, мин
   break_min: 10,         // перерыв между парами, мин
   first_start: '09:00',  // начало 1-й пары, HH:MM
@@ -65,6 +66,14 @@ function getGeneratorDefaults() {
     }),
     template_source: getTemplateSource_()
   };
+}
+
+/**
+ * Глобальный номер семестра (1..8) из курса (1..4) и семестра в году (1=осень, 2=весна).
+ * Курс 1 → 1..2; курс 2 → 3..4; курс 3 → 5..6; курс 4 → 7..8.
+ */
+function globalSemester_(course, semester) {
+  return (course - 1) * 2 + semester;
 }
 
 /**
@@ -123,6 +132,10 @@ function runSemesterGenerator(rawParams) {
     created: created,
     start_iso: start.toISOString(),
     start_ddmmyyyy: formatDDMMYYYY_(start),
+    course: params.course,
+    semester_in_year: params.semester,
+    global_semester: globalSemester_(params.course, params.semester),
+    academic_year: params.year + '-' + (params.year + 1),
     bell: schedule.map(function(s) { return s.pair + ': ' + s.label; })
   };
 }
@@ -146,6 +159,7 @@ function parseGeneratorParams_(raw) {
     return (v === undefined || v === null || v === '') ? dflt : String(v);
   }
   var year         = num('year',         GENERATOR_DEFAULTS_.year,         2000, 2099);
+  var course       = num('course',       GENERATOR_DEFAULTS_.course,       1,    4);
   var semester     = num('semester',     GENERATOR_DEFAULTS_.semester,     1,    2);
   var pair_min     = num('pair_min',     GENERATOR_DEFAULTS_.pair_min,     20,   180);
   var break_min    = num('break_min',    GENERATOR_DEFAULTS_.break_min,    0,    120);
@@ -161,7 +175,7 @@ function parseGeneratorParams_(raw) {
   }
   if (date_format !== 'short' && date_format !== 'full') date_format = 'short';
   return {
-    year: year, semester: semester,
+    year: year, course: course, semester: semester,
     pair_min: pair_min, break_min: break_min,
     lunch_after: lunch_after, lunch_min: lunch_min,
     num_weeks: num_weeks, num_pairs: num_pairs,
@@ -276,13 +290,25 @@ function analyzeTemplateStructure_(template) {
 
 /**
  * Подгоняет уже созданный по шаблону лист под конкретную неделю:
- *   - D1 = "N семестр"
+ *   - A2 = номер курса (большой красный)
+ *   - D1 = "Выписка из расписания занятий на N семестр YYYY-YYYY учебного года"
+ *   - D3 = "Курс N  Очная форма получения образования"
  *   - колонка C (время) — пересчитанные звонки по pair_min/break_min
  *   - колонка A (день) — добавляет дату ниже названия дня: "Пн\nDD.MM[.YYYY]"
  */
 function customizeWeekSheet_(sheet, template, struct, params, weekNum, monday, schedule) {
-  // 1. D1 = N семестр
-  try { sheet.getRange('D1').setValue(params.semester + ' семестр'); } catch (_) {}
+  // 1. Шапка листа: курс, глобальный семестр (1..8), учебный год.
+  var globalSem = globalSemester_(params.course, params.semester);
+  var academicYear = params.year + '-' + (params.year + 1);
+  try { sheet.getRange('A2').setValue(params.course); } catch (_) {}
+  try {
+    sheet.getRange('D1').setValue(
+      'Выписка из расписания занятий на ' + globalSem + ' семестр ' + academicYear + ' учебного года'
+    );
+  } catch (_) {}
+  try {
+    sheet.getRange('D3').setValue('Курс ' + params.course + '  Очная форма получения образования');
+  } catch (_) {}
 
   // 2. Времена пар (колонка C)
   for (var i = 0; i < struct.pair_rows.length; i++) {
