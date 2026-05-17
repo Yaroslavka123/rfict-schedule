@@ -125,6 +125,7 @@ rfict-schedule/
 | Ключ | Описание | Обязательно |
 |------|----------|:-----------:|
 | `GITHUB_TOKEN` | [Fine-grained PAT](https://github.com/settings/personal-access-tokens/new) с правами `Contents: Read and write` на `Yaroslavka123/rfict-schedule` | ✓ |
+| `BACKEND_API_URL` | URL backend API; по умолчанию используется `https://rfict.up.railway.app` | — |
 | `WEBHOOK_URL` | URL Go backend endpoint для получения обновлений (`POST`) | — |
 
 **Triggers** (часы слева → Add Trigger):

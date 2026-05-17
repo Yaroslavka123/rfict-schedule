@@ -37,7 +37,11 @@ const TEACHER_COL = 2; // B
 const ROOM_COL = 3;    // C
 
 // Backend API
-const BACKEND_API_URL = 'https://coursejob-production.up.railway.app';
+const DEFAULT_BACKEND_API_URL = 'https://rfict.up.railway.app';
+
+function getBackendApiUrl_() {
+  return (PropertiesService.getScriptProperties().getProperty('BACKEND_API_URL') || DEFAULT_BACKEND_API_URL).replace(/\/$/, '');
+}
 
 // Ключи в DocumentProperties
 const PROP_PUSH_ENABLED = 'PUSH_ENABLED';
@@ -182,10 +186,11 @@ function getDictionaries_() {
   }
   var result = {subjects: [], teachers: [], rooms: []};
   try {
+    var backendApiUrl = getBackendApiUrl_();
     var responses = UrlFetchApp.fetchAll([
-      {url: BACKEND_API_URL + '/api/v1/subjects', muteHttpExceptions: true},
-      {url: BACKEND_API_URL + '/api/v1/teachers', muteHttpExceptions: true},
-      {url: BACKEND_API_URL + '/api/v1/rooms',    muteHttpExceptions: true},
+      {url: backendApiUrl + '/api/v1/subjects', muteHttpExceptions: true},
+      {url: backendApiUrl + '/api/v1/teachers', muteHttpExceptions: true},
+      {url: backendApiUrl + '/api/v1/rooms',    muteHttpExceptions: true},
     ]);
     if (responses[0].getResponseCode() === 200) {
       result.subjects = JSON.parse(responses[0].getContentText()).subjects
@@ -1105,7 +1110,8 @@ function exportAllSheets_(ss, token) {
  */
 function postToBackend_(json) {
   try {
-    var resp = UrlFetchApp.fetch(BACKEND_API_URL + '/api/v1/schedule', {
+    var backendApiUrl = getBackendApiUrl_();
+    var resp = UrlFetchApp.fetch(backendApiUrl + '/api/v1/schedule', {
       method: 'post',
       contentType: 'application/json',
       payload: JSON.stringify(json),
