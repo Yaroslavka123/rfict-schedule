@@ -1,9 +1,8 @@
-import { BarChart3, CalendarDays, Database, DoorOpen, Github, GraduationCap, HardDrive, Moon, RefreshCw, Sun } from 'lucide-react'
+import { BarChart3, CalendarDays, DoorOpen, GraduationCap, Moon, RefreshCw, Sun } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { cn, formatUpdatedAt } from '@/lib/utils'
-import type { DataSource } from '@/types/schedule'
 
 export type AppTab = 'schedule' | 'rooms' | 'teachers' | 'analytics'
 
@@ -14,7 +13,6 @@ interface AppShellProps {
   onToggleTheme: () => void
   onRefresh: () => void
   refreshing: boolean
-  source: DataSource | null
   loadedAt: number
   children: ReactNode
 }
@@ -26,14 +24,7 @@ const tabs = [
   { id: 'analytics' as const, label: 'План-факт', icon: BarChart3 },
 ]
 
-const sourceLabels: Record<DataSource, { label: string; tone: string; Icon: typeof Database }> = {
-  backend: { label: 'Backend', tone: 'text-emerald-500', Icon: Database },
-  github: { label: 'GitHub raw', tone: 'text-sky-500', Icon: Github },
-  local: { label: 'Локально', tone: 'text-muted-foreground', Icon: HardDrive },
-}
-
-export function AppShell({ activeTab, onTabChange, theme, onToggleTheme, onRefresh, refreshing, source, loadedAt, children }: AppShellProps) {
-  const sourceInfo = source ? sourceLabels[source] : null
+export function AppShell({ activeTab, onTabChange, theme, onToggleTheme, onRefresh, refreshing, loadedAt, children }: AppShellProps) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl">
@@ -49,11 +40,9 @@ export function AppShell({ activeTab, onTabChange, theme, onToggleTheme, onRefre
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {sourceInfo && (
-                <span className="hidden items-center gap-1.5 rounded-full border border-border bg-background/60 px-3 py-1 text-xs font-semibold sm:inline-flex">
-                  <sourceInfo.Icon className={cn('h-3.5 w-3.5', sourceInfo.tone)} />
-                  <span className="text-muted-foreground">{sourceInfo.label}</span>
-                  {loadedAt > 0 && <span className="text-muted-foreground">· {formatUpdatedAt(new Date(loadedAt).toISOString())}</span>}
+              {loadedAt > 0 && (
+                <span className="hidden text-xs text-muted-foreground sm:inline">
+                  Обновлено {formatUpdatedAt(new Date(loadedAt).toISOString())}
                 </span>
               )}
               <Button variant="secondary" onClick={onRefresh} disabled={refreshing} aria-label="Обновить" title="Перезагрузить данные">
