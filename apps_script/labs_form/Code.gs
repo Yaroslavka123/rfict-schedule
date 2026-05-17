@@ -70,6 +70,8 @@ function onOpen() {
     .addSeparator()
     .addItem(pushLabel, 'togglePushEnabled')
     .addItem('💾 Сохранить расписание сейчас', 'manualDispatch')
+    .addSeparator()
+    .addItem('🗓 Генератор пустого семестра', 'openSemesterGenerator')
     .addToUi();
 }
 

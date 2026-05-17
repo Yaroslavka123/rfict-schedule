@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 10px; font-size: 13px; color: #222; }
+    h3 { margin: 0 0 10px 0; font-size: 14px; }
+    .src { color: #555; font-size: 11px; margin-bottom: 12px; }
+    fieldset { border: 1px solid #ddd; border-radius: 4px; padding: 8px 12px; margin-bottom: 10px; }
+    legend { font-weight: bold; padding: 0 4px; color: #333; }
+    .row { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
+    .row label { flex: 1; }
+    .row input, .row select { width: 110px; padding: 3px 5px; }
+    .hint { color: #666; font-size: 11px; margin-top: -2px; margin-bottom: 6px; }
+    .actions { display: flex; gap: 8px; justify-content: flex-end; }
+    button { padding: 6px 14px; cursor: pointer; }
+    button.primary { background: #1a73e8; color: white; border: 1px solid #1a73e8; border-radius: 3px; }
+    button.primary:disabled { background: #aaa; border-color: #aaa; cursor: not-allowed; }
+    #status { margin-top: 10px; font-size: 12px; white-space: pre-wrap; max-height: 160px; overflow: auto; }
+    .ok { color: #155724; background: #d4edda; padding: 6px 10px; border-radius: 3px; }
+    .err { color: #721c24; background: #f8d7da; padding: 6px 10px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <h3>Генератор пустого семестра</h3>
+  <div class="src" id="srcLine">шаблон: загружается…</div>
+
+  <form id="gen">
+    <fieldset>
+      <legend>Период</legend>
+      <div class="row">
+        <label>Учебный год (год начала; для весны 2026 — 2025)</label>
+        <input type="number" id="year" min="2000" max="2099" required>
+      </div>
+      <div class="hint">Семестр 1 (осень) = сентябрь указанного года. Семестр 2 (весна) = февраль следующего календарного года.</div>
+      <div class="row">
+        <label>Курс</label>
+        <select id="course">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Семестр в году</label>
+        <select id="semester">
+          <option value="1">1 (осенний)</option>
+          <option value="2">2 (весенний)</option>
+        </select>
+      </div>
+      <div class="hint">Глобальный номер (1..8) считается как (курс − 1) · 2 + семестр.</div>
+      <div class="row">
+        <label>Количество недель</label>
+        <input type="number" id="num_weeks" min="1" max="30" required>
+      </div>
+      <div class="hint">14 учебных + запас. Лишние недели легко удалить руками.</div>
+      <div class="row">
+        <label>Дней в неделе</label>
+        <select id="days_per_week">
+          <option value="5">5 (Пн–Пт)</option>
+          <option value="6">6 (Пн–Сб)</option>
+          <option value="7">7 (Пн–Вс)</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Формат даты на листе</label>
+        <select id="date_format">
+          <option value="short">DD.MM</option>
+          <option value="full">DD.MM.YYYY</option>
+        </select>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Звонки</legend>
+      <div class="row">
+        <label>Начало 1-й пары (HH:MM)</label>
+        <input type="text" id="first_start" pattern="\d{1,2}:\d{2}" required>
+      </div>
+      <div class="row">
+        <label>Длительность пары (мин)</label>
+        <input type="number" id="pair_min" min="20" max="180" required>
+      </div>
+      <div class="row">
+        <label>Перерыв между парами (мин)</label>
+        <input type="number" id="break_min" min="0" max="120" required>
+      </div>
+      <div class="row">
+        <label>Количество пар в день</label>
+        <input type="number" id="num_pairs" min="1" max="12" required>
+      </div>
+      <div class="row">
+        <label>Большой перерыв после пары №</label>
+        <input type="number" id="lunch_after" min="0" max="20">
+      </div>
+      <div class="hint">0 = без большого перерыва.</div>
+      <div class="row">
+        <label>Длительность большого перерыва (мин)</label>
+        <input type="number" id="lunch_min" min="0" max="180">
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button type="button" onclick="google.script.host.close()">Отмена</button>
+      <button type="submit" id="go" class="primary">Сгенерировать</button>
+    </div>
+    <div id="status"></div>
+  </form>
+
+  <script>
+    // Используем addEventListener (а не inline onsubmit="submit()"), потому что
+    // в inline-обработчике форма вкладывается в scope chain, и идентификатор
+    // `submit` резолвится в HTMLFormElement.prototype.submit, а не в нашу
+    // функцию. Native form.submit() обходит submit-event и в модальном
+    // диалоге Apps Script отрабатывает молча — кнопка визуально «не нажимается».
+    document.getElementById('gen').addEventListener('submit', function(e) {
+      e.preventDefault();
+      runGenerate();
+    });
+
+    google.script.run
+      .withSuccessHandler(applyDefaults)
+      .withFailureHandler(function(e){ document.getElementById('srcLine').textContent = 'ошибка: ' + e.message; })
+      .getGeneratorDefaults();
+
+    function applyDefaults(resp) {
+      var d = resp.defaults;
+      document.getElementById('year').value          = d.year;
+      document.getElementById('course').value        = d.course;
+      document.getElementById('semester').value      = d.semester;
+      document.getElementById('num_weeks').value     = d.num_weeks;
+      document.getElementById('days_per_week').value = d.days_per_week;
+      document.getElementById('date_format').value   = d.date_format;
+      document.getElementById('first_start').value   = d.first_start;
+      document.getElementById('pair_min').value      = d.pair_min;
+      document.getElementById('break_min').value     = d.break_min;
+      document.getElementById('num_pairs').value     = d.num_pairs;
+      document.getElementById('lunch_after').value   = d.lunch_after;
+      document.getElementById('lunch_min').value     = d.lunch_min;
+      var src = resp.template_source;
+      var srcLabel = src === 'sheet' ? 'снят с листа _TEMPLATE_'
+                   : src === 'bundled' ? 'встроенный в код (BundledTemplate.gs)'
+                   : 'не найден';
+      document.getElementById('srcLine').textContent = 'Шаблон: ' + srcLabel;
+    }
+
+    function runGenerate() {
+      var btn = document.getElementById('go');
+      var status = document.getElementById('status');
+      btn.disabled = true;
+      status.className = '';
+      status.textContent = 'Генерация… (пожалуйста, не закрывайте окно)';
+      var payload = {
+        year:          document.getElementById('year').value,
+        course:        document.getElementById('course').value,
+        semester:      document.getElementById('semester').value,
+        num_weeks:     document.getElementById('num_weeks').value,
+        days_per_week: document.getElementById('days_per_week').value,
+        date_format:   document.getElementById('date_format').value,
+        first_start:   document.getElementById('first_start').value,
+        pair_min:      document.getElementById('pair_min').value,
+        break_min:     document.getElementById('break_min').value,
+        num_pairs:     document.getElementById('num_pairs').value,
+        lunch_after:   document.getElementById('lunch_after').value,
+        lunch_min:     document.getElementById('lunch_min').value
+      };
+      google.script.run
+        .withSuccessHandler(onOk)
+        .withFailureHandler(onErr)
+        .runSemesterGenerator(payload);
+    }
+
+    function onOk(r) {
+      var btn = document.getElementById('go');
+      btn.disabled = false;
+      var status = document.getElementById('status');
+      status.className = 'ok';
+      status.textContent =
+        'Готово. Создано листов: ' + r.created.length + '\n' +
+        'Курс ' + r.course + ', семестр в году ' + r.semester_in_year +
+          ' (глобальный ' + r.global_semester + ' из 8)\n' +
+        'Учебный год: ' + r.academic_year + '\n' +
+        'Старт семестра: ' + r.start_ddmmyyyy + ' (понедельник)\n\n' +
+        'Звонки:\n  ' + r.bell.join('\n  ') + '\n\n' +
+        'Листы:\n  ' + r.created.join('\n  ');
+    }
+
+    function onErr(e) {
+      var btn = document.getElementById('go');
+      btn.disabled = false;
+      var status = document.getElementById('status');
+      status.className = 'err';
+      status.textContent = 'Ошибка: ' + (e.message || e);
+    }
+  </script>
+</body>
+</html>
