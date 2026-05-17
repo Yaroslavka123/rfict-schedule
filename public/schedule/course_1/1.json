@@ -1,6 +1,6 @@
 {
   "name": "31.08-05.09 (1-я неделя)",
-  "generated_at": "2026-05-17T16:56:52.396Z",
+  "generated_at": "2026-05-17T17:03:46.952Z",
   "course": 1,
   "semester": 1,
   "week_number": 1,
@@ -148,14 +148,14 @@
       "group": "2",
       "type": "lecture",
       "subject": "Системный аналищ",
-      "teacher": "сидоров",
+      "teacher": "",
       "room": "117",
       "subgroup": null,
       "frequency": null,
       "period_start": "12.12",
       "period_end": "12.12",
-      "comment": "qweasdzxc",
-      "cancelled": false
+      "comment": null,
+      "cancelled": true
     },
     {
       "day": "Пн",
