@@ -34,12 +34,22 @@
       </div>
       <div class="hint">Семестр 1 (осень) = сентябрь этого года. Семестр 2 (весна) = февраль следующего.</div>
       <div class="row">
-        <label>Семестр</label>
+        <label>Курс</label>
+        <select id="course">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Семестр в году</label>
         <select id="semester">
           <option value="1">1 (осенний)</option>
           <option value="2">2 (весенний)</option>
         </select>
       </div>
+      <div class="hint">Глобальный номер (1..8) считается как (курс − 1) · 2 + семестр.</div>
       <div class="row">
         <label>Количество недель</label>
         <input type="number" id="num_weeks" min="1" max="30" required>
@@ -117,6 +127,7 @@
     function applyDefaults(resp) {
       var d = resp.defaults;
       document.getElementById('year').value          = d.year;
+      document.getElementById('course').value        = d.course;
       document.getElementById('semester').value      = d.semester;
       document.getElementById('num_weeks').value     = d.num_weeks;
       document.getElementById('days_per_week').value = d.days_per_week;
@@ -142,6 +153,7 @@
       status.textContent = 'Генерация… (пожалуйста, не закрывайте окно)';
       var payload = {
         year:          document.getElementById('year').value,
+        course:        document.getElementById('course').value,
         semester:      document.getElementById('semester').value,
         num_weeks:     document.getElementById('num_weeks').value,
         days_per_week: document.getElementById('days_per_week').value,
@@ -166,6 +178,9 @@
       status.className = 'ok';
       status.textContent =
         'Готово. Создано листов: ' + r.created.length + '\n' +
+        'Курс ' + r.course + ', семестр в году ' + r.semester_in_year +
+          ' (глобальный ' + r.global_semester + ' из 8)\n' +
+        'Учебный год: ' + r.academic_year + '\n' +
         'Старт семестра: ' + r.start_ddmmyyyy + ' (понедельник)\n\n' +
         'Звонки:\n  ' + r.bell.join('\n  ') + '\n\n' +
         'Листы:\n  ' + r.created.join('\n  ');
