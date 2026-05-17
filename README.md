@@ -671,7 +671,8 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
   "period_start": "13.04",
   "period_end": "05.05",
   "comment": "608 на 15.05",
-  "cancelled": false
+  "cancelled": false,
+  "google_sheet_id": "1AbCdEfGh..."
 }
 ```
 
@@ -694,6 +695,7 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 | `period_end` | `string` | ✓ | Дата конца периода (`"ДД.ММ"`) |
 | `comment` | `string` | ✓ | Комментарий |
 | `cancelled` | `bool` | — | Занятие отменено (`ОТМЕНА`) |
+| `google_sheet_id` | `string` | ✓ | ID Google таблицы-источника; нужен frontend для прямой ссылки на лист/таблицу |
 
 #### Enum: `type`
 
@@ -737,8 +739,9 @@ type Lesson struct {
     Frequency   *string `json:"frequency"`
     PeriodStart *string `json:"period_start"`
     PeriodEnd   *string `json:"period_end"`
-    Comment     *string `json:"comment"`
-    Cancelled   bool    `json:"cancelled"`
+    Comment       *string `json:"comment"`
+    Cancelled     bool    `json:"cancelled"`
+    GoogleSheetID *string `json:"google_sheet_id"`
 }
 
 type Group struct {

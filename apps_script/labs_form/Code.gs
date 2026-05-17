@@ -1049,7 +1049,7 @@ function pushSheet_(ws, meta, token) {
   var dateMatch = sheetName.match(/^([\d.]+\s*-\s*[\d.]+)/);
   var dateRange = dateMatch ? dateMatch[1] : '';
 
-  var lessons = parseWeekSheet_(ws, meta.groups, parseAcademicYear_(ws));
+  var lessons = parseWeekSheet_(ws, meta.groups, parseAcademicYear_(ws), ws.getParent().getId());
 
   var json = {
     name: sheetName,
@@ -1193,7 +1193,7 @@ function discoverGroups_(sheet) {
 /**
  * Парсит один лист-неделю.
  */
-function parseWeekSheet_(sheet, groups, academicYear) {
+function parseWeekSheet_(sheet, groups, academicYear, googleSheetId) {
   var lastRow = sheet.getLastRow();
   var lastCol = sheet.getLastColumn();
   if (lastRow < 6 || lastCol < 4) return [];
@@ -1280,6 +1280,7 @@ function parseWeekSheet_(sheet, groups, academicYear) {
           period_end: entry.period_end || null,
           comment: entry.comment || null,
           cancelled: entry.cancelled || false,
+          google_sheet_id: googleSheetId || null,
         });
       }
     }
