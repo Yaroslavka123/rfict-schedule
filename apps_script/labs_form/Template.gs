@@ -11,7 +11,9 @@
 //
 // Ограничения v1 (документируем явно):
 //   • Границы (borders) не захватываются — Apps Script не даёт публичного
-//     API для чтения. На наших листах кастомных границ нет.
+//     API для чтения. Применяются захардкоженным паттерном «сетка расписания»
+//     в applyDefaultBorders_ на основе ширины колонок/высоты строк шаблона
+//     (см. функцию ниже).
 //   • Условное форматирование не захватывается.
 //   • Data validations не захватываются.
 //   • Защиты листа (protections) не захватываются.
@@ -513,6 +515,87 @@ function applyTemplate_(sheet, template) {
   for (var j = 0; j < template.merges.length; j++) {
     var m = template.merges[j];
     sheet.getRange(m.row, m.col, m.num_rows, m.num_cols).merge();
+  }
+
+  // 8. Границы (захардкожены — Apps Script не даёт API для чтения borders).
+  applyDefaultBorders_(sheet, template);
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// applyDefaultBorders_ — захардкоженный паттерн «сетка расписания»
+//
+// Apps Script не отдаёт текущие границы ячеек через публичный API, поэтому
+// мы их не сохраняем в шаблоне, а восстанавливаем эвристикой по структуре:
+//
+//   • Шапка таблицы — строки 1..5 (frozen_rows): без границ от нас, оставляем
+//     то, что записано в исходных значениях.
+//   • Узкие строки высотой 21px ниже шапки — «серые разделители» между днями,
+//     своих границ не получают.
+//   • Узкие колонки шириной 21px начиная с col >= 4 — серые вертикальные
+//     полосы-разделители между блоками подгрупп; получают толстые вертикали
+//     по бокам внутри каждого блока дня.
+//   • Остальные строки группируются в «блоки дня» (подряд идущие
+//     не-разделители). Внутри блока — тонкая чёрная сетка на весь блок.
+//   • Сверху первой строки и снизу последней строки блока — толстая
+//     горизонталь на всю ширину.
+//
+// Это даёт визуальный паттерн исходного листа: тонкая сетка с толстыми
+// «рамками» вокруг блока дня и толстыми вертикалями вокруг серых
+// колонок-разделителей. Если макет шаблона поменяется — функция продолжит
+// работать корректно для любого варианта с такой же структурой узких
+// разделительных строк/колонок.
+// ──────────────────────────────────────────────────────────────────────────
+
+function applyDefaultBorders_(sheet, template) {
+  var BLACK = '#000000';
+  var THIN  = SpreadsheetApp.BorderStyle.SOLID;
+  var THICK = SpreadsheetApp.BorderStyle.SOLID_THICK;
+
+  var maxRows = template.max_rows;
+  var maxCols = template.max_cols;
+  var frozenRows = template.frozen_rows || 0;
+  var rowHeights = template.row_heights || [];
+  var colWidths  = template.col_widths  || [];
+
+  // Узкие разделительные строки ниже шапки.
+  var sepRowSet = {};
+  for (var r = frozenRows + 1; r <= maxRows; r++) {
+    if (rowHeights[r - 1] === 21) sepRowSet[r] = true;
+  }
+  // Узкие разделительные колонки в области данных (col >= 4 = после A/B/C).
+  var sepCols = [];
+  for (var c = 4; c <= maxCols; c++) {
+    if (colWidths[c - 1] === 21) sepCols.push(c);
+  }
+
+  // Группируем подряд идущие не-разделительные строки в «блоки дня».
+  var blocks = [];
+  var bStart = 0;
+  for (var rr = frozenRows + 1; rr <= maxRows; rr++) {
+    if (sepRowSet[rr]) {
+      if (bStart) { blocks.push({start: bStart, end: rr - 1}); bStart = 0; }
+    } else {
+      if (!bStart) bStart = rr;
+    }
+  }
+  if (bStart) blocks.push({start: bStart, end: maxRows});
+
+  for (var i = 0; i < blocks.length; i++) {
+    var b = blocks[i];
+    var h = b.end - b.start + 1;
+    var rng = sheet.getRange(b.start, 1, h, maxCols);
+
+    // Тонкая сетка по всему блоку.
+    rng.setBorder(true, true, true, true, true, true, BLACK, THIN);
+    // Толстый верх и низ блока (на всю ширину).
+    rng.setBorder(true, null, true, null, null, null, BLACK, THICK);
+
+    // Толстые вертикали по бокам серых колонок-разделителей внутри блока.
+    for (var j = 0; j < sepCols.length; j++) {
+      var sc = sepCols[j];
+      sheet.getRange(b.start, sc, h, 1)
+        .setBorder(null, true, null, true, null, null, BLACK, THICK);
+    }
   }
 }
 

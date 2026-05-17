@@ -44,13 +44,13 @@ function openSemesterGenerator() {
     );
     return;
   }
-  var html = HtmlService.createHtmlOutputFromFile('Generator')
+  var html = HtmlService.createHtmlOutputFromFile('GeneratorDialog')
     .setWidth(440)
     .setHeight(640);
   ui.showModalDialog(html, 'Генератор пустого семестра');
 }
 
-/** Возвращает дефолты + источник шаблона — вызывается из Generator.html при загрузке. */
+/** Возвращает дефолты + источник шаблона — вызывается из GeneratorDialog.html при загрузке. */
 function getGeneratorDefaults() {
   var now = new Date();
   var defaultYear = now.getFullYear();
