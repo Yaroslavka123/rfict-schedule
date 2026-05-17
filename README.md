@@ -58,34 +58,27 @@
                                                      │
                                           debounce 2 мин
                                                      │
-                          POST /api/v1/schedule (главный канал)
+                          POST /api/v1/schedule (единственный канал)
                                                      ▼
                                             ┌──────────────┐
-                                            │  Backend API  │  ← основное хранилище
+                                            │  Backend API  │  ← единственный источник правды
                                             │ rfict.up...   │     (расписание + план)
                                             └──────┬───────┘
                                                    ▼
                                            ┌──────────┐
-                                           │ React UI │ ← backend-first
+                                           │ React UI │
                                            └──────────┘
-
-                          [test-fallback] GitHub raw / public/schedule — только для разработки
 ```
 
-**Поток данных (production):**
+**Поток данных:**
 
-1. Пользователь заполняет расписание через sidebar-форму или напрямую в ячейках.
+1. Пользователь заполняет расписание через sidebar-форму или напрямую в ячейках Google Sheets.
 2. Apps Script (debounce 2 мин после последнего изменения) парсит таблицу и отправляет полное расписание в backend: `POST https://rfict.up.railway.app/api/v1/schedule`.
-3. Backend — основное хранилище: расписание + план (`planned_pairs` по предметам).
-4. Frontend читает расписание из `GET /api/v1/schedule?course=N` и план из `GET /api/v1/plan?course=N`.
+3. Backend — единственное хранилище: расписание + план (`planned_pairs` по предметам).
+4. Frontend читает расписание из `GET /api/v1/schedule?course=N` и план из `GET /api/v1/plan?course=N`. План редактируется через `PUT /api/v1/plan`.
 5. Для realtime backend должен отдавать SSE/WebSocket-канал или polling-version endpoint, чтобы frontend сразу refetch после обновления (см. [Backend handoff](docs/BACKEND_HANDOFF.md#обновления-с-минимальной-задержкой)).
 
-**GitHub и `public/schedule` — только тестовый fallback.** Используются, когда:
-
-- разработчик локально тестирует UI без поднятого backend;
-- backend временно недоступен и нужно убедиться, что страница вообще рендерится.
-
-Парсер по-прежнему пушит JSON в GitHub (это часть истории / удобство ручной проверки), но frontend в production должен всегда ходить в backend. GitHub-raw кэширует файлы несколько минут и не подходит как production-источник.
+> Frontend больше не использует GitHub raw или локальные JSON-фикстуры. Если `VITE_API_BASE_URL` недоступен — приложение покажет ошибку, никаких тихих fallback не будет.
 
 ---
 
@@ -101,11 +94,8 @@ rfict-schedule/
 ├── docs/
 │   ├── FRONTEND_GUIDE.md  # Запуск, env, структура и проверка React frontend
 │   └── BACKEND_HANDOFF.md # Справка для backend-команды
-├── public/
-│   └── schedule/
-│       └── course_{N}/    # JSON fallback по курсам (1-4), недели 1-14
 ├── src/                   # React/Vite/TypeScript frontend
-│   ├── api/               # Загрузка backend-first + JSON fallback
+│   ├── api/               # HTTP-клиент к backend API
 │   ├── components/        # Layout и UI-компоненты
 │   ├── features/          # Расписание, кабинеты, преподаватели, аналитика
 │   ├── hooks/
@@ -188,7 +178,7 @@ npm run preview
 
 ### 4 курса
 
-Каждый курс — отдельная Google таблица со своим Apps Script. Курс определяется автоматически из ячейки **A2** (формат: `N курс`). JSON пушится в папку `public/schedule/course_{N}/`.
+Каждый курс — отдельная Google таблица со своим Apps Script. Курс определяется автоматически из ячейки **A2** (формат: `N курс`). JSON отправляется в backend (`POST /api/v1/schedule`) и дополнительно пушится в `public/schedule/course_{N}/` в репозитории как git-снапшот истории (не используется фронтом в рантайме).
 
 Для добавления нового курса: скопируй Apps Script + настрой `GITHUB_TOKEN` в новой таблице.
 
@@ -534,19 +524,15 @@ React/Vite/TypeScript приложение. Вся пользовательск�
 
 ### Загрузка данных
 
-Frontend сначала пробует backend API:
+Фронт ходит **только в backend** — никаких GitHub raw / локальных JSON-фикстур больше нет.
 
 ```http
-GET {VITE_API_BASE_URL}/api/v1/schedule?course={course}&week={week}
+GET {VITE_API_BASE_URL}/api/v1/schedule?course={course}
+GET {VITE_API_BASE_URL}/api/v1/plan?course={course}
+PUT {VITE_API_BASE_URL}/api/v1/plan        # тело: { course, subject, planned_pairs }
 ```
 
-Если backend недоступен, используется JSON fallback:
-
-```text
-/schedule/course_{course}/{week}.json
-```
-
-Для минимальной задержки обновлений нужен backend endpoint событий или polling-version. Подробно: [`docs/BACKEND_HANDOFF.md`](docs/BACKEND_HANDOFF.md) и [`docs/FRONTEND_GUIDE.md`](docs/FRONTEND_GUIDE.md).
+Если `VITE_API_BASE_URL` недоступен — приложение показывает ошибку. Для минимальной задержки обновлений нужен backend endpoint событий (SSE/WebSocket) или polling-version. Подробно: [`docs/BACKEND_HANDOFF.md`](docs/BACKEND_HANDOFF.md) и [`docs/FRONTEND_GUIDE.md`](docs/FRONTEND_GUIDE.md).
 
 ---
 
@@ -919,7 +905,7 @@ https://api.github.com/repos/Yaroslavka123/rfict-schedule/contents/public/schedu
 | `GitHub API: 403` | Токен без прав `Contents: Read and write` — пересоздай PAT |
 | Расписание не обновляется | Проверь: 1) `GITHUB_TOKEN` в Script Properties, 2) триггер `onSheetEdit` в Triggers |
 | Отложенный экспорт не срабатывает | Проверь Executions (часы слева) — ищи `runDelayedExport_`. Удали мёртвые триггеры в Triggers |
-| Фронтенд не грузит данные | `raw.githubusercontent.com` кэширует ~5 мин. Подожди или очисти кэш браузера |
+| Фронтенд не грузит данные | Проверь `VITE_API_BASE_URL` и доступность `https://rfict.up.railway.app/api/v1/schedule?course=1` |
 | Хочу откатить скрипт | Apps Script → правый клик на `Code.gs` → «Удалить». Данные в таблице останутся |
 
 ---

@@ -54,7 +54,6 @@ export default function App() {
       onToggleTheme={toggleTheme}
       onRefresh={refresh}
       refreshing={loading}
-      source={schedule?.source ?? null}
       loadedAt={loadedAt}
     >
       <GlobalFilters

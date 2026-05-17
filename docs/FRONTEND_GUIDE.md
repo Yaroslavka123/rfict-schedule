@@ -13,7 +13,7 @@ Frontend — основное место для пользовательской
 - план-факт аналитика по предмету: план / в расписании / проведено + редактируемый план;
 - кнопка «Обновить» — пере-фетч расписания и плана через cache-busted запросы.
 
-Backend (rfict.up.railway.app) — основное хранилище и источник истины: расписание, план и события обновления. GitHub raw и `public/schedule/*.json` остаются только как тестовый fallback для разработки.
+Backend (`https://rfict.up.railway.app`) — **единственный источник истины** для расписания, плана и событий обновления. Фронт не использует GitHub raw или локальные JSON-фикстуры — если backend недоступен, приложение покажет ошибку.
 
 Для realtime backend должен отдавать SSE/WebSocket или version-endpoint — иначе frontend узнаёт о новом расписании только при ручном «Обновить».
 
@@ -114,56 +114,43 @@ http://localhost:4173
 
 ```bash
 VITE_API_BASE_URL=https://rfict.up.railway.app
-VITE_DATA_SOURCE=auto
 ```
 
 ### `VITE_API_BASE_URL`
 
-Backend base URL. Если переменная задана, frontend сначала пробует:
-
-```http
-GET {VITE_API_BASE_URL}/api/v1/schedule?course={course}&week={week}
-```
-
-Если backend недоступен или вернул ошибку, frontend автоматически берёт статический JSON:
-
-```text
-/schedule/course_{course}/{week}.json
-```
-
-Если переменная пустая, frontend сразу работает только со статическими JSON.
-
-### `VITE_DATA_SOURCE`
-
-Зарезервировано под будущий явный выбор источника данных. Сейчас основная логика выбора источника завязана на `VITE_API_BASE_URL`.
+Backend base URL. Если переменная не задана — используется default `https://rfict.up.railway.app`. Других источников данных нет: если backend недоступен, приложение покажет ошибку.
 
 ## Источники данных
 
-### Backend API
-
-Основной будущий источник данных:
+### Backend API (единственный)
 
 ```http
-GET /api/v1/schedule?course=1&week=1
+GET  /api/v1/schedule?course={course}     # расписание на все недели курса
+GET  /api/v1/plan?course={course}         # план по предметам курса
+PUT  /api/v1/plan                          # сохранить план: { course, subject, planned_pairs }
 ```
 
-Frontend принимает один из вариантов ответа:
+#### Ответ `/api/v1/schedule?course=N`
+
+Frontend принимает любой из вариантов:
 
 ```ts
-{
-  schedule: WeekSchedule
-}
+{ course: number, generated_at: string, groups: Group[], weeks: WeekSchedule[], lessons: Lesson[] }
 ```
 
 или:
 
 ```ts
-{
-  data: WeekSchedule
-}
+{ weeks: WeekSchedule[] }
 ```
 
-или сам `WeekSchedule`:
+или сразу массив недель:
+
+```ts
+WeekSchedule[]
+```
+
+Где `WeekSchedule`:
 
 ```ts
 {
@@ -178,21 +165,17 @@ Frontend принимает один из вариантов ответа:
 }
 ```
 
-### Static JSON fallback
+#### Ответ `/api/v1/plan?course=N`
 
-Текущий стабильный fallback:
-
-```text
-public/schedule/course_{N}/{week}.json
+```ts
+{ plan: { course: number, subject: string, planned_pairs: number }[] }
 ```
 
-Пример:
+или сразу массив:
 
-```text
-public/schedule/course_3/14.json
+```ts
+{ course: number, subject: string, planned_pairs: number }[]
 ```
-
-Fallback нужен, чтобы сайт не ломался, если backend временно недоступен. Но это не источник для мгновенных обновлений: GitHub/raw CDN может кэшировать JSON несколько минут.
 
 ## Минимальная задержка обновлений
 
@@ -247,7 +230,7 @@ https://docs.google.com/spreadsheets/d/{google_sheet_id}/edit
 ```text
 src/
 ├── api/
-│   └── scheduleClient.ts       # backend-first загрузка + JSON fallback
+│   └── scheduleClient.ts       # HTTP-клиент к backend API
 ├── components/
 │   ├── layout/                 # shell и глобальные фильтры
 │   └── ui/                     # базовые UI-компоненты
@@ -267,7 +250,7 @@ src/
 
 | Что нужно изменить | Файл |
 |---|---|
-| Загрузка расписания/API fallback | `src/api/scheduleClient.ts` |
+| Backend HTTP-клиент | `src/api/scheduleClient.ts` |
 | Типы расписания | `src/types/schedule.ts` |
 | Список курсов/недель/дней | `src/lib/constants.ts` |
 | Расчёты, группировки, аналитика | `src/lib/schedule.ts` |
@@ -308,9 +291,9 @@ npm run dev
 - главная страница открывается;
 - работает переключение светлой/тёмной темы;
 - работают вкладки `Расписание`, `Кабинеты`, `Преподаватели`, `Аналитика`;
-- работают фильтры курс/неделя/группа/тип/search;
-- если backend API недоступен, данные всё равно загружаются из JSON fallback;
-- если `VITE_API_BASE_URL` задан и backend отдаёт расписание, источник данных отображается как backend.
+- работают фильтры курс/неделя/группа/подгруппа/тип/search;
+- «Обновить» в шапке перезагружает расписание и план через cache-busted запросы к backend;
+- если backend недоступен — появляется экран ошибки (это ожидаемо, fallback'ов нет).
 
 ## Как проверить новый backend domain
 

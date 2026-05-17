@@ -1,7 +1,5 @@
 export type LessonType = 'lecture' | 'lab' | 'practice' | 'seminar' | 'curator_hour' | 'additional' | 'unknown'
 
-export type DataSource = 'backend' | 'github' | 'local'
-
 export interface ScheduleGroup {
   id: string
   name: string
@@ -48,7 +46,6 @@ export interface CourseSchedule {
   groups: ScheduleGroup[]
   weeks: WeekSchedule[]
   lessons: ScheduleLesson[]
-  source: DataSource
 }
 
 export interface FiltersState {
