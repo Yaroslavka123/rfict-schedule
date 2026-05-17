@@ -1,16 +1,55 @@
 # Запросы к backend-команде
 
-Frontend реализован backend-first: при наличии `VITE_API_BASE_URL` он сначала обращается к backend, а при ошибке использует JSON из `/public/schedule`.
+Frontend должен делать максимум возможного сам: фильтры, группировки, вычисление факта, кабинетную матрицу, преподавательские представления и большую часть аналитики. Backend нужен как стабильный источник данных, справочников, плановых показателей и событий обновления.
 
-## Контракт расписания
+## 1. Ответственность frontend
 
-Нужен endpoint:
+Frontend реализует без участия backend:
+
+- фильтры по курсу, неделе, группе, типу занятия, преподавателю, аудитории и поиску;
+- группировку расписания по дням, парам, группам, аудиториям, преподавателям;
+- матрицу занятости кабинетов;
+- поиск и карточки преподавателей;
+- подсчёт фактических часов/пар из `lessons[]` с учётом `duration` и `cancelled`;
+- сравнение план-факт, если backend отдаёт плановые показатели;
+- визуализацию графиков/таблиц/CSV-экспорт;
+- fallback на статические JSON из `/public/schedule`, если backend недоступен.
+
+## 2. Ответственность backend
+
+Backend должен хранить и отдавать только то, что frontend не должен держать локально:
+
+- расписание, полученное от parser-а;
+- справочники предметов, преподавателей, аудиторий и групп;
+- плановые показатели как справочник/таблицу планов;
+- `google_sheet_id` у занятий и плановых позиций;
+- события обновления расписания для polling/WebSocket.
+
+Backend repo `CourseJob` не меняется в этом frontend PR. Ниже — контракт, который нужно реализовать отдельно.
+
+## 3. Новый production domain
+
+Parser и frontend должны использовать backend:
+
+```text
+https://rfict.up.railway.app
+```
+
+В Apps Script parser-е это значение используется как default backend URL. При необходимости его можно переопределить через Script Properties:
+
+```text
+BACKEND_API_URL=https://rfict.up.railway.app
+```
+
+## 4. Расписание
+
+### Получить расписание
 
 ```http
 GET /api/v1/schedule?course=1&week=1
 ```
 
-Ответ должен соответствовать `WeekSchedule`:
+Ответ должен соответствовать текущему JSON parser-а:
 
 ```ts
 interface WeekSchedule {
@@ -25,27 +64,82 @@ interface WeekSchedule {
 }
 ```
 
-В `Lesson` frontend ожидает текущие поля parser-а плюс:
+`Lesson` должен включать все поля parser-а:
 
 ```ts
-google_sheet_id: string | null
+interface Lesson {
+  day: string
+  day_number: number
+  date: string | null
+  pair: number
+  duration: number
+  time: string
+  group: string
+  type: string
+  subject: string
+  teacher: string | null
+  room: string | null
+  subgroup: string | null
+  frequency: string | null
+  period_start: string | null
+  period_end: string | null
+  comment: string | null
+  cancelled: boolean
+  google_sheet_id: string | null
+}
 ```
 
-## План-факт
+### Принять расписание от parser-а
 
-Нужны endpoints:
+Parser уже отправляет расписание на:
 
 ```http
-GET /api/plan?course=1&semester=2
-PUT /api/plan
-GET /api/analytics/plan-fact?course=1&week=1
+POST /api/v1/schedule
 ```
 
-Минимальная сущность плана:
+Backend должен принять тот же `WeekSchedule`, сохранить его и вернуть `200` или `201`.
+
+## 5. Справочники
+
+Parser использует эти endpoints для autocomplete:
+
+```http
+GET /api/v1/subjects
+GET /api/v1/teachers
+GET /api/v1/rooms
+```
+
+Желательно добавить/поддержать:
+
+```http
+GET /api/v1/groups
+```
+
+Минимально frontend/parser ожидает массивы с названиями или текущий формат backend-а, который уже используется в Apps Script.
+
+## 6. Плановые показатели
+
+Плановые показатели можно хранить как backend-справочник. Frontend будет брать план, считать факт из расписания и строить план-факт самостоятельно.
+
+### Получить план
+
+```http
+GET /api/v1/plan?course=1&semester=2
+```
+
+### Сохранить план
+
+```http
+PUT /api/v1/plan
+```
+
+Минимальная сущность:
 
 ```ts
 interface PlanEntry {
+  id?: string
   course: number
+  semester: number
   group: string
   subgroup: string | null
   subject: string
@@ -56,18 +150,81 @@ interface PlanEntry {
 }
 ```
 
-## Обновления
+`planned_pairs` — план в парах. Если backend хочет хранить часы, нужно явно договориться о коэффициенте пересчёта, но для текущего UI удобнее пары.
 
-Для live-обновлений нужен один из вариантов:
+## 7. План-факт
 
-```http
-GET /api/v1/schedule/updates?since=...
+Backend не обязан считать план-факт, если отдаёт `schedule` и `plan`. Frontend может посчитать:
+
+```text
+actual_pairs = sum(duration) по lessons, где cancelled=false
+remaining_pairs = planned_pairs - actual_pairs
+progress_percent = actual_pairs / planned_pairs * 100
 ```
 
-или WebSocket:
+Опциональный endpoint, если backend-команда всё же хочет отдавать готовую агрегацию:
 
 ```http
+GET /api/v1/analytics/plan-fact?course=1&semester=2&week=1
+```
+
+Ответ:
+
+```ts
+interface PlanFactItem {
+  group: string
+  subgroup: string | null
+  subject: string
+  type: string
+  teacher: string | null
+  google_sheet_id: string | null
+  planned_pairs: number
+  actual_pairs: number
+  remaining_pairs: number
+  progress_percent: number
+}
+```
+
+## 8. Обновления
+
+Для live-обновлений достаточно polling:
+
+```http
+GET /api/v1/schedule/updates?since=2026-05-17T20:00:00.000Z
+```
+
+Ответ:
+
+```ts
+interface ScheduleUpdateEvent {
+  course: number
+  semester: number
+  week_number: number
+  date_range: string
+  generated_at: string
+  lessons_count: number
+}
+```
+
+WebSocket можно добавить позже:
+
+```text
 /ws/updates
 ```
 
-Событие должно содержать `course`, `week_number`, `date_range`, `generated_at`, `lessons_count`.
+## 9. Проверка parser-а
+
+Parser должен отправлять в backend JSON с:
+
+- `course`
+- `semester`
+- `week_number`
+- `date_range`
+- `groups[]`
+- `lessons[]`
+- `lessons[].date`
+- `lessons[].duration`
+- `lessons[].cancelled`
+- `lessons[].google_sheet_id`
+
+После отправки backend должен вернуть `200` или `201`; иначе parser пишет warning в Apps Script logs.
