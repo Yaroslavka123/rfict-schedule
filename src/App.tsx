@@ -1,5 +1,5 @@
 import { AlertCircle, Loader2 } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AppShell, type AppTab } from '@/components/layout/AppShell'
 import { GlobalFilters } from '@/components/layout/GlobalFilters'
@@ -15,7 +15,7 @@ import { applyLessonFilters, getWeekByNumber } from '@/lib/schedule'
 import type { FiltersState } from '@/types/schedule'
 
 const defaultFilters: FiltersState = {
-  course: 1,
+  course: 'all',
   week: 1,
   group: 'all',
   subgroup: 'all',
@@ -25,11 +25,11 @@ const defaultFilters: FiltersState = {
 
 export default function App() {
   const { theme, toggleTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState<AppTab>('schedule')
+  const [activeTab, setActiveTab] = useState<AppTab>('rooms')
   const [filters, setFilters] = useState<FiltersState>(defaultFilters)
   const [refreshKey, setRefreshKey] = useState(0)
   const debouncedSearch = useDebouncedValue(filters.search)
-  const { schedule, plan, loading, error, loadedAt, updatePlanEntry } = useCourseData(
+  const { schedule, plan, plans, loading, error, loadedAt, updatePlanEntry } = useCourseData(
     filters.course,
     refreshKey,
   )
@@ -48,6 +48,17 @@ export default function App() {
     return applyLessonFilters(schedule.lessons, schedule.groups, filters, debouncedSearch)
   }, [schedule, filters, debouncedSearch])
 
+  const tabClass = (tab: AppTab) =>
+    `tab-panel ${activeTab === tab ? 'tab-panel-active' : 'tab-panel-hidden'}`
+
+  const prevTab = useRef<AppTab>(activeTab)
+  useEffect(() => {
+    if (activeTab !== 'schedule' && filters.group === 'all' && filters.subgroup !== 'all') {
+      setFilters((current) => ({ ...current, subgroup: 'all' }))
+    }
+    prevTab.current = activeTab
+  }, [activeTab, filters.group, filters.subgroup])
+
   return (
     <AppShell
       activeTab={activeTab}
@@ -58,43 +69,56 @@ export default function App() {
       refreshing={loading}
       loadedAt={loadedAt}
     >
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div
+        className={`grid gap-3 transition-[grid-template-columns] duration-300 ease-out ${
+          activeTab === 'rooms'
+            ? 'lg:grid-cols-[minmax(0,1fr)_16rem]'
+            : 'lg:grid-cols-[minmax(0,1fr)_18rem]'
+        }`}
+      >
         <div className="min-w-0 space-y-3 lg:order-1">
           {loading && !schedule && <LoadingState />}
           {!loading && error && !schedule && <ErrorState error={error} />}
           {schedule && (
             <>
-              {activeTab === 'schedule' && (
+              <div className={tabClass('rooms')} aria-hidden={activeTab !== 'rooms'}>
+                <RoomsView
+                  weeks={schedule.weeks}
+                  groups={schedule.groups}
+                  selectedWeek={filters.week}
+                  onWeekChange={(week) => setFilters((current) => ({ ...current, week }))}
+                  search={debouncedSearch}
+                  lessonTypes={filters.lessonTypes}
+                />
+              </div>
+              <div className={tabClass('teachers')} aria-hidden={activeTab !== 'teachers'}>
+                <TeachersView lessons={filteredAllLessons} />
+              </div>
+              <div className={tabClass('analytics')} aria-hidden={activeTab !== 'analytics'}>
+                <AnalyticsView
+                  course={filters.course}
+                  groups={schedule.groups}
+                  lessons={schedule.lessons}
+                  plans={plans}
+                  flatPlan={plan}
+                  onPlanChange={updatePlanEntry}
+                  groupFilter={filters.group}
+                  subgroupFilter={filters.subgroup}
+                  search={debouncedSearch}
+                />
+              </div>
+              <div className={tabClass('schedule')} aria-hidden={activeTab !== 'schedule'}>
                 <ScheduleView
                   groups={schedule.groups}
                   lessons={filteredWeekLessons}
                   weekName={week?.name || `${filters.week}-я неделя`}
                   dateRange={week?.date_range || ''}
                 />
-              )}
-              {activeTab === 'rooms' && (
-                <RoomsView
-                  weeks={schedule.weeks}
-                  groups={schedule.groups}
-                  selectedWeek={filters.week}
-                  onWeekChange={(week) => setFilters((current) => ({ ...current, week }))}
-                />
-              )}
-              {activeTab === 'teachers' && <TeachersView lessons={filteredAllLessons} />}
-              {activeTab === 'analytics' && (
-                <AnalyticsView
-                  course={schedule.course}
-                  groups={schedule.groups}
-                  lessons={schedule.lessons}
-                  plan={plan}
-                  onPlanChange={updatePlanEntry}
-                  groupFilter={filters.group}
-                />
-              )}
+              </div>
             </>
           )}
         </div>
-        <aside className="lg:order-2 lg:sticky lg:top-12 lg:self-start">
+        <aside className="filter-sidebar lg:order-2 lg:sticky lg:top-12 lg:self-start">
           <GlobalFilters
             filters={filters}
             groups={schedule?.groups || []}

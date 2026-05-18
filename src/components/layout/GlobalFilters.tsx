@@ -7,11 +7,19 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input, Select } from '@/components/ui/input'
 import { COURSES, LESSON_TYPE_LABELS } from '@/lib/constants'
 import { getSubgroupsForGroup } from '@/lib/schedule'
-import type { FiltersState, LessonType, ScheduleGroup, ScheduleLesson, WeekSchedule } from '@/types/schedule'
+import type {
+  CourseSelection,
+  FiltersState,
+  LessonType,
+  ScheduleGroup,
+  ScheduleGroupWithCourse,
+  ScheduleLesson,
+  WeekSchedule,
+} from '@/types/schedule'
 
 interface GlobalFiltersProps {
   filters: FiltersState
-  groups: ScheduleGroup[]
+  groups: (ScheduleGroup | ScheduleGroupWithCourse)[]
   weeks: WeekSchedule[]
   lessons: ScheduleLesson[]
   activeTab: AppTab
@@ -36,7 +44,8 @@ export function GlobalFilters({ filters, groups, weeks, lessons, activeTab, onFi
 
   const showWeek = activeTab === 'schedule' || activeTab === 'rooms'
   const showSubgroup = filters.group !== 'all' && activeTab !== 'rooms'
-  const showTypes = activeTab === 'schedule' || activeTab === 'teachers'
+  const showTypes = activeTab === 'schedule' || activeTab === 'teachers' || activeTab === 'rooms'
+  const allowAllCourses = true
 
   const subgroupOptions = useMemo(() => {
     if (filters.group === 'all') return []
@@ -65,11 +74,14 @@ export function GlobalFilters({ filters, groups, weeks, lessons, activeTab, onFi
         <FilterRow label="Курс">
           <Select
             className="h-9 w-full text-sm"
-            value={filters.course}
-            onChange={(event) =>
-              onFiltersChange({ ...filters, course: Number(event.target.value), group: 'all', subgroup: 'all' })
-            }
+            value={filters.course === 'all' ? 'all' : String(filters.course)}
+            onChange={(event) => {
+              const raw = event.target.value
+              const next: CourseSelection = raw === 'all' ? 'all' : Number(raw)
+              onFiltersChange({ ...filters, course: next, group: 'all', subgroup: 'all' })
+            }}
           >
+            {allowAllCourses && <option value="all">Все курсы</option>}
             {COURSES.map((course) => (
               <option key={course} value={course}>
                 {course} курс
@@ -85,12 +97,15 @@ export function GlobalFilters({ filters, groups, weeks, lessons, activeTab, onFi
             onChange={(event) => setFilter('group', event.target.value)}
           >
             <option value="all">Все группы</option>
-            {groups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-                {group.department ? ` · ${group.department}` : ''}
-              </option>
-            ))}
+            {groups.map((group) => {
+              const withCourse = group as ScheduleGroupWithCourse
+              return (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                  {withCourse.course ? ` · ${withCourse.course} курс` : group.department ? ` · ${group.department}` : ''}
+                </option>
+              )
+            })}
           </Select>
         </FilterRow>
 

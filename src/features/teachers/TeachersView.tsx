@@ -1,252 +1,264 @@
-import { AlertTriangle, Search } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { DAY_ORDER, PAIRS } from '@/lib/constants'
-import {
-  buildTeacherSummaries,
-  getPairRange,
-  getTeacherLessonAt,
-  groupLessonsByDay,
-  normalizeRoom,
-  type TeacherSummary,
-} from '@/lib/schedule'
-import { cn, normalizeForTeacherSearch, pluralPair } from '@/lib/utils'
-import type { ScheduleLesson } from '@/types/schedule'
+import { Card, CardContent } from '@/components/ui/card'
+import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
+import { normalizeRoom, normalizeTeacherName } from '@/lib/schedule'
+import { cn } from '@/lib/utils'
+import type { LessonType, ScheduleLesson } from '@/types/schedule'
 
 interface TeachersViewProps {
   lessons: ScheduleLesson[]
 }
 
+interface TeacherSlot {
+  subject: string
+  group: string
+  room: string
+  type: LessonType
+  subgroup: string
+  time: string
+  pair: number
+  cancelled: boolean
+  course?: number
+}
+
+const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+
+/**
+ * Teacher matrix view — same shape as the rooms matrix, but the columns are
+ * teachers and the cells show which room(s) the teacher is in for that
+ * day/pair. The hover tooltip exposes full lesson details.
+ */
 export function TeachersView({ lessons }: TeachersViewProps) {
-  const [query, setQuery] = useState('')
-  const [selectedKey, setSelectedKey] = useState<string | null>(null)
-  const teachers = useMemo(() => buildTeacherSummaries(lessons), [lessons])
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; entries: TeacherSlot[]; teacher: string } | null>(
+    null,
+  )
 
-  const filteredTeachers = useMemo(() => {
-    const q = normalizeForTeacherSearch(query)
-    if (!q) return teachers
-    return teachers.filter((teacher) => teacher.searchKey.includes(q))
-  }, [teachers, query])
+  const { occupancy, orderedTeachers } = useMemo(() => buildTeacherOccupancy(lessons), [lessons])
 
+  const wrapRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
-    if (filteredTeachers.length === 0) {
-      setSelectedKey(null)
-      return
+    const el = wrapRef.current
+    if (!el) return
+    const calc = () => {
+      const cols = orderedTeachers.length
+      if (cols === 0) return
+      const gutters = 64
+      const usable = el.clientWidth - gutters
+      const target = Math.max(36, Math.min(80, usable / cols))
+      el.style.setProperty('--room-cell-size', `${target}px`)
+      el.style.setProperty('--room-cell-min', `${Math.max(36, target - 8)}px`)
+      el.style.setProperty('--room-cell-max', `${target + 18}px`)
     }
-    if (!selectedKey || !filteredTeachers.find((teacher) => teacher.teacher === selectedKey)) {
-      setSelectedKey(filteredTeachers[0].teacher)
+    calc()
+    const obs = new ResizeObserver(calc)
+    obs.observe(el)
+    window.addEventListener('resize', calc)
+    return () => {
+      obs.disconnect()
+      window.removeEventListener('resize', calc)
     }
-  }, [filteredTeachers, selectedKey])
+  }, [orderedTeachers.length])
 
-  const selectedTeacher =
-    filteredTeachers.find((teacher) => teacher.teacher === selectedKey) || filteredTeachers[0] || null
+  if (orderedTeachers.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">
+          По текущим фильтрам преподаватели не найдены.
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const showTooltip = (
+    event: React.MouseEvent<HTMLTableCellElement>,
+    entries: TeacherSlot[],
+    teacher: string,
+  ) => {
+    setTooltip({ x: event.clientX + 12, y: event.clientY + 12, entries, teacher })
+  }
+
+  const hideTooltip = () => setTooltip(null)
 
   return (
-    <div className="grid gap-5 xl:grid-cols-teachers">
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <CardTitle>Преподаватели</CardTitle>
-          <div className="relative mt-3">
-            <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="ФИО, должность или кабинет"
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="max-h-teacher-list space-y-2 overflow-auto">
-          {filteredTeachers.length === 0 && (
-            <p className="py-4 text-center text-sm text-muted-foreground">Никого не найдено.</p>
-          )}
-          {filteredTeachers.map((teacher) => {
-            const active = teacher.teacher === selectedTeacher?.teacher
-            return (
-              <button
-                key={teacher.teacher}
-                type="button"
-                onClick={() => setSelectedKey(teacher.teacher)}
-                className={cn(
-                  'w-full rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-primary/40',
-                  active
-                    ? 'border-primary bg-primary/15 text-foreground shadow-sm'
-                    : 'border-border bg-background/70 hover:border-primary/40 hover:bg-muted/40',
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className={cn('truncate font-semibold', active && 'text-primary')}>
-                      {teacher.teacher}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{pluralPair(teacher.totalPairs)}</p>
-                    {teacher.rooms.length > 0 && (
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        Кабинеты: {teacher.rooms.slice(0, 6).join(', ')}
-                        {teacher.rooms.length > 6 ? '…' : ''}
-                      </p>
-                    )}
-                  </div>
-                  {teacher.conflicts.length > 0 && (
-                    <Badge tone="red">{teacher.conflicts.length} конфликт</Badge>
-                  )}
-                </div>
-              </button>
-            )
-          })}
-        </CardContent>
-      </Card>
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-sm font-semibold text-muted-foreground">Преподаватели</h2>
+        <span className="text-xs text-muted-foreground">
+          {orderedTeachers.length} {plural(orderedTeachers.length, 'преподаватель', 'преподавателя', 'преподавателей')}
+        </span>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{selectedTeacher ? selectedTeacher.teacher : 'Выберите преподавателя'}</CardTitle>
-          {selectedTeacher && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Badge tone="blue">{pluralPair(selectedTeacher.totalPairs)}</Badge>
-              {selectedTeacher.conflicts.length > 0 && (
-                <Badge tone="red">
-                  <AlertTriangle className="mr-1 h-3 w-3" />
-                  Есть конфликты
-                </Badge>
-              )}
-              {selectedTeacher.rooms.length > 0 && (
-                <Badge tone="muted">Кабинеты: {selectedTeacher.rooms.join(', ')}</Badge>
-              )}
-            </div>
-          )}
-        </CardHeader>
-        <CardContent>
-          {selectedTeacher ? (
-            <TeacherSchedule summary={selectedTeacher} />
-          ) : (
-            <p className="text-muted-foreground">Нет данных по преподавателю.</p>
-          )}
-        </CardContent>
-      </Card>
+      <div className="room-matrix-wrap" ref={wrapRef}>
+        <table className="room-matrix" onMouseLeave={hideTooltip}>
+          <thead>
+            <tr>
+              <th className="th-day">Д</th>
+              <th className="th-pair">П</th>
+              {orderedTeachers.map((teacher) => (
+                <th
+                  key={teacher}
+                  className="th-room text-[10px] text-foreground/80"
+                  title={teacher}
+                >
+                  {shortenTeacher(teacher)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {DAYS.map((day, dayIndex) =>
+              PAIRS.map((pair) => (
+                <tr key={`${day}-${pair}`} className={pair === 1 && dayIndex > 0 ? 'day-separator' : ''}>
+                  {pair === 1 && (
+                    <td className="td-day" rowSpan={8}>
+                      {day}
+                    </td>
+                  )}
+                  <td className="td-pair" title={PAIR_TIMES[pair]}>
+                    {pair}
+                  </td>
+                  {orderedTeachers.map((teacher) => {
+                    const entries = occupancy[teacher]?.[day]?.[pair] || []
+                    if (entries.length === 0) {
+                      return <td key={teacher} className="slot-cell slot-free" />
+                    }
+                    const allCancelled = entries.every((entry) => entry.cancelled)
+                    const types = Array.from(new Set(entries.map((e) => e.type)))
+                    const typeClass = allCancelled
+                      ? 'slot-cancelled'
+                      : types.length > 1
+                      ? 'slot-type-multi'
+                      : `slot-type-${types[0] || 'unknown'}`
+                    const rooms = Array.from(new Set(entries.map((e) => e.room).filter(Boolean)))
+                    return (
+                      <td
+                        key={teacher}
+                        className={cn('slot-cell slot-busy', typeClass)}
+                        onMouseEnter={(event) => showTooltip(event, entries, teacher)}
+                        onMouseMove={(event) => showTooltip(event, entries, teacher)}
+                        onMouseLeave={hideTooltip}
+                      >
+                        <div className="slot-content">
+                          <div className={cn('slot-main', allCancelled && 'line-through')}>
+                            {rooms[0] || '—'}
+                          </div>
+                          {rooms.length > 1 && <div className="slot-meta">+{rooms.length - 1}</div>}
+                        </div>
+                        {rooms.length > 1 && (
+                          <span className="slot-badge slot-badge-group" title={`Кабинетов: ${rooms.length}`}>
+                            {rooms.length}
+                          </span>
+                        )}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )),
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {tooltip && <TeacherTooltip x={tooltip.x} y={tooltip.y} entries={tooltip.entries} teacher={tooltip.teacher} />}
     </div>
   )
 }
 
-function TeacherSchedule({ summary }: { summary: TeacherSummary }) {
-  const byDay = groupLessonsByDay(summary.lessons)
-  const [hover, setHover] = useState<{
-    x: number
-    y: number
-    day: string
-    pair: number
-    items: ScheduleLesson[]
-  } | null>(null)
-
+function TeacherTooltip({
+  x,
+  y,
+  entries,
+  teacher,
+}: {
+  x: number
+  y: number
+  entries: TeacherSlot[]
+  teacher: string
+}) {
   return (
-    <div className="space-y-5">
-      <div
-        className="relative grid grid-cols-7 gap-1 rounded-2xl border border-border bg-muted p-2"
-        onMouseLeave={() => setHover(null)}
-      >
-        {DAY_ORDER.map((day) => (
-          <div key={day} className="text-center text-xs font-semibold text-muted-foreground">
-            {day}
+    <div
+      className="slot-tooltip pointer-events-none fixed z-50 max-w-xs rounded-lg border border-border px-3 py-2 text-xs shadow-xl"
+      style={{ left: x, top: y }}
+    >
+      <div className="mb-1 font-bold text-primary">{teacher}</div>
+      {entries.map((entry, idx) => (
+        <div key={idx}>
+          {idx > 0 && <hr className="my-1.5 border-border" />}
+          <div className={cn('font-bold', entry.cancelled ? 'text-red-500 line-through' : 'text-foreground')}>
+            {entry.subject || '—'}
           </div>
-        ))}
-        {PAIRS.flatMap((pair) =>
-          DAY_ORDER.map((day) => {
-            const items = getTeacherLessonAt(summary.lessons, day, pair)
-            const busy = items.length > 0
-            return (
-              <div
-                key={`${day}-${pair}`}
-                className={busy ? 'teacher-busy-cell' : 'teacher-free-cell'}
-                onMouseEnter={
-                  busy
-                    ? (event) =>
-                        setHover({
-                          x: event.clientX + 12,
-                          y: event.clientY + 12,
-                          day,
-                          pair,
-                          items,
-                        })
-                    : undefined
-                }
-                onMouseMove={
-                  busy
-                    ? (event) =>
-                        setHover((prev) =>
-                          prev && prev.day === day && prev.pair === pair
-                            ? { ...prev, x: event.clientX + 12, y: event.clientY + 12 }
-                            : { x: event.clientX + 12, y: event.clientY + 12, day, pair, items },
-                        )
-                    : undefined
-                }
-                onMouseLeave={busy ? () => setHover(null) : undefined}
-              >
-                {pair}
-              </div>
-            )
-          }),
-        )}
-        {hover && <BusyTooltip {...hover} />}
-      </div>
-      {byDay.map((day) => (
-        <div key={day.day}>
-          <h3 className="mb-2 text-sm font-semibold text-muted-foreground">{day.day}</h3>
-          <div className="space-y-2">
-            {day.lessons.map((lesson, index) => (
-              <div
-                key={`${lesson.day}-${lesson.pair}-${index}`}
-                className={cn(
-                  'rounded-xl border border-border bg-background/70 p-3',
-                  lesson.cancelled && 'border-red-500/40 bg-red-500/10',
-                )}
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone="muted">{getPairRange(lesson)} пара</Badge>
-                  <p className={cn('font-semibold', lesson.cancelled && 'text-red-500 line-through')}>
-                    {lesson.subject}
-                  </p>
-                  {lesson.cancelled && (
-                    <span className="text-xs font-semibold text-red-500">отменена</span>
-                  )}
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {lesson.group} · {normalizeRoom(lesson.room) || 'аудитория не указана'} · {lesson.time}
-                </p>
-              </div>
-            ))}
+          <div className="text-amber-500">Кабинет: {entry.room || '—'}</div>
+          <div className="text-emerald-400">
+            Группа: {entry.group}
+            {entry.subgroup ? ` ${formatSubgroup(entry.subgroup)}` : ''}
           </div>
+          {entry.course !== undefined && (
+            <div className="text-sky-400">{entry.course} курс</div>
+          )}
+          <div className="text-purple-400">{LESSON_TYPE_LABELS[entry.type] || entry.type}</div>
+          <div className="text-muted-foreground">{entry.time}</div>
+          {entry.cancelled && <div className="font-semibold text-red-500">Пара отменена</div>}
         </div>
       ))}
     </div>
   )
 }
 
-function BusyTooltip({
-  x,
-  y,
-  items,
-}: {
-  x: number
-  y: number
-  day: string
-  pair: number
-  items: ScheduleLesson[]
-}) {
-  const rooms = Array.from(
-    new Set(items.map((lesson) => normalizeRoom(lesson.room)).filter(Boolean)),
-  )
-  const groups = Array.from(new Set(items.map((lesson) => lesson.group)))
-  const subjects = Array.from(new Set(items.map((lesson) => lesson.subject)))
-  return (
-    <div
-      className="slot-tooltip pointer-events-none fixed z-50 max-w-xs rounded-lg border border-border px-3 py-2 text-xs shadow-xl"
-      style={{ left: x, top: y }}
-    >
-      <div className="font-bold text-primary">{subjects.join(' · ') || '—'}</div>
-      <div className="text-amber-500">Кабинет: {rooms.length > 0 ? rooms.join(', ') : '—'}</div>
-      <div className="text-emerald-400">Группы: {groups.length > 0 ? groups.join(', ') : '—'}</div>
-    </div>
-  )
+function formatSubgroup(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  if (/\d/.test(trimmed)) return `${trimmed.replace(/\s+/g, '')} пг`
+  return trimmed
 }
+
+function shortenTeacher(teacher: string): string {
+  const parts = teacher.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    const initials = parts.slice(1).map((p) => `${p[0]}.`).join('')
+    return `${parts[0]} ${initials}`.trim()
+  }
+  return teacher
+}
+
+function plural(value: number, one: string, few: string, many: string) {
+  const abs = Math.abs(value)
+  const mod10 = abs % 10
+  const mod100 = abs % 100
+  if (mod10 === 1 && mod100 !== 11) return one
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few
+  return many
+}
+
+function buildTeacherOccupancy(lessons: ScheduleLesson[]) {
+  const occupancy: Record<string, Record<string, Record<number, TeacherSlot[]>>> = {}
+  lessons.forEach((lesson) => {
+    const teacher = normalizeTeacherName(lesson.teacher)
+    if (!teacher) return
+    if (!occupancy[teacher]) occupancy[teacher] = {}
+    const day = lesson.day
+    if (!occupancy[teacher][day]) occupancy[teacher][day] = {}
+    const duration = Math.max(lesson.duration || 1, 1)
+    for (let p = lesson.pair; p < lesson.pair + duration; p += 1) {
+      if (!occupancy[teacher][day][p]) occupancy[teacher][day][p] = []
+      occupancy[teacher][day][p].push({
+        subject: lesson.subject || '',
+        group: lesson.group,
+        room: normalizeRoom(lesson.room),
+        type: lesson.type,
+        subgroup: lesson.subgroup || '',
+        time: PAIR_TIMES[p] || '',
+        pair: p,
+        cancelled: Boolean(lesson.cancelled),
+        course: lesson.course_number,
+      })
+    }
+  })
+
+  const orderedTeachers = Object.keys(occupancy).sort((a, b) =>
+    a.localeCompare(b, 'ru', { numeric: true }),
+  )
+  return { occupancy, orderedTeachers }
+}
+
+

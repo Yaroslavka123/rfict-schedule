@@ -18,10 +18,10 @@ interface AppShellProps {
 }
 
 const tabs = [
-  { id: 'schedule' as const, label: 'Расписание', icon: CalendarDays },
   { id: 'rooms' as const, label: 'Кабинеты', icon: DoorOpen },
   { id: 'teachers' as const, label: 'Преподаватели', icon: GraduationCap },
   { id: 'analytics' as const, label: 'План-факт', icon: BarChart3 },
+  { id: 'schedule' as const, label: 'Расписание', icon: CalendarDays },
 ]
 
 export function AppShell({ activeTab, onTabChange, theme, onToggleTheme, onRefresh, refreshing, loadedAt, children }: AppShellProps) {
@@ -46,15 +46,27 @@ export function AppShell({ activeTab, onTabChange, theme, onToggleTheme, onRefre
                   key={tab.id}
                   type="button"
                   className={cn(
-                    'inline-flex items-center gap-1 whitespace-nowrap rounded-md border-b-2 px-2 py-1 text-xs font-semibold transition',
+                    'group relative inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold transition-all duration-300 ease-out',
                     activeTab === tab.id
-                      ? 'border-primary bg-primary/10 text-foreground'
-                      : 'border-transparent text-muted-foreground hover:text-foreground',
+                      ? 'bg-primary/10 text-foreground scale-[1.02]'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
                   )}
                   onClick={() => onTabChange(tab.id)}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon
+                    className={cn(
+                      'h-3.5 w-3.5 transition-transform duration-300 ease-out',
+                      activeTab === tab.id ? 'rotate-0 scale-110 text-primary' : 'rotate-0',
+                    )}
+                  />
                   {tab.label}
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'absolute inset-x-1 -bottom-0.5 h-0.5 rounded-full bg-primary transition-all duration-300 ease-out',
+                      activeTab === tab.id ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0',
+                    )}
+                  />
                 </button>
               )
             })}

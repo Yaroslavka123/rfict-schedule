@@ -97,13 +97,35 @@
   .type-additional { @apply bg-purple-500/15 text-purple-400; }
   .type-unknown { @apply bg-muted text-muted-foreground; }
 
-  /* Room matrix */
+  /* Tab panels (animated reveal) */
+  .tab-panel {
+    @apply transition-all duration-300 ease-out;
+  }
+  .tab-panel-active {
+    @apply block opacity-100 translate-y-0;
+  }
+  .tab-panel-hidden {
+    display: none;
+  }
+
+  /* Filter sidebar transition */
+  .filter-sidebar {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Room matrix
+   * Adaptive square cells, viewport-fill, sticky day/pair gutters,
+   * lesson-type colored backgrounds with subtle category banding.
+   */
   .room-matrix-wrap {
-    @apply max-h-[calc(100vh-12rem)] w-full overflow-auto rounded-lg border border-border bg-card;
+    @apply w-full overflow-auto rounded-lg border border-border bg-card transition-all duration-300 ease-out;
+    height: calc(100vh - 9.5rem);
+    max-height: calc(100vh - 9.5rem);
   }
 
   .room-matrix {
-    @apply w-full table-fixed border-collapse text-xs;
+    @apply w-full border-collapse text-[11px];
+    height: 100%;
   }
 
   .room-matrix th,
@@ -116,15 +138,17 @@
   }
 
   .room-matrix .th-day {
-    @apply sticky left-0 z-40 w-7 min-w-[1.75rem] bg-muted;
+    @apply sticky left-0 z-40 w-8 min-w-[2rem] bg-muted;
   }
 
   .room-matrix .th-pair {
-    @apply sticky left-[1.75rem] z-40 w-7 min-w-[1.75rem] bg-muted;
+    @apply sticky left-8 z-40 w-8 min-w-[2rem] bg-muted;
   }
 
   .room-matrix .th-room {
-    @apply min-w-0 w-auto px-0.5 text-[10px] leading-none;
+    @apply px-0.5 text-[10px] leading-none align-middle;
+    min-width: var(--room-cell-min, 2.5rem);
+    width: auto;
   }
 
   .room-matrix .th-cat-lecture-hall { @apply text-amber-500; }
@@ -132,11 +156,11 @@
   .room-matrix .th-cat-regular { @apply text-emerald-500; }
 
   .room-matrix .td-day {
-    @apply sticky left-0 z-20 w-7 min-w-[1.75rem] bg-card text-center align-middle text-sm font-bold text-foreground;
+    @apply sticky left-0 z-20 w-8 min-w-[2rem] bg-card text-center align-middle text-sm font-bold text-foreground;
   }
 
   .room-matrix .td-pair {
-    @apply sticky left-[1.75rem] z-20 w-7 min-w-[1.75rem] bg-card text-center align-middle text-xs font-bold text-muted-foreground;
+    @apply sticky left-8 z-20 w-8 min-w-[2rem] bg-card text-center align-middle text-xs font-bold text-muted-foreground;
   }
 
   .room-matrix tr.day-separator > td {
@@ -147,43 +171,107 @@
     @apply border-l-2 border-l-primary/40;
   }
 
-  .slot-free {
-    @apply h-9 min-w-0 bg-transparent;
+  /* Subtle banding per category so lecture halls / computer labs / regular rooms
+   * are visually distinct even on empty slots. */
+  .room-matrix .cat-bg-lecture-hall { background-color: hsl(38 90% 50% / 0.04); }
+  .room-matrix .cat-bg-computer     { background-color: hsl(200 90% 50% / 0.04); }
+  .room-matrix .cat-bg-regular      { background-color: hsl(150 60% 45% / 0.03); }
+  .dark .room-matrix .cat-bg-lecture-hall { background-color: hsl(38 90% 55% / 0.08); }
+  .dark .room-matrix .cat-bg-computer     { background-color: hsl(200 90% 55% / 0.08); }
+  .dark .room-matrix .cat-bg-regular      { background-color: hsl(150 60% 50% / 0.06); }
+
+  .slot-cell {
+    @apply relative min-w-0 transition-all duration-200 ease-out;
+    height: var(--room-cell-size, 3rem);
+    width: var(--room-cell-size, 3rem);
+    min-width: var(--room-cell-min, 2.5rem);
+    max-width: var(--room-cell-max, 4.5rem);
+    padding: 1px;
   }
 
+  .slot-free {
+    background: transparent;
+  }
+  .slot-free:hover { background-color: hsl(var(--muted) / 0.4); }
+
   .slot-busy {
-    @apply relative h-9 min-w-0 cursor-help overflow-hidden p-0.5 text-[10px] leading-tight;
+    @apply cursor-help overflow-hidden text-[10px] leading-tight;
+  }
+
+  .slot-busy:hover {
+    @apply ring-2 ring-primary/60 z-10 scale-[1.02];
   }
 
   .slot-busy .slot-content {
-    @apply flex h-full flex-col justify-center;
+    @apply flex h-full w-full flex-col items-center justify-center text-center px-0.5;
   }
 
-  .slot-main { @apply truncate font-bold; }
-  .slot-meta { @apply truncate text-[9px] opacity-80; }
+  .slot-main {
+    @apply truncate font-semibold w-full;
+    font-size: clamp(8px, 0.9vw, 11px);
+  }
+  .slot-meta {
+    @apply truncate w-full opacity-80;
+    font-size: clamp(7px, 0.7vw, 9px);
+  }
+
+  /* Hide text and show only color at very small cell sizes */
+  @media (max-width: 1280px) {
+    .slot-meta { display: none; }
+  }
+  @media (max-width: 1024px) {
+    .slot-main { display: none; }
+  }
 
   .slot-badge {
-    @apply pointer-events-none absolute inline-flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full px-1 text-[9px] font-bold text-white;
+    @apply pointer-events-none absolute inline-flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full px-1 text-[9px] font-bold text-white shadow-md;
   }
   .slot-badge-teacher { @apply right-0.5 top-0.5 bg-sky-500; }
   .slot-badge-group { @apply right-0.5 bottom-0.5 bg-emerald-500; }
 
-  .slot-lecture-hall { @apply bg-amber-500/15 text-amber-500; }
-  .slot-computer { @apply bg-sky-500/15 text-sky-500; }
-  .slot-regular { @apply bg-emerald-500/15 text-emerald-500; }
-  .slot-multi { @apply bg-purple-500/20 text-purple-400; }
-  .slot-cancelled { @apply bg-red-500/20 text-red-500; }
+  /* Lesson-type backgrounds (these win over category banding because they are set
+   * directly on the cell.) */
+  .slot-type-lecture     { background-color: hsl(160 70% 45% / 0.30); color: hsl(160 70% 30%); }
+  .slot-type-lab         { background-color: hsl(38  92% 50% / 0.35); color: hsl(28  90% 40%); }
+  .slot-type-practice    { background-color: hsl(210 90% 55% / 0.30); color: hsl(210 90% 40%); }
+  .slot-type-seminar     { background-color: hsl(220 14% 55% / 0.30); color: hsl(220 14% 35%); }
+  .slot-type-curator_hour,
+  .slot-type-additional  { background-color: hsl(280 70% 60% / 0.30); color: hsl(280 70% 40%); }
+  .slot-type-unknown     { background-color: hsl(220 14% 55% / 0.18); color: hsl(220 14% 40%); }
+  .slot-type-multi       { background-color: hsl(280 80% 60% / 0.30); color: hsl(280 80% 40%); }
+
+  .dark .slot-type-lecture     { background-color: hsl(160 70% 45% / 0.30); color: hsl(160 70% 70%); }
+  .dark .slot-type-lab         { background-color: hsl(38  92% 50% / 0.35); color: hsl(38  92% 65%); }
+  .dark .slot-type-practice    { background-color: hsl(210 90% 55% / 0.30); color: hsl(210 90% 75%); }
+  .dark .slot-type-seminar     { background-color: hsl(220 14% 60% / 0.30); color: hsl(220 14% 80%); }
+  .dark .slot-type-curator_hour,
+  .dark .slot-type-additional  { background-color: hsl(280 70% 60% / 0.30); color: hsl(280 70% 75%); }
+  .dark .slot-type-multi       { background-color: hsl(280 80% 60% / 0.35); color: hsl(280 80% 80%); }
+
+  /* Cancelled — bright red, wins over type colour */
+  .slot-cancelled {
+    background-color: hsl(0 90% 55%) !important;
+    color: #fff !important;
+  }
+  .slot-cancelled .slot-main,
+  .slot-cancelled .slot-meta { color: #fff !important; }
 
   .slot-tooltip {
     background-color: hsl(var(--popover));
     backdrop-filter: none;
     opacity: 1;
+    animation: fadeIn 0.15s ease-out;
   }
 
-  /* Teacher cells */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-2px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Teacher cells (matrix view) — mirrors room cells */
   .teacher-busy-cell,
   .teacher-free-cell {
-    @apply flex h-8 items-center justify-center rounded text-xs font-bold;
+    @apply flex items-center justify-center rounded text-xs font-bold;
   }
 
   .teacher-busy-cell {
@@ -192,5 +280,13 @@
 
   .teacher-free-cell {
     @apply bg-muted text-muted-foreground;
+  }
+
+  /* Accordion sections (Plan-fact) */
+  .accordion-trigger {
+    @apply flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition-all duration-200 ease-out hover:bg-muted/50;
+  }
+  .accordion-content {
+    @apply overflow-hidden transition-all duration-300 ease-out;
   }
 }

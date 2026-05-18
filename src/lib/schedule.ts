@@ -10,7 +10,9 @@ import type {
   CourseSchedule,
   FiltersState,
   LessonType,
+  MergedSchedule,
   ScheduleGroup,
+  ScheduleGroupWithCourse,
   ScheduleLesson,
   SubgroupParity,
   SubjectPlanGroup,
@@ -33,17 +35,23 @@ export function getGoogleSheetUrl(lesson: Pick<ScheduleLesson, 'google_sheet_id'
   return `https://docs.google.com/spreadsheets/d/${lesson.google_sheet_id}/edit`
 }
 
-export function getGroupNameById(groups: ScheduleGroup[], groupId: string) {
+export function getGroupNameById(
+  groups: (ScheduleGroup | ScheduleGroupWithCourse)[],
+  groupId: string,
+) {
   return groups.find((group) => group.id === groupId)?.name || `Группа ${groupId}`
 }
 
-export function getWeekByNumber(course: CourseSchedule, week: number): WeekSchedule | null {
+export function getWeekByNumber(
+  course: CourseSchedule | MergedSchedule,
+  week: number,
+): WeekSchedule | null {
   return course.weeks.find((entry) => entry.week_number === week) || null
 }
 
 export function applyLessonFilters(
   lessons: ScheduleLesson[],
-  groups: ScheduleGroup[],
+  groups: (ScheduleGroup | ScheduleGroupWithCourse)[],
   filters: FiltersState,
   search: string,
 ) {
@@ -392,4 +400,182 @@ export function statusColor(cell: AnalyticsCell): 'green' | 'orange' | 'red' | '
 export function progress(cell: AnalyticsCell): number {
   if (cell.planned === null || cell.planned <= 0) return 0
   return Math.round((cell.done / cell.planned) * 100)
+}
+
+/**
+ * Course-first hierarchy used by Plan-Fact view:
+ *   Course → Group → Subgroup → Subject
+ *
+ * Plans are scoped per course (resolved from `plans[course]`), and each
+ * subgroup carries its own scheduled/done counters plus chetnost parity.
+ */
+export interface PlanFactSubject {
+  subject: string
+  parity: SubgroupParity
+  cell: AnalyticsCell
+}
+
+export interface PlanFactSubgroup {
+  subgroup: string | null
+  subjects: PlanFactSubject[]
+  totalPlanned: number
+  totalScheduled: number
+  totalDone: number
+}
+
+export interface PlanFactGroup {
+  groupId: string
+  groupName: string
+  department?: string
+  subgroups: PlanFactSubgroup[]
+  totalPlanned: number
+  totalScheduled: number
+  totalDone: number
+}
+
+export interface PlanFactCourse {
+  course: number
+  groups: PlanFactGroup[]
+  totalPlanned: number
+  totalScheduled: number
+  totalDone: number
+}
+
+export interface BuildPlanFactOptions {
+  courses: number[]
+  groups: (ScheduleGroup | ScheduleGroupWithCourse)[]
+  lessons: ScheduleLesson[]
+  plans: Record<number, CoursePlanMap>
+  today?: Date
+  search?: string
+}
+
+function lessonCourse(
+  lesson: ScheduleLesson,
+  groupsById: Map<string, ScheduleGroupWithCourse>,
+  fallback?: number,
+): number | undefined {
+  if (lesson.course_number !== undefined) return lesson.course_number
+  const group = groupsById.get(lesson.group)
+  if (group?.course !== undefined) return group.course
+  return fallback
+}
+
+export function buildPlanFactHierarchy({
+  courses,
+  groups,
+  lessons,
+  plans,
+  today = new Date(),
+  search,
+}: BuildPlanFactOptions): PlanFactCourse[] {
+  const groupsById = new Map<string, ScheduleGroupWithCourse>()
+  groups.forEach((g) => groupsById.set(g.id, g as ScheduleGroupWithCourse))
+
+  const query = search ? normalizeText(search) : ''
+
+  return courses
+    .map<PlanFactCourse>((course) => {
+      const coursePlan = plans[course] || {}
+      const courseGroups = groups.filter((g) => {
+        const wc = g as ScheduleGroupWithCourse
+        if (wc.course !== undefined) return wc.course === course
+        return true
+      })
+
+      const groupResults: PlanFactGroup[] = []
+
+      courseGroups.forEach((group) => {
+        const groupLessons = lessons.filter(
+          (lesson) =>
+            lesson.group === group.id &&
+            (lessonCourse(lesson, groupsById, course) === course),
+        )
+        if (groupLessons.length === 0) return
+
+        const subgroupNames = getSubgroupsForGroup(groupLessons, group.id)
+        const subgroupKeys: (string | null)[] = subgroupNames.length > 0 ? subgroupNames : [null]
+
+        const subgroupResults: PlanFactSubgroup[] = []
+
+        subgroupKeys.forEach((subgroupName) => {
+          const subgroupLessons = groupLessons.filter((lesson) =>
+            matchesSubgroup(lesson.subgroup, subgroupName),
+          )
+          const subjectSet = new Set<string>()
+          subgroupLessons.forEach((lesson) => {
+            if (lesson.subject) subjectSet.add(lesson.subject)
+          })
+
+          const subjects: PlanFactSubject[] = []
+          let sgPlanned = 0
+          let sgScheduled = 0
+          let sgDone = 0
+
+          Array.from(subjectSet)
+            .sort((a, b) => a.localeCompare(b, 'ru'))
+            .forEach((subject) => {
+              const sl = subgroupLessons.filter((lesson) => lesson.subject === subject)
+              const scheduled = sl.reduce((sum, l) => sum + pairsFor(l), 0)
+              const done = sl.reduce(
+                (sum, l) => sum + (isLessonBeforeToday(l, today) ? pairsFor(l) : 0),
+                0,
+              )
+              const planned = coursePlan[planKey(subject)]
+              const plannedValue =
+                typeof planned === 'number' && Number.isFinite(planned) ? planned : null
+              const weekNumbers = sl
+                .map((lesson) => lesson.week_number)
+                .filter((value): value is number => Number.isFinite(value as number))
+              const cell: AnalyticsCell = { planned: plannedValue, scheduled, done }
+              const parity = subgroupName ? detectParity(weekNumbers) : 'none'
+              if (query) {
+                const haystack = normalizeText(
+                  `${subject} ${group.name} ${subgroupName || ''} ${course} курс`,
+                )
+                if (!haystack.includes(query)) return
+              }
+              subjects.push({ subject, parity, cell })
+              if (plannedValue !== null) sgPlanned += plannedValue
+              sgScheduled += scheduled
+              sgDone += done
+            })
+
+          if (subjects.length === 0) return
+
+          subgroupResults.push({
+            subgroup: subgroupName,
+            subjects,
+            totalPlanned: sgPlanned,
+            totalScheduled: sgScheduled,
+            totalDone: sgDone,
+          })
+        })
+
+        if (subgroupResults.length === 0) return
+
+        const gPlanned = subgroupResults.reduce((sum, sg) => sum + sg.totalPlanned, 0)
+        const gScheduled = subgroupResults.reduce((sum, sg) => sum + sg.totalScheduled, 0)
+        const gDone = subgroupResults.reduce((sum, sg) => sum + sg.totalDone, 0)
+
+        groupResults.push({
+          groupId: group.id,
+          groupName: group.name,
+          department: group.department,
+          subgroups: subgroupResults,
+          totalPlanned: gPlanned,
+          totalScheduled: gScheduled,
+          totalDone: gDone,
+        })
+      })
+
+      return {
+        course,
+        groups: groupResults,
+        totalPlanned: groupResults.reduce((sum, g) => sum + g.totalPlanned, 0),
+        totalScheduled: groupResults.reduce((sum, g) => sum + g.totalScheduled, 0),
+        totalDone: groupResults.reduce((sum, g) => sum + g.totalDone, 0),
+      }
+    })
+    .filter((c) => c.groups.length > 0)
 }
