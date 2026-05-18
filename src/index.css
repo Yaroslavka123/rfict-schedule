@@ -113,57 +113,89 @@
     @apply transition-all duration-300 ease-out;
   }
 
-  /* Room matrix
-   * Adaptive square cells, viewport-fill, sticky day/pair gutters,
-   * lesson-type colored backgrounds with subtle category banding.
-   */
-  .room-matrix-wrap {
-    @apply w-full overflow-auto rounded-lg border border-border bg-card transition-all duration-300 ease-out;
-    height: calc(100vh - 9.5rem);
-    max-height: calc(100vh - 9.5rem);
+  /* Rooms page wraps the toolbar + matrix; matrix stretches to fill the viewport. */
+  .rooms-page,
+  .teachers-page {
+    @apply flex flex-col gap-2;
+    height: calc(100vh - 6.5rem);
   }
 
-  .room-matrix {
-    @apply w-full border-collapse text-[11px];
+  /* Room matrix
+   * Viewport-filling table that stretches to 100% width/height. table-layout: fixed
+   * makes columns share the available width evenly, and rows share the leftover
+   * vertical space so cells stay close to square at common viewport sizes.
+   */
+  .room-matrix-wrap,
+  .teachers-matrix-wrap {
+    @apply rounded-lg border border-border bg-card;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+  }
+
+  .room-matrix,
+  .teachers-matrix {
+    @apply border-collapse text-[11px];
+    table-layout: fixed;
+    width: 100%;
     height: 100%;
+    flex: 1 1 auto;
   }
 
   .room-matrix th,
-  .room-matrix td {
+  .room-matrix td,
+  .teachers-matrix th,
+  .teachers-matrix td {
     @apply border-b border-r border-border;
+    padding: 0;
   }
 
-  .room-matrix thead th {
-    @apply sticky top-0 z-30 bg-muted px-0.5 py-1 text-center font-bold text-muted-foreground;
+  .room-matrix thead th,
+  .teachers-matrix thead th {
+    @apply sticky top-0 z-30 bg-muted py-1 text-center font-bold text-muted-foreground;
   }
 
-  .room-matrix .th-day {
-    @apply sticky left-0 z-40 w-8 min-w-[2rem] bg-muted;
+  .room-matrix .th-day,
+  .teachers-matrix .th-day {
+    @apply sticky left-0 z-40 bg-muted;
+    width: 2rem;
+    min-width: 2rem;
   }
 
-  .room-matrix .th-pair {
-    @apply sticky left-8 z-40 w-8 min-w-[2rem] bg-muted;
+  .room-matrix .th-pair,
+  .teachers-matrix .th-pair {
+    @apply sticky z-40 bg-muted;
+    left: 2rem;
+    width: 2rem;
+    min-width: 2rem;
   }
 
   .room-matrix .th-room {
     @apply px-0.5 text-[10px] leading-none align-middle;
-    min-width: var(--room-cell-min, 2.5rem);
-    width: auto;
   }
 
   .room-matrix .th-cat-lecture-hall { @apply text-amber-500; }
   .room-matrix .th-cat-computer { @apply text-sky-500; }
   .room-matrix .th-cat-regular { @apply text-emerald-500; }
 
-  .room-matrix .td-day {
-    @apply sticky left-0 z-20 w-8 min-w-[2rem] bg-card text-center align-middle text-sm font-bold text-foreground;
+  .room-matrix .td-day,
+  .teachers-matrix .td-day {
+    @apply sticky left-0 z-20 bg-card text-center align-middle text-sm font-bold text-foreground;
+    width: 2rem;
+    min-width: 2rem;
   }
 
-  .room-matrix .td-pair {
-    @apply sticky left-8 z-20 w-8 min-w-[2rem] bg-card text-center align-middle text-xs font-bold text-muted-foreground;
+  .room-matrix .td-pair,
+  .teachers-matrix .td-pair {
+    @apply sticky z-20 bg-card text-center align-middle text-xs font-bold text-muted-foreground;
+    left: 2rem;
+    width: 2rem;
+    min-width: 2rem;
   }
 
-  .room-matrix tr.day-separator > td {
+  .room-matrix tr.day-separator > td,
+  .teachers-matrix tr.day-separator > td {
     @apply border-t-2 border-t-primary/40;
   }
 
@@ -180,13 +212,36 @@
   .dark .room-matrix .cat-bg-computer     { background-color: hsl(200 90% 55% / 0.08); }
   .dark .room-matrix .cat-bg-regular      { background-color: hsl(150 60% 50% / 0.06); }
 
+  /* Teachers header: vertical labels */
+  .teachers-matrix .th-teacher {
+    @apply px-0 align-bottom text-[10px] leading-none;
+    height: 9rem;
+    min-width: 2rem;
+    vertical-align: bottom;
+  }
+  .teachers-matrix .th-teacher-label {
+    @apply font-semibold;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    max-height: 8.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 auto;
+    padding: 0.25rem 0;
+  }
+  .teachers-matrix .th-teacher-match {
+    @apply bg-primary/15 text-primary;
+  }
+  .teachers-matrix .th-teacher-dim {
+    @apply opacity-30;
+  }
+  .teachers-matrix .slot-match { box-shadow: inset 0 0 0 2px hsl(var(--primary)); }
+  .teachers-matrix .slot-dim { opacity: 0.25; }
+
   .slot-cell {
-    @apply relative min-w-0 transition-all duration-200 ease-out;
-    height: var(--room-cell-size, 3rem);
-    width: var(--room-cell-size, 3rem);
-    min-width: var(--room-cell-min, 2.5rem);
-    max-width: var(--room-cell-max, 4.5rem);
-    padding: 1px;
+    @apply relative min-w-0 align-middle text-center;
+    padding: 0;
   }
 
   .slot-free {
@@ -199,11 +254,12 @@
   }
 
   .slot-busy:hover {
-    @apply ring-2 ring-primary/60 z-10 scale-[1.02];
+    @apply ring-2 ring-inset ring-primary/60 z-10;
   }
 
   .slot-busy .slot-content {
-    @apply flex h-full w-full flex-col items-center justify-center text-center px-0.5;
+    @apply flex h-full w-full items-center justify-center text-center;
+    padding: 1px;
   }
 
   .slot-main {
@@ -211,16 +267,16 @@
     font-size: clamp(8px, 0.9vw, 11px);
   }
   .slot-meta {
-    @apply truncate w-full opacity-80;
+    @apply truncate w-full opacity-80 mt-0.5;
     font-size: clamp(7px, 0.7vw, 9px);
   }
 
-  /* Hide text and show only color at very small cell sizes */
+  /* Hide secondary text on narrow viewports. */
   @media (max-width: 1280px) {
     .slot-meta { display: none; }
   }
   @media (max-width: 1024px) {
-    .slot-main { display: none; }
+    .slot-main { font-size: 8px; }
   }
 
   .slot-badge {
@@ -268,25 +324,26 @@
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* Teacher cells (matrix view) — mirrors room cells */
-  .teacher-busy-cell,
-  .teacher-free-cell {
-    @apply flex items-center justify-center rounded text-xs font-bold;
+  /* Plan-fact: nested course → subject → group → subgroup cards */
+  .plan-fact-section {
+    @apply rounded-lg border border-border bg-card overflow-hidden;
   }
-
-  .teacher-busy-cell {
-    @apply bg-primary text-primary-foreground;
+  .plan-fact-section-header {
+    @apply flex items-center justify-between gap-3 px-3 py-2 text-sm font-semibold bg-muted/50;
   }
-
-  .teacher-free-cell {
-    @apply bg-muted text-muted-foreground;
+  .plan-fact-subject-header {
+    @apply flex items-center justify-between gap-3 px-3 py-2 text-[13px] font-semibold;
   }
-
-  /* Accordion sections (Plan-fact) */
-  .accordion-trigger {
-    @apply flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition-all duration-200 ease-out hover:bg-muted/50;
+  .plan-fact-subject-row + .plan-fact-subject-row {
+    @apply border-t border-border;
   }
-  .accordion-content {
-    @apply overflow-hidden transition-all duration-300 ease-out;
+  .plan-fact-group-row {
+    @apply grid items-center gap-3 px-3 py-1.5 text-xs;
+    grid-template-columns: 1fr 6rem 5rem 5rem 6rem;
+  }
+  .plan-fact-group-row + .plan-fact-group-row { @apply border-t border-border/50; }
+  .plan-fact-subgroup-row {
+    @apply grid items-center gap-3 pl-8 pr-3 py-1 text-xs text-muted-foreground;
+    grid-template-columns: 1fr 6rem 5rem 5rem 6rem;
   }
 }

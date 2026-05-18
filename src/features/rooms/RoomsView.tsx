@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
 import { categorizeRoom, getGroupNameById, normalizeRoom } from '@/lib/schedule'
-import { normalizeText } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import type {
   LessonType,
@@ -17,8 +16,6 @@ interface RoomsViewProps {
   groups: (ScheduleGroup | ScheduleGroupWithCourse)[]
   selectedWeek: number
   onWeekChange: (week: number) => void
-  search: string
-  lessonTypes: LessonType[]
 }
 
 interface SlotEntry {
@@ -39,84 +36,55 @@ const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
 type Category = 'lecture-hall' | 'computer' | 'regular'
 
-export function RoomsView({
-  weeks,
-  groups,
-  selectedWeek,
-  onWeekChange,
-  search,
-  lessonTypes,
-}: RoomsViewProps) {
+export function RoomsView({ weeks, groups, selectedWeek, onWeekChange }: RoomsViewProps) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; entries: SlotEntry[] } | null>(null)
 
+  /**
+   * Default room list = every room ever seen in the dataset. The week filter
+   * only changes which lessons populate the cells; the column set stays
+   * stable so navigation feels predictable.
+   */
+  const { orderedRooms, categoryByRoom, categoryStart } = useMemo(
+    () => buildRoomList(weeks),
+    [weeks],
+  )
+
+  // Active weeks: when 'all courses' is loaded, several weeks share the same
+  // week_number (one per course). Pick all matching ones.
   const activeWeeks = useMemo(() => {
     if (!weeks.length) return [] as WeekSchedule[]
     const target = weeks.filter((week) => week.week_number === selectedWeek)
-    if (target.length > 0) return target
-    return [weeks[weeks.length - 1]]
+    return target.length > 0 ? target : [weeks[weeks.length - 1]]
   }, [weeks, selectedWeek])
 
-  const { occupancy, orderedRooms, categoryStart, categoryByRoom } = useMemo(
-    () => buildOccupancy(activeWeeks, groups, search, lessonTypes),
-    [activeWeeks, groups, search, lessonTypes],
+  const groupsById = useMemo(() => {
+    const map = new Map<string, ScheduleGroupWithCourse>()
+    groups.forEach((g) => map.set(g.id, g as ScheduleGroupWithCourse))
+    return map
+  }, [groups])
+
+  const occupancy = useMemo(
+    () => buildOccupancy(activeWeeks, groups, groupsById),
+    [activeWeeks, groups, groupsById],
   )
 
-  const wrapRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    const el = wrapRef.current
-    if (!el) return
-    const calc = () => {
-      const cols = orderedRooms.length
-      if (cols === 0) return
-      const gutters = 64
-      const usable = el.clientWidth - gutters
-      const target = Math.max(28, Math.min(72, usable / cols))
-      const usableH = el.clientHeight - 32
-      const rows = DAYS.length * PAIRS.length
-      const targetH = Math.max(20, Math.min(40, usableH / rows))
-      const finalSize = Math.max(target, targetH)
-      el.style.setProperty('--room-cell-size', `${finalSize}px`)
-      el.style.setProperty('--room-cell-min', `${Math.max(28, finalSize - 8)}px`)
-      el.style.setProperty('--room-cell-max', `${finalSize + 18}px`)
-    }
-    calc()
-    const obs = new ResizeObserver(calc)
-    obs.observe(el)
-    window.addEventListener('resize', calc)
-    return () => {
-      obs.disconnect()
-      window.removeEventListener('resize', calc)
-    }
-  }, [orderedRooms.length])
-
-  if (!activeWeeks.length) {
+  if (!activeWeeks.length || orderedRooms.length === 0) {
     return (
       <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">Нет данных за выбранный курс.</CardContent>
-      </Card>
-    )
-  }
-
-  if (orderedRooms.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          {search ? 'По запросу ничего не найдено.' : 'Кабинеты не найдены.'}
-        </CardContent>
+        <CardContent className="py-12 text-center text-muted-foreground">Кабинеты не найдены.</CardContent>
       </Card>
     )
   }
 
   const showTooltip = (event: React.MouseEvent<HTMLTableCellElement>, entries: SlotEntry[]) => {
-    setTooltip({ x: event.clientX + 12, y: event.clientY + 12, entries })
+    setTooltip({ x: event.clientX + 8, y: event.clientY + 8, entries })
   }
-
   const hideTooltip = () => setTooltip(null)
 
   const availableWeeks = Array.from(new Set(weeks.map((w) => w.week_number))).sort((a, b) => a - b)
 
   return (
-    <div className="space-y-2">
+    <div className="rooms-page">
       <div className="flex flex-wrap items-center gap-2">
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Неделя</div>
         <div className="flex flex-wrap gap-1">
@@ -125,7 +93,7 @@ export function RoomsView({
               key={week}
               type="button"
               className={cn(
-                'rounded-md border px-2.5 py-1 text-xs font-semibold transition-all duration-200 ease-out hover:scale-105',
+                'rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors duration-150',
                 week === selectedWeek
                   ? 'border-primary bg-primary/15 text-primary'
                   : 'border-border bg-background text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground',
@@ -145,8 +113,15 @@ export function RoomsView({
         </div>
       </div>
 
-      <div className="room-matrix-wrap" ref={wrapRef}>
+      <div className="room-matrix-wrap">
         <table className="room-matrix" onMouseLeave={hideTooltip}>
+          <colgroup>
+            <col style={{ width: '2rem' }} />
+            <col style={{ width: '2rem' }} />
+            {orderedRooms.map((room) => (
+              <col key={room} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
               <th className="th-day">Д</th>
@@ -202,16 +177,10 @@ export function RoomsView({
                     const teacherSet = Array.from(
                       new Set(entries.map((entry) => entry.teacher).filter(Boolean)),
                     )
-                    const meta = groupSet.length > 0 ? groupSet.join(', ') : first.teacher
                     return (
                       <td
                         key={room}
-                        className={cn(
-                          'slot-cell slot-busy',
-                          typeClass,
-                          `cat-bg-${cat}`,
-                          start && 'room-cat-start',
-                        )}
+                        className={cn('slot-cell slot-busy', typeClass, start && 'room-cat-start')}
                         onMouseEnter={(event) => showTooltip(event, entries)}
                         onMouseMove={(event) => showTooltip(event, entries)}
                         onMouseLeave={hideTooltip}
@@ -220,13 +189,10 @@ export function RoomsView({
                           <div className={cn('slot-main', allCancelled && 'line-through')}>
                             {shortenSubject(first.subject)}
                           </div>
-                          {meta && <div className="slot-meta">{meta}</div>}
+                          {groupSet.length > 0 && <div className="slot-meta">{groupSet[0]}</div>}
                         </div>
                         {teacherSet.length > 1 && (
-                          <span
-                            className="slot-badge slot-badge-teacher"
-                            title={`Преподавателей: ${teacherSet.length}`}
-                          >
+                          <span className="slot-badge slot-badge-teacher" title={`Преподавателей: ${teacherSet.length}`}>
                             {teacherSet.length}
                           </span>
                         )}
@@ -289,7 +255,6 @@ interface TooltipPerSubject {
   teacher: string
   teacherCourses: number[]
   type: string
-  subgroup: string
   time: string
   groups: { name: string; subgroup: string | null; course?: number }[]
   cancelled: boolean
@@ -343,16 +308,10 @@ function RoomTooltip({ x, y, entries }: { x: number; y: number; entries: SlotEnt
   )
 }
 
-/**
- * Formats a subgroup token like '3' or '3/4' into the user-requested form:
- *   '3 пг' for a single subgroup; '3/4 пг' for combined.
- */
 function formatSubgroup(raw: string): string {
   const trimmed = raw.trim()
   if (!trimmed) return ''
-  if (/[\d/\s,]+/.test(trimmed) && /\d/.test(trimmed)) {
-    return `${trimmed.replace(/\s+/g, '')} пг`
-  }
+  if (/\d/.test(trimmed)) return `${trimmed.replace(/\s+/g, '')} пг`
   return trimmed
 }
 
@@ -363,11 +322,7 @@ function mergeTooltipEntries(entries: SlotEntry[]): TooltipPerSubject[] {
     const current = map.get(key)
     if (current) {
       if (entry.group && !current.groups.some((g) => g.name === entry.group && g.subgroup === entry.subgroup)) {
-        current.groups.push({
-          name: entry.group,
-          subgroup: entry.subgroup || null,
-          course: entry.course,
-        })
+        current.groups.push({ name: entry.group, subgroup: entry.subgroup || null, course: entry.course })
       }
       if (entry.course && !current.teacherCourses.includes(entry.course)) {
         current.teacherCourses.push(entry.course)
@@ -379,7 +334,6 @@ function mergeTooltipEntries(entries: SlotEntry[]): TooltipPerSubject[] {
       teacher: entry.teacher,
       teacherCourses: entry.course ? [entry.course] : [],
       type: entry.type,
-      subgroup: entry.subgroup,
       time: entry.time,
       groups: entry.group
         ? [{ name: entry.group, subgroup: entry.subgroup || null, course: entry.course }]
@@ -387,7 +341,6 @@ function mergeTooltipEntries(entries: SlotEntry[]): TooltipPerSubject[] {
       cancelled: entry.cancelled,
     })
   })
-  // sort teacher courses
   map.forEach((v) => v.teacherCourses.sort((a, b) => a - b))
   return Array.from(map.values())
 }
@@ -397,42 +350,54 @@ function shortenSubject(subject: string) {
   return subject.length > 14 ? `${subject.slice(0, 13)}…` : subject
 }
 
+function numericRoomSort(a: string, b: string) {
+  const numA = parseInt(a.replace(/\D+/g, ''), 10)
+  const numB = parseInt(b.replace(/\D+/g, ''), 10)
+  if (!Number.isNaN(numA) && !Number.isNaN(numB) && numA !== numB) return numA - numB
+  return a.localeCompare(b, 'ru')
+}
+
+function buildRoomList(weeks: WeekSchedule[]) {
+  const seen = new Set<string>()
+  weeks.forEach((week) => {
+    week.lessons.forEach((lesson) => {
+      const room = normalizeRoom(lesson.room)
+      if (room && room !== 'ДО') seen.add(room)
+    })
+  })
+  const buckets: Record<Category, string[]> = { 'lecture-hall': [], computer: [], regular: [] }
+  const categoryByRoom: Record<string, Category> = {}
+  seen.forEach((room) => {
+    const cat = categorizeRoom(room).tone as Category
+    buckets[cat].push(room)
+    categoryByRoom[room] = cat
+  })
+  ;(Object.keys(buckets) as Category[]).forEach((key) => buckets[key].sort(numericRoomSort))
+  const orderedRooms = [...buckets['lecture-hall'], ...buckets.computer, ...buckets.regular]
+  const categoryStart: Record<string, boolean> = {}
+  ;(['lecture-hall', 'computer', 'regular'] as const).forEach((cat) => {
+    const first = buckets[cat][0]
+    if (first) categoryStart[first] = true
+  })
+  return { orderedRooms, categoryByRoom, categoryStart }
+}
+
 function buildOccupancy(
   weeks: WeekSchedule[],
   groups: (ScheduleGroup | ScheduleGroupWithCourse)[],
-  search: string,
-  lessonTypes: LessonType[],
+  groupsById: Map<string, ScheduleGroupWithCourse>,
 ) {
   const occupancy: Record<string, Record<string, Record<number, SlotEntry[]>>> = {}
-  const query = normalizeText(search || '')
   weeks.forEach((week) => {
     week.lessons.forEach((lesson) => {
       const room = normalizeRoom(lesson.room)
       if (!room || room === 'ДО') return
-      if (lessonTypes.length > 0 && !lessonTypes.includes(lesson.type)) return
       const groupName = getGroupNameById(groups, lesson.group)
-      if (query) {
-        const haystack = [
-          room,
-          lesson.subject,
-          lesson.teacher,
-          lesson.day,
-          lesson.time,
-          lesson.subgroup,
-          groupName,
-        ]
-          .map(normalizeText)
-          .join(' ')
-        if (!haystack.includes(query)) return
-      }
       if (!occupancy[room]) occupancy[room] = {}
       const day = lesson.day
       if (!occupancy[room][day]) occupancy[room][day] = {}
       const duration = Math.max(lesson.duration || 1, 1)
-      const groupInfo = groups.find((g) => g.id === lesson.group) as
-        | ScheduleGroupWithCourse
-        | undefined
-      const courseNumber = lesson.course_number ?? groupInfo?.course
+      const courseNumber = lesson.course_number ?? groupsById.get(lesson.group)?.course
       for (let p = lesson.pair; p < lesson.pair + duration; p += 1) {
         if (!occupancy[room][day][p]) occupancy[room][day][p] = []
         occupancy[room][day][p].push({
@@ -451,31 +416,5 @@ function buildOccupancy(
       }
     })
   })
-
-  const allRooms = Object.keys(occupancy)
-  const buckets: Record<Category, string[]> = {
-    'lecture-hall': [],
-    computer: [],
-    regular: [],
-  }
-  const categoryByRoom: Record<string, Category> = {}
-  allRooms.forEach((room) => {
-    const cat = categorizeRoom(room).tone as Category
-    buckets[cat].push(room)
-    categoryByRoom[room] = cat
-  })
-  const numericSort = (a: string, b: string) => {
-    const numA = parseInt(a.replace(/\D+/g, ''), 10)
-    const numB = parseInt(b.replace(/\D+/g, ''), 10)
-    if (!Number.isNaN(numA) && !Number.isNaN(numB) && numA !== numB) return numA - numB
-    return a.localeCompare(b, 'ru')
-  }
-  ;(Object.keys(buckets) as Category[]).forEach((key) => buckets[key].sort(numericSort))
-  const orderedRooms = [...buckets['lecture-hall'], ...buckets.computer, ...buckets.regular]
-  const categoryStart: Record<string, boolean> = {}
-  ;(['lecture-hall', 'computer', 'regular'] as const).forEach((cat) => {
-    const first = buckets[cat][0]
-    if (first) categoryStart[first] = true
-  })
-  return { occupancy, orderedRooms, categoryStart, categoryByRoom }
+  return occupancy
 }
