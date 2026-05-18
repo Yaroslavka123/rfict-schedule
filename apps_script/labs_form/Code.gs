@@ -32,12 +32,14 @@ const SCHEDULE_DIR  = 'public/schedule/';
 
 // Задержка перед экспортом после последнего изменения (мс).
 const EXPORT_DELAY_MS = 1 * 1000; // 1 секунда
+const DICTIONARIES_REFRESH_DELAY_MS = 5 * 1000;
 const SUBJECT_COL = 1; // A
 const TEACHER_COL = 2; // B
 const ROOM_COL = 3;    // C
 
 // Backend API
 const DEFAULT_BACKEND_API_URL = 'https://rfict.up.railway.app';
+const BACKEND_CHANGE_ENDPOINT = '/api/v1/schedule/changes';
 
 function getBackendApiUrl_() {
   return (PropertiesService.getScriptProperties().getProperty('BACKEND_API_URL') || DEFAULT_BACKEND_API_URL).replace(/\/$/, '');
@@ -76,8 +78,6 @@ function onOpen() {
     .addItem('💾 Сохранить расписание сейчас', 'manualDispatch')
     .addSeparator()
     .addItem('🗓 Генератор пустого семестра', 'openSemesterGenerator')
-    .addSeparator()
-    .addItem('⚙️ Установить триггер автосохранения', 'installEditTrigger')
     .addToUi();
 }
 
@@ -92,24 +92,29 @@ function togglePushEnabled() {
   if (isPushEnabled_()) {
     var off = ui.alert(
       'Выключить автосохранение?',
-      'Расписание перестанет автоматически сохраняться на сайт.\nВернуть можно обратно в меню.',
+      'Расписание перестанет автоматически отправлять изменения на сервер.\nВернуть можно обратно в меню.',
       ui.ButtonSet.YES_NO
     );
     if (off !== ui.Button.YES) return;
     setPushEnabled_(false);
+    var removed = deleteEditTriggers_();
+    deletePendingExportTrigger_();
     rebuildMenu_();
-    ui.alert('Автосохранение выключено.');
+    ui.alert('Автосохранение выключено. Удалено триггеров: ' + removed + '.');
     return;
   }
   var on = ui.alert(
     'Включить автосохранение?',
-    'Расписание будет автоматически сохраняться на сайт через ~1 сек после любого изменения.',
+    'При изменении ячеек скрипт будет отправлять короткий JSON на сервер.',
     ui.ButtonSet.YES_NO
   );
   if (on !== ui.Button.YES) return;
   setPushEnabled_(true);
+  var triggerState = ensureSingleEditTrigger_();
   rebuildMenu_();
-  ui.alert('Готово. Расписание будет сохраняться автоматически.');
+  ui.alert(triggerState.created
+    ? 'Готово. Триггер автосохранения создан.'
+    : 'Готово. Триггер автосохранения уже был установлен.');
 }
 
 function showSidebar() {
@@ -184,6 +189,12 @@ function getDictionaries_() {
   if (cached) {
     try { return JSON.parse(cached); } catch (_) {}
   }
+  var result = fetchDictionariesFromBackend_();
+  try { cache.put('dictionaries', JSON.stringify(result), 60); } catch (_) {}
+  return result;
+}
+
+function fetchDictionariesFromBackend_() {
   var result = {subjects: [], teachers: [], rooms: []};
   try {
     var backendApiUrl = getBackendApiUrl_();
@@ -193,22 +204,27 @@ function getDictionaries_() {
       {url: backendApiUrl + '/api/v1/rooms',    muteHttpExceptions: true},
     ]);
     if (responses[0].getResponseCode() === 200) {
-      result.subjects = JSON.parse(responses[0].getContentText()).subjects
-        .map(function(s) { return s.Name; }).filter(Boolean).sort();
+      result.subjects = extractDictionaryNames_(JSON.parse(responses[0].getContentText()), 'subjects', 'Name');
     }
     if (responses[1].getResponseCode() === 200) {
-      result.teachers = JSON.parse(responses[1].getContentText()).teachers
-        .map(function(t) { return formatTeacherName_(t.PostFullName); }).filter(Boolean).sort();
+      result.teachers = extractDictionaryNames_(JSON.parse(responses[1].getContentText()), 'teachers', 'PostFullName')
+        .map(formatTeacherName_).filter(Boolean).sort();
     }
     if (responses[2].getResponseCode() === 200) {
-      result.rooms = JSON.parse(responses[2].getContentText()).rooms
-        .map(function(r) { return r.Name; }).filter(Boolean).sort();
+      result.rooms = extractDictionaryNames_(JSON.parse(responses[2].getContentText()), 'rooms', 'Name');
     }
   } catch (err) {
-    console.warn('getDictionaries_ API error: ' + err.message);
+    console.warn('fetchDictionariesFromBackend_ API error: ' + err.message);
   }
-  try { cache.put('dictionaries', JSON.stringify(result), 60); } catch (_) {}
   return result;
+}
+
+function extractDictionaryNames_(payload, key, preferredField) {
+  var rows = Array.isArray(payload) ? payload : (payload[key] || payload.data || payload.items || []);
+  return rows.map(function(item) {
+    if (typeof item === 'string') return item;
+    return item[preferredField] || item.Name || item.name || item.title || '';
+  }).filter(Boolean).sort();
 }
 
 /** Обратная совместимость */
@@ -387,7 +403,7 @@ function applyLesson(data) {
 
   SpreadsheetApp.flush();
   if (isPushEnabled_()) {
-    scheduleDelayedExport_(sheet.getName());
+    sendShortChangeForRange_(sheet.getParent(), cell);
   }
   return {ok: true, cell: cellAddress_(row, col)};
 }
@@ -434,8 +450,12 @@ function manualDispatch() {
     ui.ButtonSet.YES_NO
   );
   if (resp !== ui.Button.YES) return;
-  var result = dispatchScheduleUpdate_('manual-menu', '');
+  var result = pushAllSheets_();
   ui.alert(dispatchResultMessage_(result));
+}
+
+function pushAllSheets_() {
+  return dispatchScheduleUpdate_('manual-menu', '');
 }
 
 function dispatchResultMessage_(result) {
@@ -472,6 +492,10 @@ function clearActiveCell() {
   var roomRange = sheet.getRange(startRow, roomCol, numRows, 1);
   roomRange.clearContent();
   roomRange.setBackground(null);
+  SpreadsheetApp.flush();
+  if (isPushEnabled_()) {
+    sendShortChangeForRange_(sheet.getParent(), range);
+  }
 }
 
 
@@ -819,17 +843,206 @@ function looksLikeNotes_(s) {
 
 /**
  * Installable trigger: вешается на событие «On edit» (любая правка ячейки).
- *
- * Установка (один раз):
- *   Triggers (часы слева) → Add Trigger → onSheetEdit
- *     Event source: From spreadsheet
- *     Event type:   On edit
+ * Создаётся один раз при включении меню «Автосохранение на сайт».
  */
 function onSheetEdit(e) {
   if (!e || !e.source || !e.range) return;
   if (!isPushEnabled_()) return;
-  var sheetName = e.range.getSheet().getName();
-  scheduleDelayedExport_(sheetName);
+  sendShortChangeForRange_(e.source, e.range);
+}
+
+function sendShortChangeForRange_(ss, range) {
+  var payload = buildShortScheduleChange_(ss, range);
+  var sent = postShortScheduleChange_(payload);
+  if (sent) refreshDictionariesAfterShortPush_();
+  return {sent: sent, payload: payload};
+}
+
+function buildShortScheduleChange_(ss, range) {
+  var sheet = range.getSheet();
+  var sheetName = sheet.getName().trim();
+  var sheetMeta = getSheetHeaderMeta_(sheet);
+  var weekInfo = getWeekInfoFromSheetName_(sheetName);
+  var spreadsheetId = ss ? ss.getId() : sheet.getParent().getId();
+  var payload = {
+    event: 'schedule_cell_changed',
+    generated_at: new Date().toISOString(),
+    spreadsheet_id: spreadsheetId,
+    sheet_id: sheet.getSheetId(),
+    sheet_name: sheetName,
+    range: range.getA1Notation(),
+    row: range.getRow(),
+    column: range.getColumn(),
+    num_rows: range.getNumRows(),
+    num_columns: range.getNumColumns(),
+    course: sheetMeta.course,
+    semester: sheetMeta.semester,
+    week_number: weekInfo.week_number,
+    date_range: weekInfo.date_range,
+    values: range.getDisplayValues(),
+    lessons: [],
+  };
+  var cellPatch = buildEditedCellPatch_(sheet, range, spreadsheetId);
+  if (cellPatch) {
+    payload.cell = cellPatch.cell;
+    payload.lessons = cellPatch.lessons;
+  }
+  return payload;
+}
+
+function getSheetHeaderMeta_(sheet) {
+  var values = sheet.getRange(1, 1, 2, 4).getDisplayValues();
+  var course = parseInt(values[1][0], 10) || null;
+  var semesterMatch = String(values[0][3] || '').match(/(\d+)\s*семестр/);
+  return {
+    course: course,
+    semester: semesterMatch ? parseInt(semesterMatch[1], 10) : null,
+  };
+}
+
+function getWeekInfoFromSheetName_(sheetName) {
+  var weekMatch = sheetName.match(/(\d+)-я неделя/);
+  var dateMatch = sheetName.match(/^([\d.]+\s*-\s*[\d.]+)/);
+  return {
+    week_number: weekMatch ? parseInt(weekMatch[1], 10) : null,
+    date_range: dateMatch ? dateMatch[1] : '',
+  };
+}
+
+function buildEditedCellPatch_(sheet, range, googleSheetId) {
+  if (range.getNumRows() !== 1 || range.getNumColumns() !== 1) return null;
+  var row = range.getRow();
+  var col = range.getColumn();
+  var groups = discoverGroups_(sheet);
+  var group = null;
+  var contentCol = 0;
+  var roomCol = 0;
+  for (var i = 0; i < groups.length; i++) {
+    if (col === groups[i].content_col || col === groups[i].room_col) {
+      group = groups[i];
+      contentCol = groups[i].content_col;
+      roomCol = groups[i].room_col;
+      break;
+    }
+  }
+  if (!group) return null;
+
+  var academicYear = parseAcademicYear_(sheet);
+  var rowContext = getScheduleRowContext_(sheet, row, academicYear);
+  var contentCell = sheet.getRange(row, contentCol);
+  var pairRange = sheet.getRange(row, contentCol, 1, 2);
+  var pairValues = pairRange.getDisplayValues()[0];
+  var pairBgs = pairRange.getBackgrounds()[0];
+  var richText = contentCell.getRichTextValue();
+  var roomValue = roomCol === contentCol + 1 ? pairValues[1] : String(sheet.getRange(row, roomCol).getDisplayValue() || '');
+  var type = COLOR_TO_TYPE_MAP_[(pairBgs[0] || '').toLowerCase()] || 'unknown';
+  var duration = getCellDuration_(contentCell);
+  var lessons = [];
+
+  if (rowContext.pair && rowContext.day && richText && String(richText.getText() || '').trim()) {
+    var parsed = parseRichLessonCell_(richText, roomValue);
+    for (var p = 0; p < parsed.length; p++) {
+      var entry = parsed[p];
+      lessons.push({
+        day: rowContext.day,
+        day_number: rowContext.day_number,
+        date: rowContext.date,
+        pair: rowContext.pair,
+        duration: duration,
+        time: rowContext.time,
+        group: group.id,
+        type: type,
+        subject: entry.subject,
+        teacher: entry.teacher,
+        room: entry.room,
+        subgroup: entry.subgroup || null,
+        frequency: entry.frequency || null,
+        period_start: entry.period_start || null,
+        period_end: entry.period_end || null,
+        comment: entry.comment || null,
+        cancelled: entry.cancelled || false,
+        google_sheet_id: googleSheetId || null,
+      });
+    }
+  }
+
+  return {
+    cell: {
+      content_a1: cellAddress_(row, contentCol),
+      room_a1: cellAddress_(row, roomCol),
+      row: row,
+      content_column: contentCol,
+      room_column: roomCol,
+      group: group.id,
+      day: rowContext.day,
+      day_number: rowContext.day_number,
+      date: rowContext.date,
+      pair: rowContext.pair,
+      time: rowContext.time,
+      duration: duration,
+      type: type,
+      deleted: lessons.length === 0,
+    },
+    lessons: lessons,
+  };
+}
+
+function getScheduleRowContext_(sheet, targetRow, academicYear) {
+  var values = sheet.getRange(1, 1, targetRow, 3).getDisplayValues();
+  var currentDay = '';
+  var currentDayNum = 0;
+  var currentDate = null;
+  var pair = null;
+  var time = '';
+  for (var r = 5; r <= targetRow; r++) {
+    var row = values[r - 1];
+    var parsedDay = parseDayCell_(row[0]);
+    if (parsedDay.dayIndex >= 0) {
+      currentDay = parsedDay.dayName;
+      currentDayNum = parsedDay.dayIndex + 1;
+      currentDate = normalizeLessonDate_(parsedDay.date, academicYear);
+    }
+    if (r === targetRow) {
+      pair = parseInt(row[1], 10) || null;
+      time = String(row[2] || '').replace(/\n/g, ' ').trim();
+    }
+  }
+  return {day: currentDay, day_number: currentDayNum, date: currentDate, pair: pair, time: time};
+}
+
+function getCellDuration_(cell) {
+  var merged = cell.getMergedRanges();
+  if (!merged.length) return 1;
+  for (var i = 0; i < merged.length; i++) {
+    if (merged[i].getRow() === cell.getRow() && merged[i].getColumn() === cell.getColumn()) {
+      return merged[i].getNumRows();
+    }
+  }
+  return 1;
+}
+
+function postShortScheduleChange_(payload) {
+  try {
+    var resp = UrlFetchApp.fetch(getBackendApiUrl_() + BACKEND_CHANGE_ENDPOINT, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,
+    });
+    var code = resp.getResponseCode();
+    if (code === 200 || code === 201 || code === 202) return true;
+    console.warn('postShortScheduleChange_ error: ' + code + ' ' + resp.getContentText().substring(0, 200));
+  } catch (err) {
+    console.warn('postShortScheduleChange_ error: ' + err.message);
+  }
+  return false;
+}
+
+function refreshDictionariesAfterShortPush_() {
+  try { Utilities.sleep(DICTIONARIES_REFRESH_DELAY_MS); } catch (_) {}
+  try { CacheService.getScriptCache().remove('dictionaries'); } catch (_) {}
+  var dicts = fetchDictionariesFromBackend_();
+  try { CacheService.getScriptCache().put('dictionaries', JSON.stringify(dicts), 60); } catch (_) {}
 }
 
 /**
@@ -900,6 +1113,44 @@ function deleteProjectTriggerById_(triggerId) {
     }
   }
   return false;
+}
+
+function getEditTriggers_() {
+  return ScriptApp.getProjectTriggers().filter(function(t) {
+    return t.getHandlerFunction() == 'onSheetEdit';
+  });
+}
+
+function ensureSingleEditTrigger_() {
+  var existing = getEditTriggers_();
+  for (var i = 1; i < existing.length; i++) {
+    ScriptApp.deleteTrigger(existing[i]);
+  }
+  if (existing.length > 0) {
+    return {created: false, removedDuplicates: Math.max(0, existing.length - 1)};
+  }
+  ScriptApp.newTrigger('onSheetEdit')
+    .forSpreadsheet(SpreadsheetApp.getActive())
+    .onEdit()
+    .create();
+  return {created: true, removedDuplicates: 0};
+}
+
+function deleteEditTriggers_() {
+  var triggers = getEditTriggers_();
+  for (var i = 0; i < triggers.length; i++) {
+    ScriptApp.deleteTrigger(triggers[i]);
+  }
+  return triggers.length;
+}
+
+function deletePendingExportTrigger_() {
+  var props = PropertiesService.getScriptProperties();
+  var removed = deleteProjectTriggerById_(props.getProperty('_pendingExportTriggerId'));
+  props.deleteProperty('_pendingExportTriggerId');
+  props.deleteProperty('_pendingExportSpreadsheetId');
+  props.deleteProperty('_pendingExportSheet');
+  return removed;
 }
 
 /**
@@ -1041,7 +1292,7 @@ function getSheetMeta_(ss) {
   var groupsMeta = groups.map(function(g) {
     return {id: g.id, name: g.name, specialty: g.specialty, department: g.department};
   });
-  return {weekSheets: weekSheets, course: course, semester: semester, groups: groups, groupsMeta: groupsMeta};
+  return {weekSheets: weekSheets, course: course, semester: semester, groups: groups, groupsMeta: groupsMeta, spreadsheetId: ss.getId()};
 }
 
 /**
@@ -1054,7 +1305,7 @@ function pushSheet_(ws, meta, token) {
   var dateMatch = sheetName.match(/^([\d.]+\s*-\s*[\d.]+)/);
   var dateRange = dateMatch ? dateMatch[1] : '';
 
-  var lessons = parseWeekSheet_(ws, meta.groups, parseAcademicYear_(ws), ws.getParent().getId());
+  var lessons = parseWeekSheet_(ws, meta.groups, parseAcademicYear_(ws), meta.spreadsheetId);
 
   var json = {
     name: sheetName,
@@ -1165,8 +1416,9 @@ function notifyWebhook_(filePath, json) {
  */
 function discoverGroups_(sheet) {
   var lastCol = sheet.getLastColumn();
-  var row4 = sheet.getRange(4, 1, 1, lastCol).getValues()[0];
-  var row5 = sheet.getRange(5, 1, 1, lastCol).getValues()[0];
+  var headerRows = sheet.getRange(4, 1, 2, lastCol).getValues();
+  var row4 = headerRows[0];
+  var row5 = headerRows[1];
 
   // Определяем кафедры из строки 4 (заполняем пробелы merged-ячеек)
   var departments = [];
@@ -1489,27 +1741,4 @@ function pushFileToGitHub_(path, content, token) {
 function testDispatch() {
   var result = dispatchScheduleUpdate_('manual-test', 'A1');
   SpreadsheetApp.getUi().alert(dispatchResultMessage_(result));
-}
-
-/**
- * Устанавливает триггер onSheetEdit для автосохранения.
- * Безопасно вызывать повторно — дублей не создаёт.
- */
-function installEditTrigger() {
-  var existing = ScriptApp.getProjectTriggers();
-  for (var i = 0; i < existing.length; i++) {
-    if (existing[i].getHandlerFunction() === 'onSheetEdit') {
-      SpreadsheetApp.getUi().alert('Триггер уже установлен. Всё готово!');
-      return;
-    }
-  }
-  ScriptApp.newTrigger('onSheetEdit')
-    .forSpreadsheet(SpreadsheetApp.getActive())
-    .onEdit()
-    .create();
-  SpreadsheetApp.getUi().alert(
-    'Триггер установлен!\n\n' +
-    'Теперь при любом изменении ячеек расписание будет автоматически сохраняться ' +
-    '(если автосохранение включено в меню).'
-  );
 }

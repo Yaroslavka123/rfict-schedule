@@ -99,6 +99,55 @@ POST /api/v1/schedule
 
 Backend должен принять тот же `WeekSchedule`, сохранить его и вернуть `200` или `201`.
 
+### Принять короткое изменение ячейки
+
+`onSheetEdit()` отправляет на backend не полный `WeekSchedule`, а короткий patch:
+
+```http
+POST /api/v1/schedule/changes
+```
+
+Минимальный payload:
+
+```ts
+interface ScheduleCellChange {
+  event: 'schedule_cell_changed'
+  generated_at: string
+  spreadsheet_id: string
+  sheet_id: number
+  sheet_name: string
+  range: string
+  row: number
+  column: number
+  num_rows: number
+  num_columns: number
+  course: number | null
+  semester: number | null
+  week_number: number | null
+  date_range: string
+  values: string[][]
+  cell?: {
+    content_a1: string
+    room_a1: string
+    row: number
+    content_column: number
+    room_column: number
+    group: string
+    day: string
+    day_number: number
+    date: string | null
+    pair: number | null
+    time: string
+    duration: number
+    type: string
+    deleted: boolean
+  }
+  lessons: Lesson[]
+}
+```
+
+Backend должен вернуть `200`, `201` или `202`, заменить занятия указанной ячейки на `lessons[]`, а при `deleted=true` удалить занятия ячейки. После успешного patch нужно обновить `version/updated_at`, справочники и отправить realtime-событие.
+
 ## 5. Справочники
 
 Parser использует эти endpoints для autocomplete:
@@ -187,13 +236,29 @@ interface PlanFactItem {
 
 ## 8. Обновления
 
-Для live-обновлений достаточно polling:
+Выбранный realtime-вариант — SSE, потому что frontend только слушает события и затем делает обычный refetch расписания.
+
+```http
+GET /api/v1/schedule/events?course=1&week=1
+Accept: text/event-stream
+```
+
+Событие после `POST /api/v1/schedule` или `POST /api/v1/schedule/changes`:
+
+```text
+event: schedule_updated
+data: {"type":"schedule_updated","course":1,"week_number":1,"updated_at":"2026-05-17T20:00:00.000Z","version":"2026-05-17T20:00:00.000Z"}
+```
+
+Frontend подписывается через `EventSource`, на `schedule_updated` делает `GET /api/v1/schedule?course=N&week=M` и обновляет локальное состояние. Backend должен отправлять heartbeat раз в 20–30 секунд и разрешить CORS для SSE.
+
+Fallback, если SSE временно недоступен:
 
 ```http
 GET /api/v1/schedule/updates?since=2026-05-17T20:00:00.000Z
 ```
 
-Ответ:
+Ответ fallback polling:
 
 ```ts
 interface ScheduleUpdateEvent {
@@ -203,13 +268,8 @@ interface ScheduleUpdateEvent {
   date_range: string
   generated_at: string
   lessons_count: number
+  version: string
 }
-```
-
-WebSocket можно добавить позже:
-
-```text
-/ws/updates
 ```
 
 ## 9. Проверка parser-а
