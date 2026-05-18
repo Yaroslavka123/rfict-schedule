@@ -1,5 +1,5 @@
 import { DAY_ORDER, LECTURE_HALLS, LESSON_TYPE_LABELS, PAIRS } from '@/lib/constants'
-import { normalizeText } from '@/lib/utils'
+import { normalizeForTeacherSearch, normalizeText } from '@/lib/utils'
 import { planKey } from '@/api/scheduleClient'
 import type {
   AnalyticsCell,
@@ -12,6 +12,10 @@ import type {
   LessonType,
   ScheduleGroup,
   ScheduleLesson,
+  SubgroupParity,
+  SubjectPlanGroup,
+  SubjectPlanRow,
+  SubjectPlanSubgroup,
   WeekSchedule,
 } from '@/types/schedule'
 
@@ -131,7 +135,16 @@ export function normalizeTeacherName(name: string | null) {
   return String(name || '').replace(/\s+/g, ' ').trim()
 }
 
-export function buildTeacherSummaries(lessons: ScheduleLesson[]) {
+export interface TeacherSummary {
+  teacher: string
+  lessons: ScheduleLesson[]
+  totalPairs: number
+  conflicts: ScheduleLesson[][]
+  rooms: string[]
+  searchKey: string
+}
+
+export function buildTeacherSummaries(lessons: ScheduleLesson[]): TeacherSummary[] {
   const byTeacher = new Map<string, ScheduleLesson[]>()
   lessons.forEach((lesson) => {
     const teacher = normalizeTeacherName(lesson.teacher)
@@ -139,13 +152,32 @@ export function buildTeacherSummaries(lessons: ScheduleLesson[]) {
     byTeacher.set(teacher, [...(byTeacher.get(teacher) || []), lesson])
   })
   return Array.from(byTeacher.entries())
-    .map(([teacher, teacherLessons]) => ({
-      teacher,
-      lessons: teacherLessons.sort((a, b) => a.day_number - b.day_number || a.pair - b.pair),
-      totalPairs: teacherLessons.reduce((sum, lesson) => sum + (lesson.cancelled ? 0 : lesson.duration), 0),
-      conflicts: findTeacherConflicts(teacherLessons),
-    }))
+    .map(([teacher, teacherLessons]) => {
+      const rooms = Array.from(
+        new Set(
+          teacherLessons
+            .map((lesson) => normalizeRoom(lesson.room))
+            .filter((room): room is string => Boolean(room)),
+        ),
+      ).sort((a, b) => a.localeCompare(b, 'ru', { numeric: true }))
+      return {
+        teacher,
+        lessons: teacherLessons.sort((a, b) => a.day_number - b.day_number || a.pair - b.pair),
+        totalPairs: teacherLessons.reduce((sum, lesson) => sum + (lesson.cancelled ? 0 : lesson.duration), 0),
+        conflicts: findTeacherConflicts(teacherLessons),
+        rooms,
+        searchKey: normalizeForTeacherSearch(`${teacher} ${rooms.join(' ')}`),
+      }
+    })
     .sort((a, b) => a.teacher.localeCompare(b.teacher, 'ru'))
+}
+
+export function getTeacherLessonAt(lessons: ScheduleLesson[], day: string, pair: number) {
+  return lessons.filter((lesson) => {
+    if (lesson.day !== day) return false
+    const last = lesson.pair + Math.max(lesson.duration, 1) - 1
+    return pair >= lesson.pair && pair <= last
+  })
 }
 
 export function findTeacherConflicts(lessons: ScheduleLesson[]) {
@@ -248,6 +280,98 @@ export function buildCourseAnalytics({ plan, today = new Date(), groups, lessons
   })
 
   return result
+}
+
+function detectParity(weekNumbers: number[]): SubgroupParity {
+  if (weekNumbers.length === 0) return 'none'
+  let even = 0
+  let odd = 0
+  weekNumbers.forEach((week) => {
+    if (!Number.isFinite(week)) return
+    if (week % 2 === 0) even += 1
+    else odd += 1
+  })
+  if (even > 0 && odd === 0) return 'even'
+  if (odd > 0 && even === 0) return 'odd'
+  return 'mixed'
+}
+
+export interface SubjectPlanOptions {
+  plan: CoursePlanMap
+  today?: Date
+  groups: ScheduleGroup[]
+  lessons: ScheduleLesson[]
+}
+
+export function buildSubjectPlanRows({
+  plan,
+  today = new Date(),
+  groups,
+  lessons,
+}: SubjectPlanOptions): SubjectPlanRow[] {
+  const subjects = getCourseSubjects(lessons)
+
+  return subjects
+    .map((subject) => {
+      const planned = plan[planKey(subject)]
+      const plannedValue =
+        typeof planned === 'number' && Number.isFinite(planned) ? planned : null
+      let totalScheduled = 0
+      let totalDone = 0
+
+      const groupRows: SubjectPlanGroup[] = []
+
+      groups.forEach((group) => {
+        const groupLessons = lessons.filter(
+          (lesson) => lesson.group === group.id && lesson.subject === subject,
+        )
+        if (groupLessons.length === 0) return
+
+        const subgroupNames = getSubgroupsForGroup(groupLessons, group.id)
+        const slots: (string | null)[] = subgroupNames.length > 0 ? subgroupNames : [null]
+
+        const subgroupCells: SubjectPlanSubgroup[] = slots
+          .map<SubjectPlanSubgroup>((subgroupName) => {
+            const subgroupLessons = groupLessons.filter((lesson) =>
+              matchesSubgroup(lesson.subgroup, subgroupName),
+            )
+            const scheduled = subgroupLessons.reduce((sum, lesson) => sum + pairsFor(lesson), 0)
+            const done = subgroupLessons.reduce(
+              (sum, lesson) => sum + (isLessonBeforeToday(lesson, today) ? pairsFor(lesson) : 0),
+              0,
+            )
+            const weekNumbers = subgroupLessons
+              .map((lesson) => lesson.week_number)
+              .filter((value): value is number => Number.isFinite(value as number))
+            totalScheduled += scheduled
+            totalDone += done
+            return {
+              subgroup: subgroupName,
+              parity: subgroupName ? detectParity(weekNumbers) : 'none',
+              cell: { planned: plannedValue, scheduled, done },
+            }
+          })
+          .filter((entry) => entry.cell.scheduled > 0 || entry.cell.done > 0)
+
+        if (subgroupCells.length === 0) return
+        groupRows.push({
+          groupId: group.id,
+          groupName: group.name,
+          department: group.department,
+          subgroups: subgroupCells,
+        })
+      })
+
+      return {
+        subject,
+        planned: plannedValue,
+        totalScheduled,
+        totalDone,
+        groups: groupRows,
+      }
+    })
+    .filter((row) => row.groups.length > 0 || row.planned !== null)
+    .sort((a, b) => a.subject.localeCompare(b.subject, 'ru'))
 }
 
 export function getCourseSubjects(lessons: ScheduleLesson[]): string[] {

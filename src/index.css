@@ -99,11 +99,11 @@
 
   /* Room matrix */
   .room-matrix-wrap {
-    @apply max-h-[calc(100vh-14rem)] overflow-auto rounded-lg border border-border bg-card;
+    @apply max-h-[calc(100vh-12rem)] w-full overflow-auto rounded-lg border border-border bg-card;
   }
 
   .room-matrix {
-    @apply min-w-full border-collapse text-xs;
+    @apply w-full table-fixed border-collapse text-xs;
   }
 
   .room-matrix th,
@@ -112,19 +112,19 @@
   }
 
   .room-matrix thead th {
-    @apply sticky top-0 z-30 bg-muted px-1 py-1.5 text-center font-bold text-muted-foreground;
+    @apply sticky top-0 z-30 bg-muted px-0.5 py-1 text-center font-bold text-muted-foreground;
   }
 
   .room-matrix .th-day {
-    @apply sticky left-0 z-40 min-w-[2rem] bg-muted;
+    @apply sticky left-0 z-40 w-7 min-w-[1.75rem] bg-muted;
   }
 
   .room-matrix .th-pair {
-    @apply sticky left-[2rem] z-40 min-w-[2rem] bg-muted;
+    @apply sticky left-[1.75rem] z-40 w-7 min-w-[1.75rem] bg-muted;
   }
 
   .room-matrix .th-room {
-    @apply min-w-[3.5rem] px-1 text-[11px];
+    @apply min-w-0 w-auto px-0.5 text-[10px] leading-none;
   }
 
   .room-matrix .th-cat-lecture-hall { @apply text-amber-500; }
@@ -132,11 +132,11 @@
   .room-matrix .th-cat-regular { @apply text-emerald-500; }
 
   .room-matrix .td-day {
-    @apply sticky left-0 z-20 bg-card text-center align-middle text-sm font-bold text-foreground;
+    @apply sticky left-0 z-20 w-7 min-w-[1.75rem] bg-card text-center align-middle text-sm font-bold text-foreground;
   }
 
   .room-matrix .td-pair {
-    @apply sticky left-[2rem] z-20 bg-card text-center align-middle text-xs font-bold text-muted-foreground;
+    @apply sticky left-[1.75rem] z-20 w-7 min-w-[1.75rem] bg-card text-center align-middle text-xs font-bold text-muted-foreground;
   }
 
   .room-matrix tr.day-separator > td {
@@ -148,11 +148,11 @@
   }
 
   .slot-free {
-    @apply h-9 min-w-[3.5rem] bg-transparent;
+    @apply h-9 min-w-0 bg-transparent;
   }
 
   .slot-busy {
-    @apply relative h-9 min-w-[3.5rem] cursor-help overflow-hidden p-0.5 text-[10px] leading-tight;
+    @apply relative h-9 min-w-0 cursor-help overflow-hidden p-0.5 text-[10px] leading-tight;
   }
 
   .slot-busy .slot-content {
@@ -162,14 +162,23 @@
   .slot-main { @apply truncate font-bold; }
   .slot-meta { @apply truncate text-[9px] opacity-80; }
 
-  .slot-count {
-    @apply absolute right-0.5 top-0.5 inline-flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-purple-500 px-1 text-[9px] font-bold text-white;
+  .slot-badge {
+    @apply pointer-events-none absolute inline-flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full px-1 text-[9px] font-bold text-white;
   }
+  .slot-badge-teacher { @apply right-0.5 top-0.5 bg-sky-500; }
+  .slot-badge-group { @apply right-0.5 bottom-0.5 bg-emerald-500; }
 
   .slot-lecture-hall { @apply bg-amber-500/15 text-amber-500; }
   .slot-computer { @apply bg-sky-500/15 text-sky-500; }
   .slot-regular { @apply bg-emerald-500/15 text-emerald-500; }
   .slot-multi { @apply bg-purple-500/20 text-purple-400; }
+  .slot-cancelled { @apply bg-red-500/20 text-red-500; }
+
+  .slot-tooltip {
+    background-color: hsl(var(--popover));
+    backdrop-filter: none;
+    opacity: 1;
+  }
 
   /* Teacher cells */
   .teacher-busy-cell,

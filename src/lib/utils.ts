@@ -28,3 +28,22 @@ export function formatUpdatedAt(iso: string) {
 export function normalizeText(value: string | null | undefined) {
   return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim()
 }
+
+const TITLE_STEM_REPLACEMENTS: [RegExp, string][] = [
+  [/профессор[а-я]*/g, 'проф'],
+  [/доцент[а-я]*/g, 'доц'],
+  [/преподавател[ьеяияхахамами]*/g, 'препод'],
+  [/ассистент[а-я]*/g, 'асс'],
+  [/старш[а-я]*/g, 'ст'],
+  [/ведущ[а-я]*/g, 'вед'],
+  [/заведующ[а-я]*/g, 'зав'],
+  [/кафедр[а-я]*/g, 'каф'],
+]
+
+export function normalizeForTeacherSearch(value: string | null | undefined) {
+  let result = normalizeText(value).replace(/[.,;:]/g, ' ')
+  for (const [pattern, replacement] of TITLE_STEM_REPLACEMENTS) {
+    result = result.replace(pattern, replacement)
+  }
+  return result.replace(/\s+/g, '')
+}

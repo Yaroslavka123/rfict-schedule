@@ -87,3 +87,26 @@ export interface AnalyticsGroup {
   department?: string
   subgroups: AnalyticsSubgroup[]
 }
+
+export type SubgroupParity = 'even' | 'odd' | 'mixed' | 'none'
+
+export interface SubjectPlanSubgroup {
+  subgroup: string | null
+  parity: SubgroupParity
+  cell: AnalyticsCell
+}
+
+export interface SubjectPlanGroup {
+  groupId: string
+  groupName: string
+  department?: string
+  subgroups: SubjectPlanSubgroup[]
+}
+
+export interface SubjectPlanRow {
+  subject: string
+  planned: number | null
+  totalScheduled: number
+  totalDone: number
+  groups: SubjectPlanGroup[]
+}

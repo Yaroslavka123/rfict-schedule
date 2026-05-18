@@ -1,78 +1,148 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { loadCoursePlan, loadCourseSchedule, saveCoursePlanEntry } from '@/api/scheduleClient'
+import {
+  loadCourseBundle,
+  planKey,
+  saveCoursePlanEntry,
+  type CourseDataBundle,
+} from '@/api/scheduleClient'
 import type { CoursePlanEntry, CoursePlanMap, CourseSchedule } from '@/types/schedule'
+
+const CACHE_VERSION = 'v1'
+const CACHE_TTL_MS = 60_000
+
+interface CachedBundle {
+  v: typeof CACHE_VERSION
+  schedule: CourseSchedule
+  plan: CoursePlanMap
+  fetchedAt: number
+}
+
+function cacheKey(course: number) {
+  return `rfict-cache-${CACHE_VERSION}-course-${course}`
+}
+
+function readCache(course: number): CachedBundle | null {
+  try {
+    const raw = localStorage.getItem(cacheKey(course))
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as CachedBundle
+    if (parsed.v !== CACHE_VERSION) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeCache(course: number, bundle: CourseDataBundle) {
+  try {
+    const payload: CachedBundle = {
+      v: CACHE_VERSION,
+      schedule: bundle.schedule,
+      plan: bundle.plan,
+      fetchedAt: bundle.fetchedAt,
+    }
+    localStorage.setItem(cacheKey(course), JSON.stringify(payload))
+  } catch {
+    /* localStorage may be unavailable (private mode, quota) — ignore */
+  }
+}
 
 interface ScheduleState {
   schedule: CourseSchedule | null
+  plan: CoursePlanMap
   loading: boolean
   error: string | null
   loadedAt: number
 }
 
-export function useCourseSchedule(course: number, refreshKey: number) {
-  const [state, setState] = useState<ScheduleState>({ schedule: null, loading: true, error: null, loadedAt: 0 })
+const initialState: ScheduleState = {
+  schedule: null,
+  plan: {},
+  loading: true,
+  error: null,
+  loadedAt: 0,
+}
+
+export function useCourseData(course: number, refreshKey: number) {
+  const [state, setState] = useState<ScheduleState>(initialState)
+  const inflight = useRef<AbortController | null>(null)
 
   useEffect(() => {
-    let active = true
-    setState((current) => ({ ...current, loading: true, error: null }))
+    const cached = readCache(course)
+    const isFresh = cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS
+    if (cached) {
+      setState({
+        schedule: cached.schedule,
+        plan: cached.plan,
+        loading: !isFresh,
+        error: null,
+        loadedAt: cached.fetchedAt,
+      })
+      if (isFresh && refreshKey === 0) return
+    } else {
+      setState((current) => ({ ...current, loading: true, error: null }))
+    }
 
-    loadCourseSchedule(course)
-      .then((schedule) => {
-        if (!active) return
-        setState({ schedule, loading: false, error: null, loadedAt: Date.now() })
+    if (inflight.current) inflight.current.abort()
+    const controller = new AbortController()
+    inflight.current = controller
+
+    loadCourseBundle(course, { signal: controller.signal })
+      .then((bundle) => {
+        if (controller.signal.aborted) return
+        writeCache(course, bundle)
+        setState({
+          schedule: bundle.schedule,
+          plan: bundle.plan,
+          loading: false,
+          error: null,
+          loadedAt: bundle.fetchedAt,
+        })
       })
       .catch((error: Error) => {
-        if (!active) return
-        setState({ schedule: null, loading: false, error: error.message, loadedAt: Date.now() })
+        if (controller.signal.aborted) return
+        setState((current) => ({
+          ...current,
+          loading: false,
+          error: error.message,
+          loadedAt: current.loadedAt || Date.now(),
+        }))
       })
 
     return () => {
-      active = false
+      controller.abort()
     }
   }, [course, refreshKey])
 
-  return state
-}
+  const updatePlanEntry = useCallback(
+    async (entry: CoursePlanEntry) => {
+      const key = planKey(entry.subject)
+      const previousPlan = state.plan
+      const optimistic: CoursePlanMap = { ...previousPlan, [key]: entry.planned_pairs }
+      setState((current) => ({ ...current, plan: optimistic }))
+      try {
+        await saveCoursePlanEntry(entry)
+        if (state.schedule) {
+          writeCache(course, {
+            schedule: state.schedule,
+            plan: optimistic,
+            fetchedAt: state.loadedAt || Date.now(),
+          })
+        }
+      } catch (error) {
+        setState((current) => ({ ...current, plan: previousPlan, error: (error as Error).message }))
+      }
+    },
+    [course, state.plan, state.schedule, state.loadedAt],
+  )
 
-interface PlanState {
-  plan: CoursePlanMap
-  loading: boolean
-  error: string | null
-}
-
-export function useCoursePlan(course: number, refreshKey: number) {
-  const [state, setState] = useState<PlanState>({ plan: {}, loading: true, error: null })
-
-  useEffect(() => {
-    let active = true
-    setState((current) => ({ ...current, loading: true, error: null }))
-    loadCoursePlan(course)
-      .then((plan) => {
-        if (!active) return
-        setState({ plan, loading: false, error: null })
-      })
-      .catch((error: Error) => {
-        if (!active) return
-        setState({ plan: {}, loading: false, error: error.message })
-      })
-    return () => {
-      active = false
-    }
-  }, [course, refreshKey])
-
-  const updateEntry = useCallback(async (entry: CoursePlanEntry) => {
-    const previous = state.plan
-    setState((current) => ({
-      ...current,
-      plan: { ...current.plan, [entry.subject.trim().toLowerCase()]: entry.planned_pairs },
-    }))
-    try {
-      await saveCoursePlanEntry(entry)
-    } catch (error) {
-      setState((current) => ({ ...current, plan: previous, error: (error as Error).message }))
-    }
-  }, [state.plan])
-
-  return { ...state, updateEntry }
+  return {
+    schedule: state.schedule,
+    plan: state.plan,
+    loading: state.loading,
+    error: state.error,
+    loadedAt: state.loadedAt,
+    updatePlanEntry,
+  }
 }

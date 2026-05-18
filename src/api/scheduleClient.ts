@@ -47,6 +47,22 @@ function bust(url: string) {
   return `${url}${separator}t=${Date.now()}`
 }
 
+/**
+ * Drops fields that are null/undefined/empty so we don't carry them through
+ * memory / cache. We keep numeric zero, booleans and primitive values.
+ */
+export function trimLesson(lesson: ScheduleLesson): ScheduleLesson {
+  const out: Partial<ScheduleLesson> = {}
+  ;(Object.keys(lesson) as (keyof ScheduleLesson)[]).forEach((key) => {
+    const value = lesson[key]
+    if (value === null || value === undefined) return
+    if (typeof value === 'string' && value.trim() === '') return
+    ;(out as Record<string, unknown>)[key as string] = value
+  })
+  if (out.cancelled === undefined) out.cancelled = false
+  return out as ScheduleLesson
+}
+
 function weekKey(week: WeekSchedule) {
   return week.week_number ?? 0
 }
@@ -71,7 +87,9 @@ function mergeGroups(weeks: WeekSchedule[]): ScheduleGroup[] {
 
 function flattenLessons(weeks: WeekSchedule[]): ScheduleLesson[] {
   return weeks.flatMap((week) =>
-    (week.lessons || []).map((lesson) => ({ ...lesson, week_number: lesson.week_number ?? week.week_number })),
+    (week.lessons || []).map((lesson) =>
+      trimLesson({ ...lesson, week_number: lesson.week_number ?? week.week_number }),
+    ),
   )
 }
 
@@ -104,9 +122,14 @@ function normalizeCourseResponse(
   return []
 }
 
-export async function loadCourseSchedule(course: number): Promise<CourseSchedule> {
+export async function loadCourseSchedule(
+  course: number,
+  options?: { signal?: AbortSignal },
+): Promise<CourseSchedule> {
   const url = bust(`${API_BASE_URL}/api/v1/schedule?course=${course}`)
-  const payload = await fetchJson<BackendCourseScheduleResponse | WeekSchedule[]>(url)
+  const payload = await fetchJson<BackendCourseScheduleResponse | WeekSchedule[]>(url, {
+    signal: options?.signal,
+  })
   const weeks = normalizeCourseResponse(payload, course)
   const sorted = dedupeWeeks(weeks)
   return {
@@ -143,10 +166,39 @@ function planEntriesToMap(entries: CoursePlanEntry[]): CoursePlanMap {
   return map
 }
 
-export async function loadCoursePlan(course: number): Promise<CoursePlanMap> {
+export async function loadCoursePlan(
+  course: number,
+  options?: { signal?: AbortSignal },
+): Promise<CoursePlanMap> {
   const url = bust(`${API_BASE_URL}/api/v1/plan?course=${course}`)
-  const payload = await fetchJson<BackendPlanResponse | CoursePlanEntry[]>(url)
+  const payload = await fetchJson<BackendPlanResponse | CoursePlanEntry[]>(url, {
+    signal: options?.signal,
+  })
   return planEntriesToMap(normalizePlanResponse(payload))
+}
+
+export interface CourseDataBundle {
+  schedule: CourseSchedule
+  plan: CoursePlanMap
+  fetchedAt: number
+}
+
+/**
+ * Combined endpoint: parallel fetch of schedule + plan. This removes the
+ * sequential network round-trips that previously happened from two separate
+ * hooks and keeps `Promise.all` semantics so a failure of either request is
+ * propagated together. If a backend `/api/v1/course?course=N` endpoint is
+ * added later it can be dropped in here without touching callers.
+ */
+export async function loadCourseBundle(
+  course: number,
+  options?: { signal?: AbortSignal },
+): Promise<CourseDataBundle> {
+  const [schedule, plan] = await Promise.all([
+    loadCourseSchedule(course, options),
+    loadCoursePlan(course, options).catch(() => ({}) as CoursePlanMap),
+  ])
+  return { schedule, plan, fetchedAt: Date.now() }
 }
 
 export async function saveCoursePlanEntry(entry: CoursePlanEntry): Promise<void> {
