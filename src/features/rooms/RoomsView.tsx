@@ -21,6 +21,8 @@ interface SlotEntry {
   subgroup: string
   time: string
   pair: number
+  cancelled: boolean
+  room: string
 }
 
 const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
@@ -122,9 +124,17 @@ export function RoomsView({ weeks, groups, selectedWeek, onWeekChange }: RoomsVi
                     if (entries.length === 0) {
                       return <td key={room} className={cn('slot-free', start && 'room-cat-start')} />
                     }
-                    const slotClass = entries.length > 1 ? 'slot-multi' : `slot-${cat}`
+                    const allCancelled = entries.every((entry) => entry.cancelled)
+                    const slotClass = allCancelled
+                      ? 'slot-cancelled'
+                      : entries.length > 1
+                      ? 'slot-multi'
+                      : `slot-${cat}`
                     const first = entries[0]
                     const groupSet = Array.from(new Set(entries.map((entry) => entry.group).filter(Boolean)))
+                    const teacherSet = Array.from(
+                      new Set(entries.map((entry) => entry.teacher).filter(Boolean)),
+                    )
                     const meta = groupSet.length > 0 ? groupSet.join(', ') : first.teacher
                     return (
                       <td
@@ -135,10 +145,23 @@ export function RoomsView({ weeks, groups, selectedWeek, onWeekChange }: RoomsVi
                         onMouseLeave={hideTooltip}
                       >
                         <div className="slot-content">
-                          <div className="slot-main">{shortenSubject(first.subject)}</div>
-                          {meta && <div className="slot-meta">{meta}</div>}
+                          <div className={cn('slot-main', allCancelled && 'line-through text-red-500')}>
+                            {shortenSubject(first.subject)}
+                          </div>
+                          {meta && (
+                            <div className={cn('slot-meta', allCancelled && 'text-red-500/80')}>{meta}</div>
+                          )}
                         </div>
-                        {entries.length > 1 && <span className="slot-count">{entries.length}</span>}
+                        {teacherSet.length > 1 && (
+                          <span className="slot-badge slot-badge-teacher" title={`Преподавателей: ${teacherSet.length}`}>
+                            {teacherSet.length}
+                          </span>
+                        )}
+                        {groupSet.length > 1 && (
+                          <span className="slot-badge slot-badge-group" title={`Групп: ${groupSet.length}`}>
+                            {groupSet.length}
+                          </span>
+                        )}
                       </td>
                     )
                   })}
@@ -165,20 +188,25 @@ function Legend({ children, dotClass }: { children: React.ReactNode; dotClass: s
 
 function RoomTooltip({ x, y, entries }: { x: number; y: number; entries: SlotEntry[] }) {
   const merged = mergeTooltipEntries(entries)
+  const room = entries[0]?.room
   return (
     <div
-      className="pointer-events-none fixed z-50 max-w-xs rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-xl"
+      className="slot-tooltip pointer-events-none fixed z-50 max-w-xs rounded-lg border border-border px-3 py-2 text-xs shadow-xl"
       style={{ left: x, top: y }}
     >
+      {room && <div className="mb-1 font-bold text-amber-500">Кабинет: {room}</div>}
       {merged.map((entry, idx) => (
         <div key={`${entry.subject}-${idx}`}>
           {idx > 0 && <hr className="my-1.5 border-border" />}
-          <div className="font-bold text-primary">{entry.subject || '—'}</div>
+          <div className={cn('font-bold', entry.cancelled ? 'text-red-500 line-through' : 'text-primary')}>
+            {entry.subject || '—'}
+          </div>
           <div className="text-muted-foreground">{entry.teacher || '—'}</div>
           <div className="text-emerald-400">Группы: {entry.groups.length > 0 ? entry.groups.join(', ') : '—'}</div>
           {entry.subgroup && <div className="text-amber-400">Подгруппа: {entry.subgroup}</div>}
           {entry.type && <div className="text-purple-400">{LESSON_TYPE_LABELS[entry.type as LessonType] || entry.type}</div>}
           {entry.time && <div className="text-muted-foreground">{entry.time}</div>}
+          {entry.cancelled && <div className="font-semibold text-red-500">Пара отменена</div>}
         </div>
       ))}
     </div>
@@ -192,12 +220,13 @@ interface MergedTooltipEntry {
   subgroup: string
   time: string
   groups: string[]
+  cancelled: boolean
 }
 
 function mergeTooltipEntries(entries: SlotEntry[]): MergedTooltipEntry[] {
   const map = new Map<string, MergedTooltipEntry>()
   entries.forEach((entry) => {
-    const key = [entry.subject, entry.teacher, entry.type, entry.subgroup, entry.time].join('|')
+    const key = [entry.subject, entry.teacher, entry.type, entry.subgroup, entry.time, entry.cancelled].join('|')
     const current = map.get(key)
     if (current) {
       if (entry.group && !current.groups.includes(entry.group)) current.groups.push(entry.group)
@@ -210,6 +239,7 @@ function mergeTooltipEntries(entries: SlotEntry[]): MergedTooltipEntry[] {
       subgroup: entry.subgroup,
       time: entry.time,
       groups: entry.group ? [entry.group] : [],
+      cancelled: entry.cancelled,
     })
   })
   return Array.from(map.values())
@@ -225,7 +255,6 @@ function buildOccupancy(week: WeekSchedule | null, groups: ScheduleGroup[]) {
   if (!week) return { occupancy, orderedRooms: [] as string[], categoryStart: {} as Record<string, boolean> }
 
   week.lessons.forEach((lesson) => {
-    if (lesson.cancelled) return
     const room = normalizeRoom(lesson.room)
     if (!room || room === 'ДО') return
     if (!occupancy[room]) occupancy[room] = {}
@@ -242,6 +271,8 @@ function buildOccupancy(week: WeekSchedule | null, groups: ScheduleGroup[]) {
         subgroup: lesson.subgroup || '',
         time: PAIR_TIMES[p] || '',
         pair: p,
+        cancelled: Boolean(lesson.cancelled),
+        room,
       })
     }
   })

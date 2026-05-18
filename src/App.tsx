@@ -9,7 +9,7 @@ import { RoomsView } from '@/features/rooms/RoomsView'
 import { ScheduleView } from '@/features/schedule/ScheduleView'
 import { TeachersView } from '@/features/teachers/TeachersView'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { useCoursePlan, useCourseSchedule } from '@/hooks/useSchedule'
+import { useCourseData } from '@/hooks/useSchedule'
 import { useTheme } from '@/hooks/useTheme'
 import { applyLessonFilters, getWeekByNumber } from '@/lib/schedule'
 import type { FiltersState } from '@/types/schedule'
@@ -29,8 +29,10 @@ export default function App() {
   const [filters, setFilters] = useState<FiltersState>(defaultFilters)
   const [refreshKey, setRefreshKey] = useState(0)
   const debouncedSearch = useDebouncedValue(filters.search)
-  const { schedule, loading, error, loadedAt } = useCourseSchedule(filters.course, refreshKey)
-  const { plan, updateEntry: updatePlanEntry } = useCoursePlan(filters.course, refreshKey)
+  const { schedule, plan, loading, error, loadedAt, updatePlanEntry } = useCourseData(
+    filters.course,
+    refreshKey,
+  )
 
   const refresh = useCallback(() => setRefreshKey((value) => value + 1), [])
 
@@ -56,43 +58,53 @@ export default function App() {
       refreshing={loading}
       loadedAt={loadedAt}
     >
-      <GlobalFilters
-        filters={filters}
-        groups={schedule?.groups || []}
-        weeks={schedule?.weeks || []}
-        lessons={schedule?.lessons || []}
-        activeTab={activeTab}
-        onFiltersChange={setFilters}
-      />
-
-      {loading && !schedule && <LoadingState />}
-      {!loading && error && !schedule && <ErrorState error={error} />}
-      {schedule && (
-        <>
-          {activeTab === 'schedule' && (
-            <ScheduleView
-              groups={schedule.groups}
-              lessons={filteredWeekLessons}
-              weekName={week?.name || `${filters.week}-я неделя`}
-              dateRange={week?.date_range || ''}
-            />
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="min-w-0 space-y-3 lg:order-1">
+          {loading && !schedule && <LoadingState />}
+          {!loading && error && !schedule && <ErrorState error={error} />}
+          {schedule && (
+            <>
+              {activeTab === 'schedule' && (
+                <ScheduleView
+                  groups={schedule.groups}
+                  lessons={filteredWeekLessons}
+                  weekName={week?.name || `${filters.week}-я неделя`}
+                  dateRange={week?.date_range || ''}
+                />
+              )}
+              {activeTab === 'rooms' && (
+                <RoomsView
+                  weeks={schedule.weeks}
+                  groups={schedule.groups}
+                  selectedWeek={filters.week}
+                  onWeekChange={(week) => setFilters((current) => ({ ...current, week }))}
+                />
+              )}
+              {activeTab === 'teachers' && <TeachersView lessons={filteredAllLessons} />}
+              {activeTab === 'analytics' && (
+                <AnalyticsView
+                  course={schedule.course}
+                  groups={schedule.groups}
+                  lessons={schedule.lessons}
+                  plan={plan}
+                  onPlanChange={updatePlanEntry}
+                  groupFilter={filters.group}
+                />
+              )}
+            </>
           )}
-          {activeTab === 'rooms' && (
-            <RoomsView weeks={schedule.weeks} groups={schedule.groups} selectedWeek={filters.week} onWeekChange={(week) => setFilters((current) => ({ ...current, week }))} />
-          )}
-          {activeTab === 'teachers' && <TeachersView lessons={filteredAllLessons} />}
-          {activeTab === 'analytics' && (
-            <AnalyticsView
-              course={schedule.course}
-              groups={schedule.groups}
-              lessons={schedule.lessons}
-              plan={plan}
-              onPlanChange={updatePlanEntry}
-              groupFilter={filters.group}
-            />
-          )}
-        </>
-      )}
+        </div>
+        <aside className="lg:order-2 lg:sticky lg:top-12 lg:self-start">
+          <GlobalFilters
+            filters={filters}
+            groups={schedule?.groups || []}
+            weeks={schedule?.weeks || []}
+            lessons={schedule?.lessons || []}
+            activeTab={activeTab}
+            onFiltersChange={setFilters}
+          />
+        </aside>
+      </div>
     </AppShell>
   )
 }

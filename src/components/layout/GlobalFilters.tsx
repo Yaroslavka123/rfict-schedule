@@ -44,20 +44,46 @@ export function GlobalFilters({ filters, groups, weeks, lessons, activeTab, onFi
   }, [filters.group, lessons])
 
   const availableWeeks = useMemo(() => weeks.map((week) => week.week_number).sort((a, b) => a - b), [weeks])
+  const hasActiveFilters =
+    filters.group !== 'all' || filters.subgroup !== 'all' || filters.lessonTypes.length > 0 || filters.search
 
   return (
     <Card>
-      <CardContent className="space-y-3 p-3 md:p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <FilterLabel>Курс</FilterLabel>
-          <Select className="h-9 w-auto min-w-[7rem]" value={filters.course} onChange={(event) => onFiltersChange({ ...filters, course: Number(event.target.value), group: 'all', subgroup: 'all' })}>
+      <CardContent className="space-y-3 p-3">
+        <FilterRow label="Поиск">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="h-9 pl-9 text-sm"
+              placeholder="Предмет, преподаватель…"
+              value={filters.search}
+              onChange={(event) => setFilter('search', event.target.value)}
+            />
+          </div>
+        </FilterRow>
+
+        <FilterRow label="Курс">
+          <Select
+            className="h-9 w-full text-sm"
+            value={filters.course}
+            onChange={(event) =>
+              onFiltersChange({ ...filters, course: Number(event.target.value), group: 'all', subgroup: 'all' })
+            }
+          >
             {COURSES.map((course) => (
-              <option key={course} value={course}>{course} курс</option>
+              <option key={course} value={course}>
+                {course} курс
+              </option>
             ))}
           </Select>
+        </FilterRow>
 
-          <FilterLabel>Группа</FilterLabel>
-          <Select className="h-9 w-auto min-w-[10rem]" value={filters.group} onChange={(event) => setFilter('group', event.target.value)}>
+        <FilterRow label="Группа">
+          <Select
+            className="h-9 w-full text-sm"
+            value={filters.group}
+            onChange={(event) => setFilter('group', event.target.value)}
+          >
             <option value="all">Все группы</option>
             {groups.map((group) => (
               <option key={group.id} value={group.id}>
@@ -66,71 +92,83 @@ export function GlobalFilters({ filters, groups, weeks, lessons, activeTab, onFi
               </option>
             ))}
           </Select>
+        </FilterRow>
 
-          {showSubgroup && subgroupOptions.length > 0 && (
-            <>
-              <FilterLabel>Подгр.</FilterLabel>
-              <Select className="h-9 w-auto min-w-[6rem]" value={filters.subgroup} onChange={(event) => setFilter('subgroup', event.target.value)}>
-                <option value="all">Все</option>
-                {subgroupOptions.map((subgroup) => (
-                  <option key={subgroup} value={subgroup}>{subgroup}</option>
-                ))}
-              </Select>
-            </>
-          )}
-
-          <div className="relative ml-auto min-w-[14rem] flex-1 max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input className="h-9 pl-9" placeholder="Поиск: предмет, преподаватель, кабинет…" value={filters.search} onChange={(event) => setFilter('search', event.target.value)} />
-          </div>
-
-          {(filters.group !== 'all' || filters.subgroup !== 'all' || filters.lessonTypes.length > 0 || filters.search) && (
-            <Button variant="ghost" className="h-9" onClick={() => onFiltersChange({ ...filters, group: 'all', subgroup: 'all', lessonTypes: [], search: '' })}>
-              <X className="h-4 w-4" />
-              Сброс
-            </Button>
-          )}
-        </div>
+        {showSubgroup && subgroupOptions.length > 0 && (
+          <FilterRow label="Подгруппа">
+            <Select
+              className="h-9 w-full text-sm"
+              value={filters.subgroup}
+              onChange={(event) => setFilter('subgroup', event.target.value)}
+            >
+              <option value="all">Все</option>
+              {subgroupOptions.map((subgroup) => (
+                <option key={subgroup} value={subgroup}>
+                  {subgroup}
+                </option>
+              ))}
+            </Select>
+          </FilterRow>
+        )}
 
         {showWeek && availableWeeks.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <FilterLabel>Неделя</FilterLabel>
-            {availableWeeks.map((week) => (
-              <button
-                key={week}
-                type="button"
-                className={
-                  week === filters.week
-                    ? 'rounded-md border border-primary bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary'
-                    : 'rounded-md border border-border bg-background px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground'
-                }
-                onClick={() => setFilter('week', week)}
-              >
-                {week}-я
-              </button>
-            ))}
-          </div>
+          <FilterRow label="Неделя">
+            <div className="flex flex-wrap gap-1">
+              {availableWeeks.map((week) => (
+                <button
+                  key={week}
+                  type="button"
+                  className={
+                    week === filters.week
+                      ? 'rounded-md border border-primary bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary'
+                      : 'rounded-md border border-border bg-background px-2 py-0.5 text-xs font-semibold text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground'
+                  }
+                  onClick={() => setFilter('week', week)}
+                >
+                  {week}
+                </button>
+              ))}
+            </div>
+          </FilterRow>
         )}
 
         {showTypes && (
-          <div className="flex flex-wrap gap-1.5">
-            {filterableTypes.map(([type, label]) => (
-              <button
-                key={type}
-                type="button"
-                className={filters.lessonTypes.includes(type) ? 'filter-chip filter-chip-active' : 'filter-chip'}
-                onClick={() => toggleType(type)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <FilterRow label="Тип">
+            <div className="flex flex-wrap gap-1">
+              {filterableTypes.map(([type, label]) => (
+                <button
+                  key={type}
+                  type="button"
+                  className={filters.lessonTypes.includes(type) ? 'filter-chip filter-chip-active' : 'filter-chip'}
+                  onClick={() => toggleType(type)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </FilterRow>
+        )}
+
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            className="h-8 w-full text-xs"
+            onClick={() => onFiltersChange({ ...filters, group: 'all', subgroup: 'all', lessonTypes: [], search: '' })}
+          >
+            <X className="h-3.5 w-3.5" />
+            Сбросить фильтры
+          </Button>
         )}
       </CardContent>
     </Card>
   )
 }
 
-function FilterLabel({ children }: { children: React.ReactNode }) {
-  return <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{children}</span>
+function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      {children}
+    </div>
+  )
 }

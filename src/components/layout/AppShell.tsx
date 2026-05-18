@@ -28,33 +28,17 @@ export function AppShell({ activeTab, onTabChange, theme, onToggleTheme, onRefre
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-screen-2xl flex-col gap-3 px-4 py-3 md:px-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                <CalendarDays className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">РФиКТ БГУ</p>
-                <h1 className="text-base font-bold tracking-tight md:text-lg">Расписание занятий</h1>
-              </div>
+        <div className="mx-auto flex max-w-screen-2xl items-center gap-3 px-3 py-1.5 md:px-5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <CalendarDays className="h-4 w-4" />
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {loadedAt > 0 && (
-                <span className="hidden text-xs text-muted-foreground sm:inline">
-                  Обновлено {formatUpdatedAt(new Date(loadedAt).toISOString())}
-                </span>
-              )}
-              <Button variant="secondary" onClick={onRefresh} disabled={refreshing} aria-label="Обновить" title="Перезагрузить данные">
-                <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
-                <span className="hidden sm:inline">Обновить</span>
-              </Button>
-              <Button variant="secondary" onClick={onToggleTheme} aria-label="Переключить тему" title="Сменить тему">
-                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
+            <div className="hidden sm:block">
+              <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground leading-none">РФиКТ БГУ</p>
+              <h1 className="text-xs font-bold leading-tight tracking-tight md:text-sm">Расписание</h1>
             </div>
           </div>
-          <nav className="flex gap-1 overflow-x-auto border-b border-border -mb-px">
+          <nav className="flex flex-1 gap-0.5 overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
@@ -62,23 +46,49 @@ export function AppShell({ activeTab, onTabChange, theme, onToggleTheme, onRefre
                   key={tab.id}
                   type="button"
                   className={cn(
-                    'inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-semibold transition',
+                    'inline-flex items-center gap-1 whitespace-nowrap rounded-md border-b-2 px-2 py-1 text-xs font-semibold transition',
                     activeTab === tab.id
-                      ? 'border-primary text-foreground'
+                      ? 'border-primary bg-primary/10 text-foreground'
                       : 'border-transparent text-muted-foreground hover:text-foreground',
                   )}
                   onClick={() => onTabChange(tab.id)}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-3.5 w-3.5" />
                   {tab.label}
                 </button>
               )
             })}
           </nav>
+          <div className="flex items-center gap-1">
+            {loadedAt > 0 && (
+              <span className="hidden text-[10px] text-muted-foreground lg:inline">
+                {formatUpdatedAt(new Date(loadedAt).toISOString())}
+              </span>
+            )}
+            <Button
+              variant="secondary"
+              className="h-7 px-2 text-xs"
+              onClick={onRefresh}
+              disabled={refreshing}
+              aria-label="Обновить"
+              title="Перезагрузить данные"
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
+            </Button>
+            <Button
+              variant="secondary"
+              className="h-7 px-2 text-xs"
+              onClick={onToggleTheme}
+              aria-label="Переключить тему"
+              title="Сменить тему"
+            >
+              {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+            </Button>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-screen-2xl space-y-4 px-3 py-4 md:px-6">{children}</main>
+      <main className="mx-auto w-full max-w-screen-2xl px-3 py-3 md:px-5">{children}</main>
     </div>
   )
 }
