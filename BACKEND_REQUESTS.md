@@ -99,9 +99,9 @@ POST /api/v1/schedule
 
 Backend должен принять тот же `WeekSchedule`, сохранить его и вернуть `200` или `201`.
 
-### Автосохранение текущей недели
+### Короткое автосохранение
 
-`onSheetEdit()` отправляет на backend тот же `WeekSchedule`, что и ручная кнопка, но только для текущего листа-недели:
+`onSheetEdit()` отправляет на backend тот же `WeekSchedule`, что и ручная кнопка, но только для изменённой группы и занятий из изменённой ячейки:
 
 ```http
 POST /api/v1/schedule
@@ -122,9 +122,7 @@ interface WeekSchedule {
 }
 ```
 
-Текущий CourseJob backend при `POST /api/v1/schedule` заменяет всю неделю: сначала удаляет старые `schedule_lesson` для недели, затем вставляет пришедшие `lessons[]`. Поэтому parser не должен отправлять в этот endpoint только одну изменённую ячейку — это удалит остальные занятия недели. Для true one-cell patch нужен отдельный backend endpoint или изменение semantics существующего `POST /api/v1/schedule`.
-
-Backend должен вернуть `200`, `201` или `202`. После успешного autosave parser через 5 секунд обновляет справочники `teachers`, `rooms`, `subjects`.
+Backend должен вернуть `200`, `201` или `202`, применить присланные поля как partial update и не стирать данные по полям/группам, которых нет в коротком payload. После успешного autosave parser через 5 секунд обновляет справочники `teachers`, `rooms`, `subjects`.
 
 ## 5. Справочники
 

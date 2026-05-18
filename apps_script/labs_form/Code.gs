@@ -869,11 +869,8 @@ function buildAutosaveScheduleForRange_(ss, range) {
   var sheetMeta = getSheetHeaderMeta_(sheet);
   var weekInfo = getWeekInfoFromSheetName_(sheetName);
   var groups = discoverGroups_(sheet);
-  var lessons = parseWeekSheet_(sheet, groups, parseAcademicYear_(sheet), spreadsheetId);
-  if (!lessons.length) {
-    console.warn('Autosave skipped: current sheet has no lessons and backend rejects empty schedule imports.');
-    return null;
-  }
+  var cellPatch = buildEditedCellLessons_(sheet, range, groups, spreadsheetId);
+  if (!cellPatch) return null;
 
   return {
     name: sheetName,
@@ -882,11 +879,104 @@ function buildAutosaveScheduleForRange_(ss, range) {
     semester: sheetMeta.semester,
     week_number: weekInfo.week_number,
     date_range: weekInfo.date_range,
-    groups: groups.map(function(g) {
-      return {id: g.id, name: g.name, specialty: g.specialty, department: g.department};
-    }),
-    lessons: lessons,
+    groups: [{
+      id: cellPatch.group.id,
+      name: cellPatch.group.name,
+      specialty: cellPatch.group.specialty,
+      department: cellPatch.group.department,
+    }],
+    lessons: cellPatch.lessons,
   };
+}
+
+function buildEditedCellLessons_(sheet, range, groups, googleSheetId) {
+  if (range.getNumRows() !== 1 || range.getNumColumns() !== 1) return null;
+  var row = range.getRow();
+  var col = range.getColumn();
+  var group = null;
+  for (var i = 0; i < groups.length; i++) {
+    if (col === groups[i].content_col || col === groups[i].room_col) {
+      group = groups[i];
+      break;
+    }
+  }
+  if (!group) return null;
+
+  var academicYear = parseAcademicYear_(sheet);
+  var rowContext = getScheduleRowContext_(sheet, row, academicYear);
+  if (!rowContext.day || !rowContext.pair) return null;
+
+  var contentCell = sheet.getRange(row, group.content_col);
+  var roomCell = sheet.getRange(row, group.room_col);
+  var richText = contentCell.getRichTextValue();
+  var roomValue = roomCell.getDisplayValue();
+  var bg = (contentCell.getBackground() || '').toLowerCase();
+  var type = COLOR_TO_TYPE_MAP_[bg] || 'unknown';
+  var duration = getCellDuration_(contentCell);
+  var lessons = [];
+
+  if (richText && String(richText.getText() || '').trim()) {
+    var parsed = parseRichLessonCell_(richText, roomValue);
+    for (var p = 0; p < parsed.length; p++) {
+      var entry = parsed[p];
+      lessons.push({
+        day: rowContext.day,
+        day_number: rowContext.day_number,
+        date: rowContext.date,
+        pair: rowContext.pair,
+        duration: duration,
+        time: rowContext.time,
+        group: group.id,
+        type: type,
+        subject: entry.subject,
+        teacher: entry.teacher,
+        room: entry.room,
+        subgroup: entry.subgroup || null,
+        frequency: entry.frequency || null,
+        period_start: entry.period_start || null,
+        period_end: entry.period_end || null,
+        comment: entry.comment || null,
+        cancelled: entry.cancelled || false,
+        google_sheet_id: googleSheetId || null,
+      });
+    }
+  }
+
+  return {group: group, lessons: lessons};
+}
+
+function getScheduleRowContext_(sheet, targetRow, academicYear) {
+  var values = sheet.getRange(1, 1, targetRow, 3).getDisplayValues();
+  var currentDay = '';
+  var currentDayNum = 0;
+  var currentDate = null;
+  var pair = null;
+  var time = '';
+  for (var r = 5; r <= targetRow; r++) {
+    var row = values[r - 1];
+    var parsedDay = parseDayCell_(row[0]);
+    if (parsedDay.dayIndex >= 0) {
+      currentDay = parsedDay.dayName;
+      currentDayNum = parsedDay.dayIndex + 1;
+      currentDate = normalizeLessonDate_(parsedDay.date, academicYear);
+    }
+    if (r === targetRow) {
+      pair = parseInt(row[1], 10) || null;
+      time = String(row[2] || '').replace(/\n/g, ' ').trim();
+    }
+  }
+  return {day: currentDay, day_number: currentDayNum, date: currentDate, pair: pair, time: time};
+}
+
+function getCellDuration_(cell) {
+  var merged = cell.getMergedRanges();
+  if (!merged.length) return 1;
+  for (var i = 0; i < merged.length; i++) {
+    if (merged[i].getRow() === cell.getRow() && merged[i].getColumn() === cell.getColumn()) {
+      return merged[i].getNumRows();
+    }
+  }
+  return 1;
 }
 
 function getSheetHeaderMeta_(sheet) {
