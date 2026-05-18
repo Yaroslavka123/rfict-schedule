@@ -1,6 +1,6 @@
 {
   "name": "02.02-07.02 (1-я неделя)",
-  "generated_at": "2026-05-18T20:06:22.372Z",
+  "generated_at": "2026-05-18T20:09:28.117Z",
   "course": 3,
   "semester": 6,
   "week_number": 1,
@@ -73,7 +73,7 @@
       "type": "lecture",
       "subject": "Интелектуальный анализ данных",
       "teacher": "доц. ЯцковН.Н.",
-      "room": "1155",
+      "room": "123",
       "subgroup": null,
       "frequency": null,
       "period_start": null,
