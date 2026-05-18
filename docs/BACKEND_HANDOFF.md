@@ -151,6 +151,85 @@ Parser отправляет JSON того же формата, что frontend �
 }
 ```
 
+### 2.1. Принять короткое изменение ячейки от Apps Script
+
+```http
+POST /api/v1/schedule/changes
+Content-Type: application/json
+```
+
+`onSheetEdit()` больше не отправляет полный JSON недели. После каждой правки parser отправляет короткий patch по изменённой ячейке:
+
+```json
+{
+  "event": "schedule_cell_changed",
+  "generated_at": "2026-05-17T19:00:00Z",
+  "spreadsheet_id": "1abc...xyz",
+  "sheet_id": 123456,
+  "sheet_name": "12.05 - 18.05 (14-я неделя)",
+  "range": "D10",
+  "row": 10,
+  "column": 4,
+  "num_rows": 1,
+  "num_columns": 1,
+  "course": 3,
+  "semester": 6,
+  "week_number": 14,
+  "date_range": "12.05 - 18.05",
+  "values": [["Математика\nИванов И.И."]],
+  "cell": {
+    "content_a1": "D10",
+    "room_a1": "E10",
+    "row": 10,
+    "content_column": 4,
+    "room_column": 5,
+    "group": "ИКБО-01-23",
+    "day": "Пн",
+    "day_number": 1,
+    "date": "2026-05-12",
+    "pair": 1,
+    "time": "09:00-10:30",
+    "duration": 1,
+    "type": "lecture",
+    "deleted": false
+  },
+  "lessons": [
+    {
+      "day": "Пн",
+      "day_number": 1,
+      "date": "2026-05-12",
+      "pair": 1,
+      "duration": 1,
+      "time": "09:00-10:30",
+      "group": "ИКБО-01-23",
+      "type": "lecture",
+      "subject": "Математика",
+      "teacher": "Иванов И.И.",
+      "room": "А-101",
+      "subgroup": null,
+      "frequency": null,
+      "period_start": null,
+      "period_end": null,
+      "comment": null,
+      "cancelled": false,
+      "google_sheet_id": "1abc...xyz"
+    }
+  ]
+}
+```
+
+Backend должен:
+
+1. принять `200`, `201` или `202` при успешной обработке;
+2. найти неделю по `(course, week_number)` и ячейку по `(spreadsheet_id, sheet_id, content_a1)`;
+3. если `cell.deleted=true` или `lessons=[]` — удалить занятия этой ячейки;
+4. иначе idempotent upsert заменить занятия этой ячейки на `lessons[]`;
+5. обновить `updated_at/version` недели;
+6. пересчитать/обновить справочники предметов, преподавателей и аудиторий;
+7. отправить realtime-событие `schedule_updated` в SSE-канал.
+
+Через 5 секунд после успешного ответа Apps Script заново запрашивает `GET /api/v1/teachers`, `GET /api/v1/rooms`, `GET /api/v1/subjects`, чтобы sidebar получил свежие autocomplete-данные.
+
 ### 3. Справочник предметов
 
 ```http
@@ -312,36 +391,41 @@ Google Sheets → Apps Script parser → POST /api/v1/schedule → backend DB/ca
                          frontend refetch GET /api/v1/schedule?course=N&week=M
 ```
 
-### Вариант A: SSE/WebSocket, лучший вариант
+### Выбранный вариант: SSE
 
-Backend после успешного `POST /api/v1/schedule` отправляет событие всем клиентам, которые смотрят этот курс/неделю.
+SSE проще WebSocket для текущего UI: frontend только получает события и после события делает обычный `GET /api/v1/schedule`. Двусторонний канал не нужен.
 
-SSE:
+Backend после успешного `POST /api/v1/schedule` или `POST /api/v1/schedule/changes` отправляет событие всем клиентам, которые смотрят этот курс/неделю.
 
 ```http
 GET /api/v1/schedule/events?course=3&week=14
 Accept: text/event-stream
 ```
 
+Требования к SSE endpoint:
+
+1. держать соединение `text/event-stream` открытым;
+2. фильтровать события по `course` и опционально по `week`;
+3. отправлять heartbeat/comment раз в 20–30 секунд, чтобы proxy не закрывал соединение;
+4. после reconnect отдавать актуальный `version` через обычный `GET /api/v1/schedule?course=N&week=M` — хранить backlog событий не обязательно;
+5. при ошибке frontend закрывает EventSource и переподключается стандартным механизмом браузера.
+
 Событие:
 
-```json
-{
-  "type": "schedule_updated",
-  "course": 3,
-  "week": 14,
-  "updated_at": "2026-05-17T19:00:00Z",
-  "version": "2026-05-17T19:00:00Z"
-}
+```text
+event: schedule_updated
+data: {"type":"schedule_updated","course":3,"week_number":14,"updated_at":"2026-05-17T19:00:00Z","version":"2026-05-17T19:00:00Z","source":"apps_script_short_change"}
 ```
 
-WebSocket альтернатива:
+Frontend flow:
 
-```http
-WS /api/v1/schedule/live?course=3&week=14
-```
+1. при открытии курса создать `new EventSource('/api/v1/schedule/events?course=N')`;
+2. на `schedule_updated` проверить `course` и `week_number`;
+3. если открытая неделя/курс совпадает — вызвать refetch `GET /api/v1/schedule?course=N&week=M`;
+4. заменить локальное состояние расписания и пересчитать фильтры/аналитику на frontend;
+5. если EventSource недоступен — fallback на polling ниже.
 
-### Вариант B: короткий polling, проще для первого релиза
+### Fallback: короткий polling
 
 Frontend раз в 5–10 секунд спрашивает lightweight endpoint, не скачивая всё расписание:
 
