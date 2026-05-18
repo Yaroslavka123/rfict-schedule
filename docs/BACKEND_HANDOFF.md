@@ -151,48 +151,31 @@ Parser отправляет JSON того же формата, что frontend �
 }
 ```
 
-### 2.1. Принять короткое изменение ячейки от Apps Script
+### 2.1. Автосохранение текущей недели из Apps Script
 
 ```http
-POST /api/v1/schedule/changes
+POST /api/v1/schedule
 Content-Type: application/json
 ```
 
-`onSheetEdit()` больше не отправляет полный JSON недели. После каждой правки parser отправляет короткий patch по изменённой ячейке:
+`onSheetEdit()` отправляет на тот же endpoint, что и ручная кнопка сохранения. Payload имеет ту же структуру `WeekSchedule`, что и полный экспорт, но содержит только текущий лист-неделю, а не все листы таблицы.
 
 ```json
 {
-  "event": "schedule_cell_changed",
+  "name": "12.05 - 18.05 (14-я неделя)",
   "generated_at": "2026-05-17T19:00:00Z",
-  "spreadsheet_id": "1abc...xyz",
-  "sheet_id": 123456,
-  "sheet_name": "12.05 - 18.05 (14-я неделя)",
-  "range": "D10",
-  "row": 10,
-  "column": 4,
-  "num_rows": 1,
-  "num_columns": 1,
   "course": 3,
   "semester": 6,
   "week_number": 14,
   "date_range": "12.05 - 18.05",
-  "values": [["Математика\nИванов И.И."]],
-  "cell": {
-    "content_a1": "D10",
-    "room_a1": "E10",
-    "row": 10,
-    "content_column": 4,
-    "room_column": 5,
-    "group": "ИКБО-01-23",
-    "day": "Пн",
-    "day_number": 1,
-    "date": "2026-05-12",
-    "pair": 1,
-    "time": "09:00-10:30",
-    "duration": 1,
-    "type": "lecture",
-    "deleted": false
-  },
+  "groups": [
+    {
+      "id": "ИКБО-01-23",
+      "name": "ИКБО-01-23",
+      "specialty": "Радиофизика и цифровые технологии",
+      "department": "РФиИТ"
+    }
+  ],
   "lessons": [
     {
       "day": "Пн",
@@ -218,17 +201,31 @@ Content-Type: application/json
 }
 ```
 
+Важно: текущий CourseJob backend в `POST /api/v1/schedule` сначала удаляет все занятия недели, затем вставляет `lessons[]` из запроса. Поэтому Apps Script не должен отправлять только одну изменённую ячейку в этот endpoint — это удалит остальные занятия недели. Для настоящего one-cell patch нужен отдельный backend endpoint или изменение semantics `POST /api/v1/schedule`.
+
 Backend должен:
 
 1. принять `200`, `201` или `202` при успешной обработке;
-2. найти неделю по `(course, week_number)` и ячейку по `(spreadsheet_id, sheet_id, content_a1)`;
-3. если `cell.deleted=true` или `lessons=[]` — удалить занятия этой ячейки;
-4. иначе idempotent upsert заменить занятия этой ячейки на `lessons[]`;
-5. обновить `updated_at/version` недели;
-6. пересчитать/обновить справочники предметов, преподавателей и аудиторий;
-7. отправить realtime-событие `schedule_updated` в SSE-канал.
+2. заменить неделю по `(course, semester, week_number)` на пришедший `WeekSchedule`;
+3. пересчитать/обновить справочники предметов, преподавателей и аудиторий;
+4. отправить realtime-событие `schedule_updated` в SSE-канал.
 
 Через 5 секунд после успешного ответа Apps Script заново запрашивает `GET /api/v1/teachers`, `GET /api/v1/rooms`, `GET /api/v1/subjects`, чтобы sidebar получил свежие autocomplete-данные.
+
+### 2.2. Как проверить installable trigger
+
+1. Откройте таблицу и обновите страницу, чтобы появилось меню `Расписание`.
+2. Нажмите `Расписание → Автосохранение на сайт: выкл/вкл` и подтвердите включение.
+3. Откройте Apps Script → `Triggers` (иконка часов). Должен быть ровно один trigger:
+   - function: `onSheetEdit`;
+   - deployment: `Head`;
+   - event source: `From spreadsheet`;
+   - event type: `On edit`.
+4. Откройте Apps Script → `Executions`, затем измените занятие на листе недели в Google Sheets.
+5. В `Executions` должна появиться новая запись `onSheetEdit` со статусом `Completed`. Если есть ошибка, откройте execution и смотрите stack/logs.
+6. В backend logs должен появиться `POST /api/v1/schedule` с `course`, `week_number` и `lessons_count` текущей недели.
+7. Через 5 секунд после успешного POST sidebar должен получить свежие справочники из `GET /api/v1/teachers`, `GET /api/v1/rooms`, `GET /api/v1/subjects`.
+8. Если `Executions` пустой — trigger не установлен или установлен не тем пользователем: выключите автосохранение, включите снова и проверьте список triggers.
 
 ### 3. Справочник предметов
 
@@ -395,7 +392,7 @@ Google Sheets → Apps Script parser → POST /api/v1/schedule → backend DB/ca
 
 SSE проще WebSocket для текущего UI: frontend только получает события и после события делает обычный `GET /api/v1/schedule`. Двусторонний канал не нужен.
 
-Backend после успешного `POST /api/v1/schedule` или `POST /api/v1/schedule/changes` отправляет событие всем клиентам, которые смотрят этот курс/неделю.
+Backend после успешного `POST /api/v1/schedule` отправляет событие всем клиентам, которые смотрят этот курс/неделю.
 
 ```http
 GET /api/v1/schedule/events?course=3&week=14
@@ -414,7 +411,7 @@ Accept: text/event-stream
 
 ```text
 event: schedule_updated
-data: {"type":"schedule_updated","course":3,"week_number":14,"updated_at":"2026-05-17T19:00:00Z","version":"2026-05-17T19:00:00Z","source":"apps_script_short_change"}
+data: {"type":"schedule_updated","course":3,"week_number":14,"updated_at":"2026-05-17T19:00:00Z","version":"2026-05-17T19:00:00Z","source":"apps_script_autosave"}
 ```
 
 Frontend flow:

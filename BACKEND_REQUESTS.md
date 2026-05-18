@@ -99,54 +99,32 @@ POST /api/v1/schedule
 
 Backend должен принять тот же `WeekSchedule`, сохранить его и вернуть `200` или `201`.
 
-### Принять короткое изменение ячейки
+### Автосохранение текущей недели
 
-`onSheetEdit()` отправляет на backend не полный `WeekSchedule`, а короткий patch:
+`onSheetEdit()` отправляет на backend тот же `WeekSchedule`, что и ручная кнопка, но только для текущего листа-недели:
 
 ```http
-POST /api/v1/schedule/changes
+POST /api/v1/schedule
 ```
 
-Минимальный payload:
+Payload тот же, что у полного импорта:
 
 ```ts
-interface ScheduleCellChange {
-  event: 'schedule_cell_changed'
+interface WeekSchedule {
+  name: string
   generated_at: string
-  spreadsheet_id: string
-  sheet_id: number
-  sheet_name: string
-  range: string
-  row: number
-  column: number
-  num_rows: number
-  num_columns: number
-  course: number | null
-  semester: number | null
-  week_number: number | null
+  course: number
+  semester: number
+  week_number: number
   date_range: string
-  values: string[][]
-  cell?: {
-    content_a1: string
-    room_a1: string
-    row: number
-    content_column: number
-    room_column: number
-    group: string
-    day: string
-    day_number: number
-    date: string | null
-    pair: number | null
-    time: string
-    duration: number
-    type: string
-    deleted: boolean
-  }
+  groups: Group[]
   lessons: Lesson[]
 }
 ```
 
-Backend должен вернуть `200`, `201` или `202`, заменить занятия указанной ячейки на `lessons[]`, а при `deleted=true` удалить занятия ячейки. После успешного patch нужно обновить `version/updated_at`, справочники и отправить realtime-событие.
+Текущий CourseJob backend при `POST /api/v1/schedule` заменяет всю неделю: сначала удаляет старые `schedule_lesson` для недели, затем вставляет пришедшие `lessons[]`. Поэтому parser не должен отправлять в этот endpoint только одну изменённую ячейку — это удалит остальные занятия недели. Для true one-cell patch нужен отдельный backend endpoint или изменение semantics существующего `POST /api/v1/schedule`.
+
+Backend должен вернуть `200`, `201` или `202`. После успешного autosave parser через 5 секунд обновляет справочники `teachers`, `rooms`, `subjects`.
 
 ## 5. Справочники
 
@@ -243,7 +221,7 @@ GET /api/v1/schedule/events?course=1&week=1
 Accept: text/event-stream
 ```
 
-Событие после `POST /api/v1/schedule` или `POST /api/v1/schedule/changes`:
+Событие после `POST /api/v1/schedule`:
 
 ```text
 event: schedule_updated

@@ -39,7 +39,7 @@ const ROOM_COL = 3;    // C
 
 // Backend API
 const DEFAULT_BACKEND_API_URL = 'https://rfict.up.railway.app';
-const BACKEND_CHANGE_ENDPOINT = '/api/v1/schedule/changes';
+const BACKEND_SCHEDULE_ENDPOINT = '/api/v1/schedule';
 
 function getBackendApiUrl_() {
   return (PropertiesService.getScriptProperties().getProperty('BACKEND_API_URL') || DEFAULT_BACKEND_API_URL).replace(/\/$/, '');
@@ -105,7 +105,7 @@ function togglePushEnabled() {
   }
   var on = ui.alert(
     'Включить автосохранение?',
-    'При изменении ячеек скрипт будет отправлять короткий JSON на сервер.',
+    'При изменении ячеек скрипт будет отправлять JSON текущей недели на сервер.',
     ui.ButtonSet.YES_NO
   );
   if (on !== ui.Button.YES) return;
@@ -403,7 +403,7 @@ function applyLesson(data) {
 
   SpreadsheetApp.flush();
   if (isPushEnabled_()) {
-    sendShortChangeForRange_(sheet.getParent(), cell);
+    sendAutosaveScheduleForRange_(sheet.getParent(), cell);
   }
   return {ok: true, cell: cellAddress_(row, col)};
 }
@@ -494,7 +494,7 @@ function clearActiveCell() {
   roomRange.setBackground(null);
   SpreadsheetApp.flush();
   if (isPushEnabled_()) {
-    sendShortChangeForRange_(sheet.getParent(), range);
+    sendAutosaveScheduleForRange_(sheet.getParent(), range);
   }
 }
 
@@ -848,46 +848,45 @@ function looksLikeNotes_(s) {
 function onSheetEdit(e) {
   if (!e || !e.source || !e.range) return;
   if (!isPushEnabled_()) return;
-  sendShortChangeForRange_(e.source, e.range);
+  sendAutosaveScheduleForRange_(e.source, e.range);
 }
 
-function sendShortChangeForRange_(ss, range) {
-  var payload = buildShortScheduleChange_(ss, range);
-  var sent = postShortScheduleChange_(payload);
-  if (sent) refreshDictionariesAfterShortPush_();
+function sendAutosaveScheduleForRange_(ss, range) {
+  var payload = buildAutosaveScheduleForRange_(ss, range);
+  if (!payload) return {sent: false, reason: 'not_schedule_payload'};
+  var sent = postToBackend_(payload);
+  if (sent) refreshDictionariesAfterAutosave_();
   return {sent: sent, payload: payload};
 }
 
-function buildShortScheduleChange_(ss, range) {
+function buildAutosaveScheduleForRange_(ss, range) {
+  if (!range) return null;
   var sheet = range.getSheet();
   var sheetName = sheet.getName().trim();
+  if (!/неделя\)?\s*$/.test(sheetName) || /черновик/i.test(sheetName)) return null;
+
+  var spreadsheetId = ss ? ss.getId() : sheet.getParent().getId();
   var sheetMeta = getSheetHeaderMeta_(sheet);
   var weekInfo = getWeekInfoFromSheetName_(sheetName);
-  var spreadsheetId = ss ? ss.getId() : sheet.getParent().getId();
-  var payload = {
-    event: 'schedule_cell_changed',
+  var groups = discoverGroups_(sheet);
+  var lessons = parseWeekSheet_(sheet, groups, parseAcademicYear_(sheet), spreadsheetId);
+  if (!lessons.length) {
+    console.warn('Autosave skipped: current sheet has no lessons and backend rejects empty schedule imports.');
+    return null;
+  }
+
+  return {
+    name: sheetName,
     generated_at: new Date().toISOString(),
-    spreadsheet_id: spreadsheetId,
-    sheet_id: sheet.getSheetId(),
-    sheet_name: sheetName,
-    range: range.getA1Notation(),
-    row: range.getRow(),
-    column: range.getColumn(),
-    num_rows: range.getNumRows(),
-    num_columns: range.getNumColumns(),
     course: sheetMeta.course,
     semester: sheetMeta.semester,
     week_number: weekInfo.week_number,
     date_range: weekInfo.date_range,
-    values: range.getDisplayValues(),
-    lessons: [],
+    groups: groups.map(function(g) {
+      return {id: g.id, name: g.name, specialty: g.specialty, department: g.department};
+    }),
+    lessons: lessons,
   };
-  var cellPatch = buildEditedCellPatch_(sheet, range, spreadsheetId);
-  if (cellPatch) {
-    payload.cell = cellPatch.cell;
-    payload.lessons = cellPatch.lessons;
-  }
-  return payload;
 }
 
 function getSheetHeaderMeta_(sheet) {
@@ -909,136 +908,7 @@ function getWeekInfoFromSheetName_(sheetName) {
   };
 }
 
-function buildEditedCellPatch_(sheet, range, googleSheetId) {
-  if (range.getNumRows() !== 1 || range.getNumColumns() !== 1) return null;
-  var row = range.getRow();
-  var col = range.getColumn();
-  var groups = discoverGroups_(sheet);
-  var group = null;
-  var contentCol = 0;
-  var roomCol = 0;
-  for (var i = 0; i < groups.length; i++) {
-    if (col === groups[i].content_col || col === groups[i].room_col) {
-      group = groups[i];
-      contentCol = groups[i].content_col;
-      roomCol = groups[i].room_col;
-      break;
-    }
-  }
-  if (!group) return null;
-
-  var academicYear = parseAcademicYear_(sheet);
-  var rowContext = getScheduleRowContext_(sheet, row, academicYear);
-  var contentCell = sheet.getRange(row, contentCol);
-  var pairRange = sheet.getRange(row, contentCol, 1, 2);
-  var pairValues = pairRange.getDisplayValues()[0];
-  var pairBgs = pairRange.getBackgrounds()[0];
-  var richText = contentCell.getRichTextValue();
-  var roomValue = roomCol === contentCol + 1 ? pairValues[1] : String(sheet.getRange(row, roomCol).getDisplayValue() || '');
-  var type = COLOR_TO_TYPE_MAP_[(pairBgs[0] || '').toLowerCase()] || 'unknown';
-  var duration = getCellDuration_(contentCell);
-  var lessons = [];
-
-  if (rowContext.pair && rowContext.day && richText && String(richText.getText() || '').trim()) {
-    var parsed = parseRichLessonCell_(richText, roomValue);
-    for (var p = 0; p < parsed.length; p++) {
-      var entry = parsed[p];
-      lessons.push({
-        day: rowContext.day,
-        day_number: rowContext.day_number,
-        date: rowContext.date,
-        pair: rowContext.pair,
-        duration: duration,
-        time: rowContext.time,
-        group: group.id,
-        type: type,
-        subject: entry.subject,
-        teacher: entry.teacher,
-        room: entry.room,
-        subgroup: entry.subgroup || null,
-        frequency: entry.frequency || null,
-        period_start: entry.period_start || null,
-        period_end: entry.period_end || null,
-        comment: entry.comment || null,
-        cancelled: entry.cancelled || false,
-        google_sheet_id: googleSheetId || null,
-      });
-    }
-  }
-
-  return {
-    cell: {
-      content_a1: cellAddress_(row, contentCol),
-      room_a1: cellAddress_(row, roomCol),
-      row: row,
-      content_column: contentCol,
-      room_column: roomCol,
-      group: group.id,
-      day: rowContext.day,
-      day_number: rowContext.day_number,
-      date: rowContext.date,
-      pair: rowContext.pair,
-      time: rowContext.time,
-      duration: duration,
-      type: type,
-      deleted: lessons.length === 0,
-    },
-    lessons: lessons,
-  };
-}
-
-function getScheduleRowContext_(sheet, targetRow, academicYear) {
-  var values = sheet.getRange(1, 1, targetRow, 3).getDisplayValues();
-  var currentDay = '';
-  var currentDayNum = 0;
-  var currentDate = null;
-  var pair = null;
-  var time = '';
-  for (var r = 5; r <= targetRow; r++) {
-    var row = values[r - 1];
-    var parsedDay = parseDayCell_(row[0]);
-    if (parsedDay.dayIndex >= 0) {
-      currentDay = parsedDay.dayName;
-      currentDayNum = parsedDay.dayIndex + 1;
-      currentDate = normalizeLessonDate_(parsedDay.date, academicYear);
-    }
-    if (r === targetRow) {
-      pair = parseInt(row[1], 10) || null;
-      time = String(row[2] || '').replace(/\n/g, ' ').trim();
-    }
-  }
-  return {day: currentDay, day_number: currentDayNum, date: currentDate, pair: pair, time: time};
-}
-
-function getCellDuration_(cell) {
-  var merged = cell.getMergedRanges();
-  if (!merged.length) return 1;
-  for (var i = 0; i < merged.length; i++) {
-    if (merged[i].getRow() === cell.getRow() && merged[i].getColumn() === cell.getColumn()) {
-      return merged[i].getNumRows();
-    }
-  }
-  return 1;
-}
-
-function postShortScheduleChange_(payload) {
-  try {
-    var resp = UrlFetchApp.fetch(getBackendApiUrl_() + BACKEND_CHANGE_ENDPOINT, {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true,
-    });
-    var code = resp.getResponseCode();
-    if (code === 200 || code === 201 || code === 202) return true;
-    console.warn('postShortScheduleChange_ error: ' + code + ' ' + resp.getContentText().substring(0, 200));
-  } catch (err) {
-    console.warn('postShortScheduleChange_ error: ' + err.message);
-  }
-  return false;
-}
-
-function refreshDictionariesAfterShortPush_() {
+function refreshDictionariesAfterAutosave_() {
   try { Utilities.sleep(DICTIONARIES_REFRESH_DELAY_MS); } catch (_) {}
   try { CacheService.getScriptCache().remove('dictionaries'); } catch (_) {}
   var dicts = fetchDictionariesFromBackend_();
@@ -1362,22 +1232,23 @@ function exportAllSheets_(ss, token) {
 function postToBackend_(json) {
   try {
     var backendApiUrl = getBackendApiUrl_();
-    var resp = UrlFetchApp.fetch(backendApiUrl + '/api/v1/schedule', {
+    var resp = UrlFetchApp.fetch(backendApiUrl + BACKEND_SCHEDULE_ENDPOINT, {
       method: 'post',
       contentType: 'application/json',
       payload: JSON.stringify(json),
       muteHttpExceptions: true,
     });
     var code = resp.getResponseCode();
-    if (code === 200 || code === 201) {
+    if (code === 200 || code === 201 || code === 202) {
       // Инвалидируем кэш справочников — бэкенд обновил данные
       try { CacheService.getScriptCache().remove('dictionaries'); } catch (_) {}
-    } else {
-      console.warn('postToBackend_ error: ' + code + ' ' + resp.getContentText().substring(0, 200));
+      return true;
     }
+    console.warn('postToBackend_ error: ' + code + ' ' + resp.getContentText().substring(0, 200));
   } catch (err) {
     console.warn('postToBackend_ error: ' + err.message);
   }
+  return false;
 }
 
 /**
