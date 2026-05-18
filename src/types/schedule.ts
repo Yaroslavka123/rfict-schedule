@@ -27,6 +27,11 @@ export interface ScheduleLesson {
   cancelled: boolean
   google_sheet_id?: string | null
   week_number?: number
+  course_number?: number
+}
+
+export interface ScheduleGroupWithCourse extends ScheduleGroup {
+  course?: number
 }
 
 export interface WeekSchedule {
@@ -48,8 +53,19 @@ export interface CourseSchedule {
   lessons: ScheduleLesson[]
 }
 
+export interface MergedSchedule {
+  course: number | 'all'
+  generated_at: string
+  groups: ScheduleGroupWithCourse[]
+  weeks: WeekSchedule[]
+  lessons: ScheduleLesson[]
+  courses: number[]
+}
+
+export type CourseSelection = number | 'all'
+
 export interface FiltersState {
-  course: number
+  course: CourseSelection
   week: number
   group: string
   subgroup: string

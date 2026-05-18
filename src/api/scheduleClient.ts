@@ -2,10 +2,14 @@ import type {
   CoursePlanEntry,
   CoursePlanMap,
   CourseSchedule,
+  MergedSchedule,
   ScheduleGroup,
+  ScheduleGroupWithCourse,
   ScheduleLesson,
   WeekSchedule,
 } from '@/types/schedule'
+
+export const SUPPORTED_COURSES = [1, 2, 3, 4] as const
 
 const DEFAULT_API_BASE_URL = 'https://rfict.up.railway.app'
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '')
@@ -199,6 +203,73 @@ export async function loadCourseBundle(
     loadCoursePlan(course, options).catch(() => ({}) as CoursePlanMap),
   ])
   return { schedule, plan, fetchedAt: Date.now() }
+}
+
+export interface AllCoursesBundle {
+  schedule: MergedSchedule
+  plans: Record<number, CoursePlanMap>
+  fetchedAt: number
+}
+
+function mergeGroupsWithCourse(parts: { course: number; groups: ScheduleGroup[] }[]): ScheduleGroupWithCourse[] {
+  const map = new Map<string, ScheduleGroupWithCourse>()
+  parts.forEach(({ course, groups }) => {
+    groups.forEach((group) => {
+      const key = `${course}::${group.id}`
+      if (!map.has(key)) map.set(key, { ...group, course })
+    })
+  })
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru', { numeric: true }))
+}
+
+export async function loadAllCoursesBundle(
+  options?: { signal?: AbortSignal },
+): Promise<AllCoursesBundle> {
+  const results = await Promise.all(
+    SUPPORTED_COURSES.map((course) =>
+      loadCourseBundle(course, options).catch(() => null),
+    ),
+  )
+
+  type ValidEntry = { course: number; bundle: CourseDataBundle }
+  const valid: ValidEntry[] = results
+    .map<ValidEntry | null>((bundle, index) =>
+      bundle ? { course: SUPPORTED_COURSES[index], bundle } : null,
+    )
+    .filter((entry): entry is ValidEntry => entry !== null)
+
+  if (!valid.length) {
+    throw new Error('Не удалось загрузить ни один курс')
+  }
+
+  const allWeeks: WeekSchedule[] = []
+  const allLessons: ScheduleLesson[] = []
+  const groupsPerCourse: { course: number; groups: ScheduleGroup[] }[] = []
+  const plans: Record<number, CoursePlanMap> = {}
+  const courses: number[] = []
+
+  valid.forEach(({ course, bundle }) => {
+    courses.push(course)
+    plans[course] = bundle.plan
+    groupsPerCourse.push({ course, groups: bundle.schedule.groups })
+    bundle.schedule.weeks.forEach((week) => {
+      allWeeks.push(week)
+    })
+    bundle.schedule.lessons.forEach((lesson) => {
+      allLessons.push({ ...lesson, course_number: course })
+    })
+  })
+
+  const merged: MergedSchedule = {
+    course: 'all',
+    generated_at: new Date().toISOString(),
+    groups: mergeGroupsWithCourse(groupsPerCourse),
+    weeks: allWeeks,
+    lessons: allLessons,
+    courses,
+  }
+
+  return { schedule: merged, plans, fetchedAt: Date.now() }
 }
 
 export async function saveCoursePlanEntry(entry: CoursePlanEntry): Promise<void> {
