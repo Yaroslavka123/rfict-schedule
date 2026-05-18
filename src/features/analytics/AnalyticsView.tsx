@@ -1,4 +1,4 @@
-import { ChevronRight, Download, Save } from 'lucide-react'
+import { Download, Save } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import { planKey } from '@/api/scheduleClient'
@@ -8,11 +8,8 @@ import { Input } from '@/components/ui/input'
 import {
   buildPlanFactHierarchy,
   getCourseSubjects,
-  progress,
   statusColor,
   type PlanFactCourse,
-  type PlanFactGroup,
-  type PlanFactSubgroup,
 } from '@/lib/schedule'
 import { cn } from '@/lib/utils'
 import type {
@@ -38,6 +35,42 @@ interface AnalyticsViewProps {
   onPlanChange: (entry: CoursePlanEntry) => Promise<void> | void
 }
 
+interface SubjectGroupRow {
+  groupId: string
+  groupName: string
+  department?: string
+  subgroups: {
+    subgroup: string | null
+    parity: SubgroupParity
+    cell: AnalyticsCell
+  }[]
+  totalPlanned: number
+  totalScheduled: number
+  totalDone: number
+}
+
+interface SubjectRow {
+  subject: string
+  groups: SubgroupGroupRow[]
+  totalPlanned: number
+  totalScheduled: number
+  totalDone: number
+}
+
+type SubgroupGroupRow = SubjectGroupRow
+
+interface CourseSubjectRow {
+  course: number
+  subjects: SubjectRow[]
+  totalPlanned: number
+  totalScheduled: number
+  totalDone: number
+}
+
+/**
+ * Plan-fact: course → subject → group → subgroup hierarchy.
+ * Each subject card lists every group that runs it (with per-subgroup status).
+ */
 export function AnalyticsView({
   course,
   groups,
@@ -69,22 +102,15 @@ export function AnalyticsView({
     [courses, groups, lessons, plans, today, search],
   )
 
-  const visibleRows = useMemo(() => {
-    return courseRows
-      .map((courseRow) => ({
-        ...courseRow,
-        groups: courseRow.groups
-          .filter((g) => groupFilter === 'all' || g.groupId === groupFilter)
-          .map((g) => ({
-            ...g,
-            subgroups: g.subgroups.filter(
-              (sg) => subgroupFilter === 'all' || (sg.subgroup ?? '') === subgroupFilter,
-            ),
-          }))
-          .filter((g) => g.subgroups.length > 0),
-      }))
-      .filter((c) => c.groups.length > 0)
-  }, [courseRows, groupFilter, subgroupFilter])
+  const subjectRows = useMemo<CourseSubjectRow[]>(
+    () => courseRows.map((row) => regroupBySubject(row, groupFilter, subgroupFilter)),
+    [courseRows, groupFilter, subgroupFilter],
+  )
+
+  const visibleRows = useMemo(
+    () => subjectRows.filter((row) => row.subjects.length > 0),
+    [subjectRows],
+  )
 
   const subjectsByCourse = useMemo(() => {
     const map: Record<number, string[]> = {}
@@ -101,22 +127,32 @@ export function AnalyticsView({
   }, [courses, lessons, groups, course])
 
   const exportCsv = () => {
-    const header = ['Курс', 'Группа', 'Подгруппа', 'Предмет', 'Чёт/нечёт', 'План', 'В расписании', 'Проведено', 'Осталось']
+    const header = [
+      'Курс',
+      'Предмет',
+      'Группа',
+      'Подгруппа',
+      'Чёт/нечёт',
+      'План',
+      'В расписании',
+      'Проведено',
+      'Осталось',
+    ]
     const rows: (string | number)[][] = []
     visibleRows.forEach((courseRow) => {
-      courseRow.groups.forEach((group) => {
-        group.subgroups.forEach((subgroup) => {
-          subgroup.subjects.forEach((subject) => {
-            const remaining = subject.cell.planned !== null ? subject.cell.planned - subject.cell.done : ''
+      courseRow.subjects.forEach((subject) => {
+        subject.groups.forEach((group) => {
+          group.subgroups.forEach((sg) => {
+            const remaining = sg.cell.planned !== null ? sg.cell.planned - sg.cell.done : ''
             rows.push([
               courseRow.course,
-              group.groupName,
-              subgroup.subgroup || 'целиком',
               subject.subject,
-              parityLabel(subject.parity),
-              subject.cell.planned ?? '',
-              subject.cell.scheduled,
-              subject.cell.done,
+              group.groupName,
+              sg.subgroup || 'целиком',
+              parityLabel(sg.parity),
+              sg.cell.planned ?? '',
+              sg.cell.scheduled,
+              sg.cell.done,
               remaining,
             ])
           })
@@ -169,159 +205,121 @@ export function AnalyticsView({
             {search ? 'По запросу ничего не найдено.' : 'Нет данных. Выберите курс или задайте план по предметам.'}
           </CardContent>
         </Card>
-      ) : course === 'all' ? (
-        visibleRows.map((row) => <CourseAccordion key={row.course} row={row} defaultOpen={visibleRows.length === 1} />)
       ) : (
-        visibleRows.map((row) =>
-          row.groups.map((group) => <GroupCard key={`${row.course}-${group.groupId}`} group={group} />),
-        )
+        visibleRows.map((row) => <CourseBlock key={row.course} row={row} multiCourse={courses.length > 1} />)
       )}
     </div>
   )
 }
 
-function CourseAccordion({ row, defaultOpen }: { row: PlanFactCourse; defaultOpen: boolean }) {
-  const [open, setOpen] = useState(defaultOpen)
+function CourseBlock({ row, multiCourse }: { row: CourseSubjectRow; multiCourse: boolean }) {
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
-      <button
-        type="button"
-        className="accordion-trigger"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="flex items-center gap-2">
-          <ChevronRight
-            className={cn('h-4 w-4 transition-transform duration-200 ease-out', open && 'rotate-90')}
-          />
-          {row.course} курс
-        </span>
-        <span className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span>план: {row.totalPlanned || '—'}</span>
-          <span>в расписании: {row.totalScheduled}</span>
-          <span>проведено: {row.totalDone}</span>
-        </span>
-      </button>
-      {open && (
-        <div className="space-y-2 border-t border-border p-2">
-          {row.groups.map((group) => (
-            <GroupCard key={group.groupId} group={group} />
-          ))}
+    <div className="space-y-2">
+      {multiCourse && (
+        <div className="flex items-center justify-between gap-3 px-1 pt-1">
+          <h3 className="text-sm font-bold text-primary">{row.course} курс</h3>
+          <span className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span>план: {row.totalPlanned || '—'}</span>
+            <span>в расписании: {row.totalScheduled}</span>
+            <span>проведено: {row.totalDone}</span>
+          </span>
         </div>
       )}
+      <div className="space-y-2">
+        {row.subjects.map((subject) => (
+          <SubjectCard key={subject.subject} subject={subject} />
+        ))}
+      </div>
     </div>
   )
 }
 
-function GroupCard({ group }: { group: PlanFactGroup }) {
-  const [open, setOpen] = useState(true)
+function SubjectCard({ subject }: { subject: SubjectRow }) {
+  const planAggregate = subject.totalPlanned
+  const doneAggregate = subject.totalDone
+  const scheduledAggregate = subject.totalScheduled
+  const aggregateProgress =
+    planAggregate > 0 ? Math.round((doneAggregate / planAggregate) * 100) : null
+
   return (
-    <div className="rounded-md border border-border bg-card/50 overflow-hidden">
-      <button
-        type="button"
-        className="accordion-trigger"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="flex items-center gap-2">
-          <ChevronRight
-            className={cn('h-3.5 w-3.5 transition-transform duration-200 ease-out', open && 'rotate-90')}
-          />
-          <span className="text-sm font-bold">{group.groupName}</span>
-          {group.department && (
-            <span className="text-[10px] text-muted-foreground">· {group.department}</span>
+    <div className="plan-fact-section">
+      <div className="plan-fact-section-header">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold">{subject.subject}</span>
+        </div>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span>план: {planAggregate || '—'}</span>
+          <span>в расписании: {scheduledAggregate}</span>
+          <span>проведено: {doneAggregate}</span>
+          {aggregateProgress !== null && (
+            <div className="flex w-24 items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                <div
+                  className={cn(
+                    'h-full transition-all duration-300 ease-out',
+                    aggregateProgress >= 100 ? 'bg-emerald-500' : aggregateProgress >= 50 ? 'bg-amber-500' : 'bg-red-500',
+                  )}
+                  style={{ width: `${Math.min(Math.max(aggregateProgress, 0), 100)}%` }}
+                />
+              </div>
+              <span className="text-[10px] tabular-nums">{aggregateProgress}%</span>
+            </div>
           )}
-        </span>
-        <span className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span>план: {group.totalPlanned || '—'}</span>
-          <span>в расписании: {group.totalScheduled}</span>
-          <span>проведено: {group.totalDone}</span>
-        </span>
-      </button>
-      {open && (
-        <div className="space-y-2 border-t border-border p-2">
-          {group.subgroups.map((subgroup, idx) => (
-            <SubgroupBlock key={`${subgroup.subgroup ?? 'all'}-${idx}`} subgroup={subgroup} />
-          ))}
         </div>
-      )}
+      </div>
+      <div>
+        {subject.groups.map((group) => (
+          <GroupRows key={group.groupId} group={group} />
+        ))}
+      </div>
     </div>
   )
 }
 
-function SubgroupBlock({ subgroup }: { subgroup: PlanFactSubgroup }) {
+function GroupRows({ group }: { group: SubjectGroupRow }) {
   return (
-    <div className="rounded border border-border/60 bg-background/40">
-      <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/30 px-2.5 py-1.5">
-        <span className="text-xs font-bold">
-          {subgroup.subgroup ? `${subgroup.subgroup} подгруппа` : <span className="text-muted-foreground italic">Группа целиком</span>}
-        </span>
-        <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span>план: {subgroup.totalPlanned || '—'}</span>
-          <span>факт: {subgroup.totalDone}/{subgroup.totalScheduled}</span>
-        </span>
+    <>
+      <div className="plan-fact-group-row">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-semibold truncate" title={group.groupName}>
+            {group.groupName}
+          </span>
+          {group.department && <span className="text-[10px] text-muted-foreground">· {group.department}</span>}
+        </div>
+        <div className="text-right text-xs tabular-nums">план: {group.totalPlanned || '—'}</div>
+        <div className="text-right text-xs tabular-nums">расп.: {group.totalScheduled}</div>
+        <div className="text-right text-xs tabular-nums">пров.: {group.totalDone}</div>
+        <div className="text-right text-xs tabular-nums">
+          {group.totalPlanned > 0
+            ? `${Math.round((group.totalDone / group.totalPlanned) * 100)}%`
+            : '—'}
+        </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="dense-table">
-          <thead>
-            <tr>
-              <th className="text-left">Предмет</th>
-              <th className="w-20 text-left">Чёт/нечёт</th>
-              <th className="w-20 text-right">План</th>
-              <th className="w-24 text-right">В расписании</th>
-              <th className="w-24 text-right">Проведено</th>
-              <th className="w-24 text-right">Осталось</th>
-              <th className="w-32 text-right">Прогресс</th>
-            </tr>
-          </thead>
-          <tbody>
-            {subgroup.subjects.map((subject, idx) => {
-              const color = statusColor(subject.cell)
-              const prog = progress(subject.cell)
-              const remaining =
-                subject.cell.planned !== null ? subject.cell.planned - subject.cell.done : null
-              return (
-                <tr key={`${subject.subject}-${idx}`}>
-                  <td className="font-semibold">{subject.subject}</td>
-                  <td>
-                    <ParityBadge parity={subject.parity} />
-                  </td>
-                  <td className="text-right tabular-nums">
-                    {subject.cell.planned ?? <span className="text-muted-foreground">—</span>}
-                  </td>
-                  <td className={cn('text-right tabular-nums', toneClass(color))}>
-                    {subject.cell.scheduled}
-                  </td>
-                  <td className="text-right tabular-nums">{subject.cell.done}</td>
-                  <td className="text-right tabular-nums">
-                    {remaining === null ? (
-                      <span className="text-muted-foreground">—</span>
-                    ) : remaining < 0 ? (
-                      <span className="text-amber-500">+{Math.abs(remaining)}</span>
-                    ) : (
-                      remaining
-                    )}
-                  </td>
-                  <td className="text-right">
-                    {subject.cell.planned !== null ? (
-                      <div className="ml-auto flex w-28 items-center gap-2">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className={cn('h-full transition-all duration-500 ease-out', barClass(color))}
-                            style={{ width: `${Math.min(Math.max(prog, 0), 120)}%` }}
-                          />
-                        </div>
-                        <span className="text-xs tabular-nums text-muted-foreground">{prog}%</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">нет плана</span>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
+      {group.subgroups.map((sg, idx) => (
+        <div key={`${group.groupId}-${sg.subgroup || idx}`} className="plan-fact-subgroup-row">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="opacity-80 truncate">
+              {sg.subgroup ? `${sg.subgroup} пг` : <span className="italic">целиком</span>}
+            </span>
+            <ParityBadge parity={sg.parity} />
+          </div>
+          <div className="text-right tabular-nums">
+            {sg.cell.planned ?? <span className="opacity-50">—</span>}
+          </div>
+          <div className={cn('text-right tabular-nums', toneClass(statusColor(sg.cell)))}>
+            {sg.cell.scheduled}
+          </div>
+          <div className="text-right tabular-nums">{sg.cell.done}</div>
+          <div className="text-right tabular-nums">
+            {sg.cell.planned !== null ? (
+              <span>{Math.max(sg.cell.planned - sg.cell.done, 0)}</span>
+            ) : (
+              <span className="opacity-50">—</span>
+            )}
+          </div>
+        </div>
+      ))}
+    </>
   )
 }
 
@@ -349,7 +347,7 @@ function ParityBadge({ parity }: { parity: SubgroupParity }) {
       ? 'bg-emerald-500/15 text-emerald-500'
       : 'bg-muted text-muted-foreground'
   return (
-    <span className={cn('inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider', cls)}>
+    <span className={cn('inline-block rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider', cls)}>
       {label}
     </span>
   )
@@ -367,21 +365,6 @@ function toneClass(color: ReturnType<typeof statusColor>) {
       return 'text-sky-500'
     default:
       return 'text-foreground'
-  }
-}
-
-function barClass(color: ReturnType<typeof statusColor>) {
-  switch (color) {
-    case 'green':
-      return 'bg-emerald-500'
-    case 'orange':
-      return 'bg-amber-500'
-    case 'red':
-      return 'bg-red-500'
-    case 'blue':
-      return 'bg-sky-500'
-    default:
-      return 'bg-muted-foreground'
   }
 }
 
@@ -467,6 +450,72 @@ function PlanRow({ subject, value, onSave }: { subject: string; value: number | 
       </Button>
     </div>
   )
+}
+
+// Regroup the buildPlanFactHierarchy output (course → group → subgroup → subject)
+// into course → subject → group → subgroup so the Plan-fact UI can render a
+// subject-first listing while keeping the same underlying data and parity info.
+function regroupBySubject(
+  row: PlanFactCourse,
+  groupFilter: string,
+  subgroupFilter: string,
+): CourseSubjectRow {
+  const subjectMap = new Map<string, SubjectRow>()
+
+  row.groups
+    .filter((g) => groupFilter === 'all' || g.groupId === groupFilter)
+    .forEach((group) => {
+      group.subgroups
+        .filter((sg) => subgroupFilter === 'all' || (sg.subgroup ?? '') === subgroupFilter)
+        .forEach((subgroup) => {
+          subgroup.subjects.forEach((subject) => {
+            let subjectEntry = subjectMap.get(subject.subject)
+            if (!subjectEntry) {
+              subjectEntry = {
+                subject: subject.subject,
+                groups: [],
+                totalPlanned: 0,
+                totalScheduled: 0,
+                totalDone: 0,
+              }
+              subjectMap.set(subject.subject, subjectEntry)
+            }
+            let groupEntry = subjectEntry.groups.find((g) => g.groupId === group.groupId)
+            if (!groupEntry) {
+              groupEntry = {
+                groupId: group.groupId,
+                groupName: group.groupName,
+                department: group.department,
+                subgroups: [],
+                totalPlanned: 0,
+                totalScheduled: 0,
+                totalDone: 0,
+              }
+              subjectEntry.groups.push(groupEntry)
+            }
+            groupEntry.subgroups.push({
+              subgroup: subgroup.subgroup,
+              parity: subject.parity,
+              cell: subject.cell,
+            })
+            groupEntry.totalPlanned += subject.cell.planned ?? 0
+            groupEntry.totalScheduled += subject.cell.scheduled
+            groupEntry.totalDone += subject.cell.done
+            subjectEntry.totalPlanned += subject.cell.planned ?? 0
+            subjectEntry.totalScheduled += subject.cell.scheduled
+            subjectEntry.totalDone += subject.cell.done
+          })
+        })
+    })
+
+  const subjects = Array.from(subjectMap.values()).sort((a, b) => a.subject.localeCompare(b.subject, 'ru'))
+  return {
+    course: row.course,
+    subjects,
+    totalPlanned: subjects.reduce((sum, s) => sum + s.totalPlanned, 0),
+    totalScheduled: subjects.reduce((sum, s) => sum + s.totalScheduled, 0),
+    totalDone: subjects.reduce((sum, s) => sum + s.totalDone, 0),
+  }
 }
 
 export type { AnalyticsCell }

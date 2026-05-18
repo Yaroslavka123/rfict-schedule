@@ -45,12 +45,24 @@ export function GlobalFilters({ filters, groups, weeks, lessons, activeTab, onFi
   const showWeek = activeTab === 'schedule' || activeTab === 'rooms'
   const showSubgroup = filters.group !== 'all' && activeTab !== 'rooms'
   const showTypes = activeTab === 'schedule' || activeTab === 'teachers' || activeTab === 'rooms'
+  const showSearch = activeTab !== 'rooms'
   const allowAllCourses = true
 
   const subgroupOptions = useMemo(() => {
     if (filters.group === 'all') return []
     return getSubgroupsForGroup(lessons, filters.group)
   }, [filters.group, lessons])
+
+  // Filter the group dropdown by the active course (when a specific course is selected,
+  // only its groups appear). In 'all' mode every group remains visible.
+  const visibleGroups = useMemo(() => {
+    if (filters.course === 'all') return groups
+    return groups.filter((group) => {
+      const wc = group as ScheduleGroupWithCourse
+      if (wc.course === undefined) return true
+      return wc.course === filters.course
+    })
+  }, [groups, filters.course])
 
   const availableWeeks = useMemo(() => weeks.map((week) => week.week_number).sort((a, b) => a - b), [weeks])
   const hasActiveFilters =
@@ -59,17 +71,19 @@ export function GlobalFilters({ filters, groups, weeks, lessons, activeTab, onFi
   return (
     <Card>
       <CardContent className="space-y-3 p-3">
-        <FilterRow label="Поиск">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="h-9 pl-9 text-sm"
-              placeholder="Предмет, преподаватель…"
-              value={filters.search}
-              onChange={(event) => setFilter('search', event.target.value)}
-            />
-          </div>
-        </FilterRow>
+        {showSearch && (
+          <FilterRow label="Поиск">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="h-9 pl-9 text-sm"
+                placeholder="Предмет, преподаватель…"
+                value={filters.search}
+                onChange={(event) => setFilter('search', event.target.value)}
+              />
+            </div>
+          </FilterRow>
+        )}
 
         <FilterRow label="Курс">
           <Select
@@ -97,12 +111,16 @@ export function GlobalFilters({ filters, groups, weeks, lessons, activeTab, onFi
             onChange={(event) => setFilter('group', event.target.value)}
           >
             <option value="all">Все группы</option>
-            {groups.map((group) => {
+            {visibleGroups.map((group) => {
               const withCourse = group as ScheduleGroupWithCourse
               return (
                 <option key={group.id} value={group.id}>
                   {group.name}
-                  {withCourse.course ? ` · ${withCourse.course} курс` : group.department ? ` · ${group.department}` : ''}
+                  {filters.course === 'all' && withCourse.course
+                    ? ` · ${withCourse.course} курс`
+                    : group.department
+                    ? ` · ${group.department}`
+                    : ''}
                 </option>
               )
             })}

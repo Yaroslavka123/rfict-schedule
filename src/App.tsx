@@ -43,11 +43,6 @@ export default function App() {
     return applyLessonFilters(week.lessons, schedule.groups, filters, debouncedSearch)
   }, [week, schedule, filters, debouncedSearch])
 
-  const filteredAllLessons = useMemo(() => {
-    if (!schedule) return []
-    return applyLessonFilters(schedule.lessons, schedule.groups, filters, debouncedSearch)
-  }, [schedule, filters, debouncedSearch])
-
   const tabClass = (tab: AppTab) =>
     `tab-panel ${activeTab === tab ? 'tab-panel-active' : 'tab-panel-hidden'}`
 
@@ -87,12 +82,15 @@ export default function App() {
                   groups={schedule.groups}
                   selectedWeek={filters.week}
                   onWeekChange={(week) => setFilters((current) => ({ ...current, week }))}
-                  search={debouncedSearch}
-                  lessonTypes={filters.lessonTypes}
                 />
               </div>
               <div className={tabClass('teachers')} aria-hidden={activeTab !== 'teachers'}>
-                <TeachersView lessons={filteredAllLessons} />
+                <TeachersView
+                  lessons={schedule.lessons}
+                  groups={schedule.groups}
+                  search={debouncedSearch}
+                  lessonTypes={filters.lessonTypes}
+                />
               </div>
               <div className={tabClass('analytics')} aria-hidden={activeTab !== 'analytics'}>
                 <AnalyticsView
