@@ -1,6 +1,6 @@
 # Frontend guide
 
-Документ описывает React frontend в `rfict-schedule`: как запустить, как он получает данные, где лежит код и как проверить, что всё работает.
+Документ описывает Svelte frontend в `rfict-schedule`: как запустить, как он получает данные, где лежит код и как проверить, что всё работает.
 
 ## Что делает frontend
 
@@ -19,12 +19,11 @@ Backend (`https://rfict.up.railway.app`) — **единственный исто
 
 ## Технологии
 
-- React 19
+- Svelte 5
 - TypeScript
 - Vite
 - Tailwind CSS
-- lucide-react
-- recharts
+- @lucide/svelte
 
 ## Установка Node.js и npm
 
@@ -98,7 +97,7 @@ http://localhost:5173
 npm install      # установить зависимости
 npm run dev      # dev server Vite
 npm run lint     # ESLint
-npm run build    # TypeScript + production build
+npm run build    # svelte-check + TypeScript + production build
 npm run preview  # локальный preview production build
 ```
 
@@ -239,11 +238,11 @@ src/
 │   ├── rooms/                  # кабинетная матрица
 │   ├── schedule/               # расписание по дням
 │   └── teachers/               # преподаватели
-├── hooks/                      # useSchedule, useTheme, debounce
+├── stores/                     # scheduleStore, themeStore, columnGroups
 ├── lib/                        # расчёты, форматирование, utils
 ├── types/                      # TypeScript-типы расписания
-├── App.tsx
-└── main.tsx
+├── App.svelte
+└── main.ts
 ```
 
 ## Где менять основные вещи
@@ -254,11 +253,11 @@ src/
 | Типы расписания | `src/types/schedule.ts` |
 | Список курсов/недель/дней | `src/lib/constants.ts` |
 | Расчёты, группировки, аналитика | `src/lib/schedule.ts` |
-| Глобальные фильтры | `src/components/layout/GlobalFilters.tsx` |
-| Вкладка расписания | `src/features/schedule/ScheduleView.tsx` |
-| Вкладка кабинетов | `src/features/rooms/RoomsView.tsx` |
-| Вкладка преподавателей | `src/features/teachers/TeachersView.tsx` |
-| Вкладка аналитики | `src/features/analytics/AnalyticsView.tsx` |
+| Глобальные фильтры | `src/components/layout/GlobalFilters.svelte` |
+| Вкладка расписания | `src/features/schedule/ScheduleView.svelte` |
+| Вкладка кабинетов | `src/features/rooms/RoomsView.svelte` |
+| Вкладка преподавателей | `src/features/teachers/TeachersView.svelte` |
+| Вкладка аналитики | `src/features/analytics/AnalyticsView.svelte` |
 
 ## Как проверить локально
 

@@ -1,6 +1,6 @@
 # rfict-schedule
 
-Система управления расписанием **РФиКТ БГУ**. Apps Script расширение для Google Sheets + автоматический экспорт JSON в GitHub/backend + React frontend для расписания, кабинетов, преподавателей и аналитики.
+Система управления расписанием **РФиКТ БГУ**. Apps Script расширение для Google Sheets + автоматический экспорт JSON в GitHub/backend + Svelte frontend для расписания, кабинетов, преподавателей и аналитики.
 
 ---
 
@@ -24,7 +24,7 @@
   - [Структура ячейки](#структура-ячейки)
   - [RichText формат](#richtext-формат)
   - [Серверные функции (Code.gs)](#серверные-функции-codegs)
-- [Фронтенд (React)](#фронтенд-react)
+- [Фронтенд (Svelte)](#фронтенд-svelte)
   - [Вкладки](#вкладки)
   - [Загрузка данных](#загрузка-данных)
 - [API для Go Backend](#api-для-go-backend)
@@ -40,7 +40,7 @@
 
 ## Документация
 
-- [`docs/FRONTEND_GUIDE.md`](docs/FRONTEND_GUIDE.md) — запуск frontend, установка Node/npm, env-переменные, структура React-кода, локальная проверка.
+- [`docs/FRONTEND_GUIDE.md`](docs/FRONTEND_GUIDE.md) — запуск frontend, установка Node/npm, env-переменные, структура Svelte-кода, локальная проверка.
 - [`docs/BACKEND_HANDOFF.md`](docs/BACKEND_HANDOFF.md) — что нужно реализовать на backend: endpoints, parser payload, плановые показатели, минимальная задержка обновлений.
 - [`BACKEND_REQUESTS.md`](BACKEND_REQUESTS.md) — краткий контракт frontend/backend.
 - [`apps_script/labs_form/README.md`](apps_script/labs_form/README.md) — подробная документация Apps Script parser/sidebar.
@@ -66,7 +66,7 @@
                                             └──────┬───────┘
                                                    ▼
                                            ┌──────────┐
-                                           │ React UI │
+                                           │ Svelte UI│
                                            └──────────┘
 ```
 
@@ -92,9 +92,9 @@ rfict-schedule/
 │   ├── appsscript.json    # Манифест Apps Script (OAuth scopes, timezone)
 │   └── README.md          # Документация Apps Script (подробная)
 ├── docs/
-│   ├── FRONTEND_GUIDE.md  # Запуск, env, структура и проверка React frontend
+│   ├── FRONTEND_GUIDE.md  # Запуск, env, структура и проверка Svelte frontend
 │   └── BACKEND_HANDOFF.md # Справка для backend-команды
-├── src/                   # React/Vite/TypeScript frontend
+├── src/                   # Svelte/Vite/TypeScript frontend
 │   ├── api/               # HTTP-клиент к backend API
 │   ├── components/        # Layout и UI-компоненты
 │   ├── features/          # Расписание, кабинеты, преподаватели, аналитика
@@ -511,9 +511,9 @@ npm run preview
 
 ---
 
-## Фронтенд (React)
+## Фронтенд (Svelte)
 
-React/Vite/TypeScript приложение. Вся пользовательская логика, которую можно считать на клиенте, остаётся на frontend: фильтры, группировки, кабинетная матрица, преподаватели и базовая аналитика.
+Svelte 5/Vite/TypeScript приложение. Вся пользовательская логика, которую можно считать на клиенте, остаётся на frontend: фильтры, группировки, кабинетная матрица, преподаватели и базовая аналитика.
 
 ### Вкладки
 
