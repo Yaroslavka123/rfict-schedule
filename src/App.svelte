@@ -9,7 +9,7 @@
   import ScheduleView from '@/features/schedule/ScheduleView.svelte'
   import TeachersView from '@/features/teachers/TeachersView.svelte'
   import { ACTIVE_COURSE } from '@/lib/constants'
-  import { applyLessonFilters, getWeekByNumber } from '@/lib/schedule'
+  import { applyLessonFilters } from '@/lib/schedule'
   import { scheduleStore } from '@/stores/scheduleStore'
   import { themeStore, toggleTheme } from '@/stores/themeStore'
   import type { FiltersState } from '@/types/schedule'
@@ -28,9 +28,11 @@
   let debouncedSearch = $state('')
 
   let schedule = $derived($scheduleStore.schedule)
-  let week = $derived(schedule ? getWeekByNumber(schedule, filters.week) : null)
+  let selectedWeeks = $derived($scheduleStore.index.weeksByNumber[filters.week] || [])
+  let week = $derived(selectedWeeks[0] || null)
+  let selectedWeekLessons = $derived($scheduleStore.index.lessonsByWeek[filters.week] || [])
   let filteredWeekLessons = $derived(
-    week && schedule ? applyLessonFilters(week.lessons, schedule.groups, filters, debouncedSearch) : [],
+    schedule ? applyLessonFilters(selectedWeekLessons, schedule.groups, filters, debouncedSearch) : [],
   )
 
   $effect(() => {
@@ -81,16 +83,14 @@
     </Card>
   {:else if schedule}
     {#if activeTab === 'rooms'}
-      <div class="flex h-[calc(100vh-var(--header-h)-1.5rem)] gap-3">
-        <div class="min-w-0 flex-1">
-          <RoomsView
-            weeks={schedule.weeks}
-            groups={schedule.groups}
-            selectedWeek={filters.week}
-            onWeekChange={(weekNumber) => (filters = { ...filters, week: weekNumber })}
-          />
-        </div>
-        <aside class="hidden w-56 shrink-0 lg:block">
+      <div class="relative h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
+        <RoomsView
+          weeks={schedule.weeks}
+          groups={schedule.groups}
+          selectedWeek={filters.week}
+          onWeekChange={(weekNumber) => (filters = { ...filters, week: weekNumber })}
+        />
+        <aside class="filter-overlay">
           <GlobalFilters
             {filters}
             groups={schedule.groups}
@@ -102,16 +102,15 @@
         </aside>
       </div>
     {:else if activeTab === 'teachers'}
-      <div class="flex h-[calc(100vh-var(--header-h)-1.5rem)] gap-3">
-        <div class="min-w-0 flex-1">
-          <TeachersView
-            lessons={schedule.lessons}
-            groups={schedule.groups}
-            search={debouncedSearch}
-            lessonTypes={filters.lessonTypes}
-          />
-        </div>
-        <aside class="hidden w-64 shrink-0 lg:block">
+      <div class="relative h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
+        <TeachersView
+          lessons={schedule.lessons}
+          groups={schedule.groups}
+          search={debouncedSearch}
+          lessonTypes={filters.lessonTypes}
+          selectedWeek={filters.week}
+        />
+        <aside class="filter-overlay">
           <GlobalFilters
             {filters}
             groups={schedule.groups}

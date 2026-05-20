@@ -113,11 +113,15 @@
     @apply transition-all duration-300 ease-out;
   }
 
+  .filter-overlay {
+    @apply absolute right-3 top-3 z-50 w-56 max-w-[calc(100vw-1.5rem)] opacity-95 shadow-xl lg:w-64;
+  }
+
   /* Rooms page wraps the toolbar + matrix; matrix stretches to fill the viewport. */
   .rooms-page,
   .teachers-page {
     @apply flex flex-col gap-2;
-    height: calc(100vh - 6.5rem);
+    height: 100%;
   }
 
   /* Room matrix

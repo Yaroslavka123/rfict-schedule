@@ -3,7 +3,7 @@
 
   import Card from '@/components/ui/Card.svelte'
   import { DAY_ORDER, LESSON_TYPE_LABELS } from '@/lib/constants'
-  import { buildStats, getGoogleSheetUrl, getGroupNameById, getPairRange } from '@/lib/schedule'
+  import { buildStats, formatActiveSubgroups, getGoogleSheetUrl, getGroupNameById, getPairRange } from '@/lib/schedule'
   import { cn } from '@/lib/utils'
   import type { ScheduleGroup, ScheduleLesson } from '@/types/schedule'
 
@@ -129,7 +129,7 @@
                 <td class="text-muted-foreground">{lesson.teacher || '—'}</td>
                 <td class="font-semibold text-amber-500">{lesson.room || '—'}</td>
                 <td>{getGroupNameById(groups, lesson.group)}</td>
-                <td class="text-xs text-purple-400">{lesson.subgroup || ''}</td>
+                <td class="text-xs text-purple-400">{formatActiveSubgroups(lesson)}</td>
                 <td class="text-xs text-muted-foreground">{periodFor(lesson)}</td>
                 <td class="text-xs text-muted-foreground">{infoFor(lesson)}</td>
               </tr>

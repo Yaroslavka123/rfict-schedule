@@ -49,7 +49,7 @@
 
 <div class="min-h-screen bg-background text-foreground" style="--header-h: 3rem;">
   <header class="sticky top-0 z-40 h-12 border-b border-border bg-card/95 backdrop-blur-xl">
-    <div class="mx-auto flex h-full max-w-screen-2xl items-center gap-3 px-3 md:px-5">
+    <div class="flex h-full w-full items-center gap-3 px-3 md:px-5">
       <div class="flex items-center gap-2">
         <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <CalendarDays class="h-4 w-4" />
@@ -126,7 +126,7 @@
     </div>
   </header>
 
-  <main class="mx-auto w-full max-w-screen-2xl px-3 py-3 md:px-5">
+  <main class="w-full px-3 py-3 md:px-5">
     {@render children?.()}
   </main>
 </div>

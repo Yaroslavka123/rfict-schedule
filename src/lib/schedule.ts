@@ -57,9 +57,10 @@ export function applyLessonFilters(
 ) {
   const query = normalizeText(search)
   return lessons.filter((lesson) => {
+    if (!isLessonActiveForWeek(lesson)) return false
     if (filters.group !== 'all' && lesson.group !== filters.group) return false
     if (filters.subgroup && filters.subgroup !== 'all') {
-      if ((lesson.subgroup || '') !== filters.subgroup) return false
+      if (!matchesSubgroup(lesson, filters.subgroup)) return false
     }
     if (filters.lessonTypes.length > 0 && !filters.lessonTypes.includes(lesson.type)) return false
     if (!query) return true
@@ -70,6 +71,7 @@ export function applyLessonFilters(
       lesson.subject,
       lesson.teacher,
       lesson.room,
+      formatActiveSubgroups(lesson),
       lesson.subgroup,
       lesson.frequency,
       lesson.period_start,
@@ -213,7 +215,7 @@ export function getSubgroupsForGroup(lessons: ScheduleLesson[], groupId: string)
   const set = new Set<string>()
   lessons.forEach((lesson) => {
     if (lesson.group !== groupId) return
-    if (lesson.subgroup) set.add(lesson.subgroup)
+    getActiveSubgroupsForLesson(lesson).forEach((subgroup) => set.add(subgroup))
   })
   return Array.from(set).sort((a, b) => a.localeCompare(b, 'ru', { numeric: true }))
 }
@@ -229,10 +231,74 @@ function pairsFor(lesson: ScheduleLesson) {
   return lesson.cancelled ? 0 : Math.max(lesson.duration, 1)
 }
 
-function matchesSubgroup(lessonSubgroup: string | null, target: string | null) {
-  if (!target) return true
-  if (!lessonSubgroup) return true
-  return lessonSubgroup.split(/[\s,/]+/).some((token) => token.trim() === target.trim())
+function rawSubgroupNumbers(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  const normalized = raw.replace(/ё/gi, 'е')
+  const matches = Array.from(normalized.matchAll(/(\d+)\s*(?:пг|подгрупп[а-я]*)?/gi))
+  return Array.from(new Set(matches.map((match) => match[1]))).sort((a, b) =>
+    a.localeCompare(b, 'ru', { numeric: true }),
+  )
+}
+
+function parityText(lesson: Pick<ScheduleLesson, 'subgroup' | 'frequency'>) {
+  const source = `${lesson.subgroup || ''} ${lesson.frequency || ''}`
+  let repaired = ''
+  try {
+    const bytes = Uint8Array.from(Array.from(source), (char) => char.charCodeAt(0) & 0xff)
+    repaired = new TextDecoder('utf-8').decode(bytes)
+  } catch {
+    repaired = ''
+  }
+  return `${source} ${repaired}`
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/\s+/g, '')
+}
+
+function isEvenWeek(weekNumber: number | undefined) {
+  return Number.isFinite(weekNumber) && Number(weekNumber) % 2 === 0
+}
+
+export function getActiveSubgroupsForLesson(
+  lesson: Pick<ScheduleLesson, 'subgroup' | 'frequency' | 'week_number'>,
+  weekNumber = lesson.week_number,
+): string[] {
+  const subgroups = rawSubgroupNumbers(lesson.subgroup)
+  if (subgroups.length === 0) return []
+  if (!Number.isFinite(weekNumber as number)) return subgroups
+
+  const text = parityText(lesson)
+  const even = isEvenWeek(weekNumber)
+
+  if (text.includes('нечет/чет')) {
+    if (subgroups.length < 2) return even ? [] : [subgroups[0]]
+    return even ? [subgroups[1]] : [subgroups[0]]
+  }
+  if (text.includes('чет/нечет')) {
+    if (subgroups.length < 2) return even ? [subgroups[0]] : []
+    return even ? [subgroups[0]] : [subgroups[1]]
+  }
+  if (text.includes('нечет')) return even ? [] : subgroups
+  if (text.includes('чет')) return even ? subgroups : []
+  return subgroups
+}
+
+export function isLessonActiveForWeek(
+  lesson: Pick<ScheduleLesson, 'subgroup' | 'frequency' | 'week_number'>,
+  weekNumber = lesson.week_number,
+) {
+  return rawSubgroupNumbers(lesson.subgroup).length === 0 || getActiveSubgroupsForLesson(lesson, weekNumber).length > 0
+}
+
+export function formatActiveSubgroups(lesson: Pick<ScheduleLesson, 'subgroup' | 'frequency' | 'week_number'>) {
+  return getActiveSubgroupsForLesson(lesson).join(', ')
+}
+
+function matchesSubgroup(lesson: ScheduleLesson, target: string | null) {
+  if (!target) return isLessonActiveForWeek(lesson)
+  const activeSubgroups = getActiveSubgroupsForLesson(lesson)
+  if (activeSubgroups.length === 0) return !lesson.subgroup
+  return activeSubgroups.includes(target.trim())
 }
 
 export interface AnalyticsOptions {
@@ -262,7 +328,7 @@ export function buildCourseAnalytics({ plan, today = new Date(), groups, lessons
         const rows: AnalyticsRow[] = subjects.map((subject) => {
           const subjectLessons = groupLessons.filter((lesson) => {
             if (lesson.subject !== subject) return false
-            return matchesSubgroup(lesson.subgroup, subgroup)
+            return matchesSubgroup(lesson, subgroup)
           })
           const scheduled = subjectLessons.reduce((sum, lesson) => sum + pairsFor(lesson), 0)
           const done = subjectLessons.reduce((sum, lesson) => sum + (isLessonBeforeToday(lesson, today) ? pairsFor(lesson) : 0), 0)
@@ -341,7 +407,7 @@ export function buildSubjectPlanRows({
         const subgroupCells: SubjectPlanSubgroup[] = slots
           .map<SubjectPlanSubgroup>((subgroupName) => {
             const subgroupLessons = groupLessons.filter((lesson) =>
-              matchesSubgroup(lesson.subgroup, subgroupName),
+              matchesSubgroup(lesson, subgroupName),
             )
             const scheduled = subgroupLessons.reduce((sum, lesson) => sum + pairsFor(lesson), 0)
             const done = subgroupLessons.reduce(
@@ -500,7 +566,7 @@ export function buildPlanFactHierarchy({
 
         subgroupKeys.forEach((subgroupName) => {
           const subgroupLessons = groupLessons.filter((lesson) =>
-            matchesSubgroup(lesson.subgroup, subgroupName),
+            matchesSubgroup(lesson, subgroupName),
           )
           const subjectSet = new Set<string>()
           subgroupLessons.forEach((lesson) => {

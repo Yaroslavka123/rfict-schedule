@@ -1,7 +1,13 @@
 <script lang="ts">
   import Card from '@/components/ui/Card.svelte'
   import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
-  import { categorizeRoom, getGroupNameById, normalizeRoom } from '@/lib/schedule'
+  import {
+    categorizeRoom,
+    getActiveSubgroupsForLesson,
+    getGroupNameById,
+    isLessonActiveForWeek,
+    normalizeRoom,
+  } from '@/lib/schedule'
   import { cn } from '@/lib/utils'
   import type { LessonType, ScheduleGroup, ScheduleGroupWithCourse, WeekSchedule } from '@/types/schedule'
 
@@ -75,7 +81,12 @@
   function formatSubgroup(raw: string): string {
     const trimmed = raw.trim()
     if (!trimmed) return ''
-    if (/\d/.test(trimmed)) return `${trimmed.replace(/\s+/g, '')} пг`
+    if (/\d/.test(trimmed)) {
+      return trimmed
+        .split(',')
+        .map((part) => `${part.trim().replace(/\s+/g, '')} пг`)
+        .join(', ')
+    }
     return trimmed
   }
 
@@ -154,9 +165,11 @@
     const result: Record<string, Record<string, Record<number, SlotEntry[]>>> = {}
     sourceWeeks.forEach((week) => {
       week.lessons.forEach((lesson) => {
+        if (!isLessonActiveForWeek(lesson, week.week_number)) return
         const room = normalizeRoom(lesson.room)
         if (!room || room === 'ДО') return
         const groupName = getGroupNameById(sourceGroups, lesson.group)
+        const activeSubgroups = getActiveSubgroupsForLesson(lesson, week.week_number)
         if (!result[room]) result[room] = {}
         const day = lesson.day
         if (!result[room][day]) result[room][day] = {}
@@ -171,7 +184,7 @@
             groupId: lesson.group,
             course: courseNumber,
             type: lesson.type,
-            subgroup: lesson.subgroup || '',
+            subgroup: activeSubgroups.join(', '),
             time: PAIR_TIMES[pair] || '',
             pair,
             cancelled: Boolean(lesson.cancelled),

@@ -20,7 +20,6 @@
     ScheduleGroup,
     ScheduleGroupWithCourse,
     ScheduleLesson,
-    SubgroupParity,
   } from '@/types/schedule'
 
   interface AnalyticsViewProps {
@@ -41,7 +40,6 @@
     department?: string
     subgroups: {
       subgroup: string | null
-      parity: SubgroupParity
       cell: AnalyticsCell
     }[]
     totalPlanned: number
@@ -126,7 +124,6 @@
       'Предмет',
       'Группа',
       'Подгруппа',
-      'Чёт/нечёт',
       'План',
       'В расписании',
       'Проведено',
@@ -144,7 +141,6 @@
               subject.subject,
               group.groupName,
               subgroup.subgroup || 'целиком',
-              parityLabel(subgroup.parity),
               subgroup.cell.planned ?? '',
               subgroup.cell.scheduled,
               subgroup.cell.done,
@@ -204,26 +200,6 @@
     }
   }
 
-  function parityLabel(parity: SubgroupParity) {
-    switch (parity) {
-      case 'even':
-        return 'чёт'
-      case 'odd':
-        return 'нечёт'
-      case 'mixed':
-        return 'каждую'
-      default:
-        return '—'
-    }
-  }
-
-  function parityClass(parity: SubgroupParity) {
-    if (parity === 'even') return 'bg-sky-500/15 text-sky-500'
-    if (parity === 'odd') return 'bg-amber-500/15 text-amber-500'
-    if (parity === 'mixed') return 'bg-emerald-500/15 text-emerald-500'
-    return 'bg-muted text-muted-foreground'
-  }
-
   function toneClass(color: ReturnType<typeof statusColor>) {
     switch (color) {
       case 'green':
@@ -277,7 +253,6 @@
 
               groupEntry.subgroups.push({
                 subgroup: subgroup.subgroup,
-                parity: subject.parity,
                 cell: subject.cell,
               })
               groupEntry.totalPlanned += subject.cell.planned ?? 0
@@ -363,11 +338,6 @@
     {/if}
   {/each}
 
-  <p class="text-xs text-muted-foreground">
-    План задаётся один раз на курс — он применяется ко всем группам и подгруппам предмета. Чётная неделя — одна
-    подгруппа, нечётная — другая.
-  </p>
-
   {#if visibleRows.length === 0}
     <Card contentClass="py-12 text-center text-muted-foreground">
       {search ? 'По запросу ничего не найдено.' : 'Нет данных. Выберите курс или задайте план по предметам.'}
@@ -445,9 +415,6 @@
                           {:else}
                             <span class="italic">целиком</span>
                           {/if}
-                        </span>
-                        <span class={cn('inline-block rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider', parityClass(subgroup.parity))}>
-                          {parityLabel(subgroup.parity)}
                         </span>
                       </div>
                       <div class="text-right tabular-nums">

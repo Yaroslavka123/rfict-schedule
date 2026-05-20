@@ -1,7 +1,13 @@
 <script lang="ts">
   import Card from '@/components/ui/Card.svelte'
   import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
-  import { getGroupNameById, normalizeRoom, normalizeTeacherName } from '@/lib/schedule'
+  import {
+    getActiveSubgroupsForLesson,
+    getGroupNameById,
+    isLessonActiveForWeek,
+    normalizeRoom,
+    normalizeTeacherName,
+  } from '@/lib/schedule'
   import { cn, normalizeText } from '@/lib/utils'
   import type { LessonType, ScheduleGroup, ScheduleGroupWithCourse, ScheduleLesson } from '@/types/schedule'
 
@@ -10,6 +16,7 @@
     groups: (ScheduleGroup | ScheduleGroupWithCourse)[]
     search: string
     lessonTypes: LessonType[]
+    selectedWeek: number
   }
 
   interface TeacherSlot {
@@ -27,10 +34,10 @@
 
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
-  let { lessons, groups, search, lessonTypes }: TeachersViewProps = $props()
+  let { lessons, groups, search, lessonTypes, selectedWeek }: TeachersViewProps = $props()
   let tooltip = $state<{ x: number; y: number; entries: TeacherSlot[]; teacher: string } | null>(null)
 
-  let teacherData = $derived(buildTeacherOccupancy(lessons, groups))
+  let teacherData = $derived(buildTeacherOccupancy(lessons, groups, selectedWeek))
   let normalizedSearch = $derived(normalizeText(search.trim()))
   let teacherMatch = $derived(buildTeacherMatch(teacherData.orderedTeachers, normalizedSearch))
 
@@ -54,7 +61,12 @@
   function formatSubgroup(raw: string): string {
     const trimmed = raw.trim()
     if (!trimmed) return ''
-    if (/\d/.test(trimmed)) return `${trimmed.replace(/\s+/g, '')} пг`
+    if (/\d/.test(trimmed)) {
+      return trimmed
+        .split(',')
+        .map((part) => `${part.trim().replace(/\s+/g, '')} пг`)
+        .join(', ')
+    }
     return trimmed
   }
 
@@ -67,12 +79,16 @@
   function buildTeacherOccupancy(
     sourceLessons: ScheduleLesson[],
     sourceGroups: (ScheduleGroup | ScheduleGroupWithCourse)[],
+    activeWeek: number,
   ) {
     const occupancy: Record<string, Record<string, Record<number, TeacherSlot[]>>> = {}
     const groupsById = new Map<string, ScheduleGroupWithCourse>()
     sourceGroups.forEach((group) => groupsById.set(group.id, group as ScheduleGroupWithCourse))
 
     sourceLessons.forEach((lesson) => {
+      const weekNumber = lesson.week_number ?? activeWeek
+      if (Number.isFinite(activeWeek) && weekNumber !== activeWeek) return
+      if (!isLessonActiveForWeek(lesson, weekNumber)) return
       const teacher = normalizeTeacherName(lesson.teacher || '')
       if (!teacher) return
       if (!occupancy[teacher]) occupancy[teacher] = {}
@@ -81,6 +97,7 @@
       const duration = Math.max(lesson.duration || 1, 1)
       const courseNumber = lesson.course_number ?? groupsById.get(lesson.group)?.course
       const groupName = getGroupNameById(sourceGroups, lesson.group)
+      const activeSubgroups = getActiveSubgroupsForLesson(lesson, weekNumber)
       for (let pair = lesson.pair; pair < lesson.pair + duration; pair += 1) {
         if (!occupancy[teacher][day][pair]) occupancy[teacher][day][pair] = []
         occupancy[teacher][day][pair].push({
@@ -89,7 +106,7 @@
           groupId: lesson.group,
           room: normalizeRoom(lesson.room) || '',
           type: lesson.type,
-          subgroup: lesson.subgroup || '',
+          subgroup: activeSubgroups.join(', '),
           time: PAIR_TIMES[pair] || '',
           pair,
           cancelled: Boolean(lesson.cancelled),

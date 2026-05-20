@@ -14,6 +14,8 @@ import type {
   CourseSchedule,
   CourseSelection,
   MergedSchedule,
+  ScheduleLesson,
+  WeekSchedule,
 } from '@/types/schedule'
 
 const CACHE_VERSION = 'v2'
@@ -40,6 +42,7 @@ type CachedBundle = CachedCourse | CachedAll
 
 export interface ScheduleState {
   schedule: CourseSchedule | MergedSchedule | null
+  index: ScheduleIndex
   plan: CoursePlanMap
   plans: Record<number, CoursePlanMap>
   loading: boolean
@@ -47,8 +50,23 @@ export interface ScheduleState {
   loadedAt: number
 }
 
+export interface ScheduleIndex {
+  weeksByNumber: Record<number, WeekSchedule[]>
+  lessonsByWeek: Record<number, ScheduleLesson[]>
+  lessonsByRoom: Record<string, ScheduleLesson[]>
+  lessonsByTeacher: Record<string, ScheduleLesson[]>
+}
+
+const emptyIndex: ScheduleIndex = {
+  weeksByNumber: {},
+  lessonsByWeek: {},
+  lessonsByRoom: {},
+  lessonsByTeacher: {},
+}
+
 const initialState: ScheduleState = {
   schedule: null,
+  index: emptyIndex,
   plan: {},
   plans: {},
   loading: true,
@@ -133,10 +151,44 @@ function combinePlans(plans: Record<number, CoursePlanMap>): CoursePlanMap {
   return merged
 }
 
+function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): ScheduleIndex {
+  if (!schedule) return emptyIndex
+  const weeksByNumber: Record<number, WeekSchedule[]> = {}
+  const lessonsByWeek: Record<number, ScheduleLesson[]> = {}
+  const lessonsByRoom: Record<string, ScheduleLesson[]> = {}
+  const lessonsByTeacher: Record<string, ScheduleLesson[]> = {}
+
+  schedule.weeks.forEach((week) => {
+    if (!weeksByNumber[week.week_number]) weeksByNumber[week.week_number] = []
+    weeksByNumber[week.week_number].push(week)
+  })
+
+  schedule.lessons.forEach((lesson) => {
+    const week = lesson.week_number || 0
+    if (!lessonsByWeek[week]) lessonsByWeek[week] = []
+    lessonsByWeek[week].push(lesson)
+
+    const room = (lesson.room || '').trim()
+    if (room) {
+      if (!lessonsByRoom[room]) lessonsByRoom[room] = []
+      lessonsByRoom[room].push(lesson)
+    }
+
+    const teacher = (lesson.teacher || '').trim()
+    if (teacher) {
+      if (!lessonsByTeacher[teacher]) lessonsByTeacher[teacher] = []
+      lessonsByTeacher[teacher].push(lesson)
+    }
+  })
+
+  return { weeksByNumber, lessonsByWeek, lessonsByRoom, lessonsByTeacher }
+}
+
 function stateFromCache(cached: CachedBundle, loading: boolean): ScheduleState {
   if (cached.kind === 'single') {
     return {
       schedule: cached.schedule,
+      index: buildScheduleIndex(cached.schedule),
       plan: cached.plan,
       plans: { [cached.schedule.course]: cached.plan },
       loading,
@@ -147,6 +199,7 @@ function stateFromCache(cached: CachedBundle, loading: boolean): ScheduleState {
 
   return {
     schedule: cached.schedule,
+    index: buildScheduleIndex(cached.schedule),
     plan: combinePlans(cached.plans),
     plans: cached.plans,
     loading,
@@ -183,6 +236,7 @@ function createScheduleStore() {
         cacheAll(bundle)
         store.set({
           schedule: bundle.schedule,
+          index: buildScheduleIndex(bundle.schedule),
           plan: combinePlans(bundle.plans),
           plans: bundle.plans,
           loading: false,
@@ -195,6 +249,7 @@ function createScheduleStore() {
         cacheCourse(course, bundle)
         store.set({
           schedule: bundle.schedule,
+          index: buildScheduleIndex(bundle.schedule),
           plan: bundle.plan,
           plans: { [course]: bundle.plan },
           loading: false,

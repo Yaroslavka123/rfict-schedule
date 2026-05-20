@@ -36,7 +36,7 @@
 
   let { filters, groups, weeks, lessons, activeTab, onFiltersChange }: GlobalFiltersProps = $props()
 
-  let showWeek = $derived(activeTab === 'schedule' || activeTab === 'rooms')
+  let showWeek = $derived(activeTab === 'schedule' || activeTab === 'rooms' || activeTab === 'teachers')
   let showSubgroup = $derived(filters.group !== 'all' && activeTab !== 'rooms')
   let showTypes = $derived(activeTab === 'schedule' || activeTab === 'teachers' || activeTab === 'rooms')
   let showSearch = $derived(activeTab !== 'rooms')
