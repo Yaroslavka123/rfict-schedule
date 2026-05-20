@@ -51,7 +51,12 @@
   }
 
   function showTooltip(event: MouseEvent, entries: TeacherSlot[], teacher: string) {
-    tooltip = { x: event.clientX + 12, y: event.clientY + 12, entries, teacher }
+    tooltip = {
+      x: Math.max(8, Math.min(event.clientX + 12, window.innerWidth - 340)),
+      y: Math.max(8, Math.min(event.clientY + 12, window.innerHeight - 260)),
+      entries,
+      teacher,
+    }
   }
 
   function hideTooltip() {

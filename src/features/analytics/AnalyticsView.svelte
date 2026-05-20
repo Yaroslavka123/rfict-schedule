@@ -17,6 +17,7 @@
     CoursePlanEntry,
     CoursePlanMap,
     CourseSelection,
+    LessonType,
     ScheduleGroup,
     ScheduleGroupWithCourse,
     ScheduleLesson,
@@ -28,9 +29,8 @@
     lessons: ScheduleLesson[]
     plans: Record<number, CoursePlanMap>
     flatPlan: CoursePlanMap
-    groupFilter: string
-    subgroupFilter: string
     search: string
+    lessonTypes: LessonType[]
     onPlanChange: (entry: CoursePlanEntry) => Promise<void> | void
   }
 
@@ -69,9 +69,8 @@
     lessons,
     plans,
     flatPlan,
-    groupFilter,
-    subgroupFilter,
     search,
+    lessonTypes,
     onPlanChange,
   }: AnalyticsViewProps = $props()
 
@@ -83,19 +82,22 @@
   let courses = $derived(
     course === 'all' ? Object.keys(plans).map(Number).sort((a, b) => a - b) : [course],
   )
+  let filteredLessons = $derived(
+    lessonTypes.length > 0 ? lessons.filter((lesson) => lessonTypes.includes(lesson.type)) : lessons,
+  )
   let courseRows = $derived(
     buildPlanFactHierarchy({
       courses,
       groups,
-      lessons,
+      lessons: filteredLessons,
       plans,
       today,
       search,
     }),
   )
-  let subjectRows = $derived(courseRows.map((row) => regroupBySubject(row, groupFilter, subgroupFilter)))
+  let subjectRows = $derived(courseRows.map((row) => regroupBySubject(row, 'all', 'all')))
   let visibleRows = $derived(subjectRows.filter((row) => row.subjects.length > 0))
-  let subjectsByCourse = $derived(buildSubjectsByCourse(courses, lessons, groups, course))
+  let subjectsByCourse = $derived(buildSubjectsByCourse(courses, filteredLessons, groups, course))
 
   function buildSubjectsByCourse(
     sourceCourses: number[],

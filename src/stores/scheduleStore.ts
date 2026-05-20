@@ -18,8 +18,8 @@ import type {
   WeekSchedule,
 } from '@/types/schedule'
 
-const CACHE_VERSION = 'v2'
-const CACHE_TTL_MS = 60_000
+const CACHE_VERSION = 'v3'
+const CACHE_TTL_MS = 15 * 60_000
 const CACHE_WRITE_DELAY_MS = 300
 
 interface CachedCourse {

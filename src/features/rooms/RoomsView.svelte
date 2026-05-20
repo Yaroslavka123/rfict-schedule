@@ -8,14 +8,16 @@
     isLessonActiveForWeek,
     normalizeRoom,
   } from '@/lib/schedule'
-  import { cn } from '@/lib/utils'
+  import { cn, normalizeText } from '@/lib/utils'
   import type { LessonType, ScheduleGroup, ScheduleGroupWithCourse, WeekSchedule } from '@/types/schedule'
 
   interface RoomsViewProps {
     weeks: WeekSchedule[]
     groups: (ScheduleGroup | ScheduleGroupWithCourse)[]
     selectedWeek: number
-    onWeekChange: (week: number) => void
+    groupFilter: string
+    search: string
+    lessonTypes: LessonType[]
   }
 
   interface SlotEntry {
@@ -53,14 +55,14 @@
     { type: 'curator_hour', label: 'Кур' },
   ]
 
-  let { weeks, groups, selectedWeek, onWeekChange }: RoomsViewProps = $props()
+  let { weeks, groups, selectedWeek, groupFilter, search, lessonTypes }: RoomsViewProps = $props()
   let tooltip = $state<{ x: number; y: number; entries: SlotEntry[] } | null>(null)
 
-  let roomList = $derived(buildRoomList(weeks))
+  let normalizedSearch = $derived(normalizeText(search))
+  let roomList = $derived(buildRoomList(weeks, groups, groupFilter, normalizedSearch, lessonTypes))
   let activeWeeks = $derived(getActiveWeeks(weeks, selectedWeek))
   let groupsById = $derived(new Map(groups.map((group) => [group.id, group as ScheduleGroupWithCourse])))
-  let occupancy = $derived(buildOccupancy(activeWeeks, groups, groupsById))
-  let availableWeeks = $derived(Array.from(new Set(weeks.map((week) => week.week_number))).sort((a, b) => a - b))
+  let occupancy = $derived(buildOccupancy(activeWeeks, groups, groupsById, groupFilter, normalizedSearch, lessonTypes))
   let tooltipMerged = $derived(tooltip ? mergeTooltipEntries(tooltip.entries) : [])
   let tooltipRoom = $derived(tooltip?.entries[0]?.room || '')
 
@@ -71,7 +73,11 @@
   }
 
   function showTooltip(event: MouseEvent, entries: SlotEntry[]) {
-    tooltip = { x: event.clientX + 12, y: event.clientY + 12, entries }
+    tooltip = {
+      x: Math.max(8, Math.min(event.clientX + 12, window.innerWidth - 340)),
+      y: Math.max(8, Math.min(event.clientY + 12, window.innerHeight - 260)),
+      entries,
+    }
   }
 
   function hideTooltip() {
@@ -130,10 +136,34 @@
     return a.localeCompare(b, 'ru')
   }
 
-  function buildRoomList(sourceWeeks: WeekSchedule[]) {
+  function lessonMatches(
+    lesson: WeekSchedule['lessons'][number],
+    sourceGroups: (ScheduleGroup | ScheduleGroupWithCourse)[],
+    activeGroup: string,
+    query: string,
+    types: LessonType[],
+  ) {
+    if (activeGroup !== 'all' && lesson.group !== activeGroup) return false
+    if (types.length > 0 && !types.includes(lesson.type)) return false
+    if (!query) return true
+    const room = normalizeRoom(lesson.room)
+    const haystack = normalizeText(
+      `${room} ${lesson.subject || ''} ${lesson.teacher || ''} ${getGroupNameById(sourceGroups, lesson.group)} ${lesson.day || ''}`,
+    )
+    return haystack.includes(query)
+  }
+
+  function buildRoomList(
+    sourceWeeks: WeekSchedule[],
+    sourceGroups: (ScheduleGroup | ScheduleGroupWithCourse)[],
+    activeGroup: string,
+    query: string,
+    types: LessonType[],
+  ) {
     const seen = new Set<string>()
     sourceWeeks.forEach((week) => {
       week.lessons.forEach((lesson) => {
+        if (!lessonMatches(lesson, sourceGroups, activeGroup, query, types)) return
         const room = normalizeRoom(lesson.room)
         if (room && room !== 'ДО') seen.add(room)
       })
@@ -161,11 +191,15 @@
     sourceWeeks: WeekSchedule[],
     sourceGroups: (ScheduleGroup | ScheduleGroupWithCourse)[],
     groupMap: Map<string, ScheduleGroupWithCourse>,
+    activeGroup: string,
+    query: string,
+    types: LessonType[],
   ) {
     const result: Record<string, Record<string, Record<number, SlotEntry[]>>> = {}
     sourceWeeks.forEach((week) => {
       week.lessons.forEach((lesson) => {
         if (!isLessonActiveForWeek(lesson, week.week_number)) return
+        if (!lessonMatches(lesson, sourceGroups, activeGroup, query, types)) return
         const room = normalizeRoom(lesson.room)
         if (!room || room === 'ДО') return
         const groupName = getGroupNameById(sourceGroups, lesson.group)
@@ -202,23 +236,6 @@
 {:else}
   <div class="rooms-page">
     <div class="flex flex-wrap items-center gap-2">
-      <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Неделя</div>
-      <div class="flex flex-wrap gap-1">
-        {#each availableWeeks as weekNumber (weekNumber)}
-          <button
-            type="button"
-            class={cn(
-              'rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors duration-150',
-              weekNumber === selectedWeek
-                ? 'border-primary bg-primary/15 text-primary'
-                : 'border-border bg-background text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground',
-            )}
-            onclick={() => onWeekChange(weekNumber)}
-          >
-            {weekNumber}-я
-          </button>
-        {/each}
-      </div>
       <div class="ml-auto flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
         <span class="inline-flex items-center gap-1 rounded-full border border-border bg-card/40 px-1.5 py-0.5">
           <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>

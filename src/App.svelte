@@ -2,7 +2,7 @@
   import { AlertCircle, Loader2 } from '@lucide/svelte'
 
   import AppShell, { type AppTab } from '@/components/layout/AppShell.svelte'
-  import GlobalFilters from '@/components/layout/GlobalFilters.svelte'
+  import TopFilters from '@/components/layout/TopFilters.svelte'
   import Card from '@/components/ui/Card.svelte'
   import AnalyticsView from '@/features/analytics/AnalyticsView.svelte'
   import RoomsView from '@/features/rooms/RoomsView.svelte'
@@ -12,7 +12,7 @@
   import { applyLessonFilters } from '@/lib/schedule'
   import { scheduleStore } from '@/stores/scheduleStore'
   import { themeStore, toggleTheme } from '@/stores/themeStore'
-  import type { FiltersState } from '@/types/schedule'
+  import type { CourseSelection, FiltersState, WeekSchedule } from '@/types/schedule'
 
   const defaultFilters: FiltersState = {
     course: ACTIVE_COURSE,
@@ -26,6 +26,7 @@
   let activeTab = $state<AppTab>('rooms')
   let filters = $state<FiltersState>({ ...defaultFilters })
   let debouncedSearch = $state('')
+  let autoWeekCourse = $state<CourseSelection | null>(null)
 
   let schedule = $derived($scheduleStore.schedule)
   let selectedWeeks = $derived($scheduleStore.index.weeksByNumber[filters.week] || [])
@@ -44,8 +45,17 @@
     const search = filters.search
     const timeout = setTimeout(() => {
       debouncedSearch = search
-    }, 300)
+    }, 80)
     return () => clearTimeout(timeout)
+  })
+
+  $effect(() => {
+    if (!schedule || autoWeekCourse === filters.course) return
+    const currentWeek = findCurrentWeek(schedule.weeks)
+    autoWeekCourse = filters.course
+    if (currentWeek && currentWeek !== filters.week) {
+      filters = { ...filters, week: currentWeek }
+    }
   })
 
   $effect(() => {
@@ -55,7 +65,42 @@
   })
 
   function setFilters(next: FiltersState) {
+    if (next.course !== filters.course) {
+      autoWeekCourse = null
+    }
     filters = next
+  }
+
+  function dayStamp(value: string | null | undefined) {
+    if (!value) return null
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return null
+    return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+  }
+
+  function findCurrentWeek(weeks: WeekSchedule[]) {
+    const today = new Date()
+    const todayStamp = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+    const ranges = weeks
+      .map((week) => {
+        const stamps = week.lessons
+          .map((lesson) => dayStamp(lesson.date))
+          .filter((stamp): stamp is number => stamp !== null)
+        if (stamps.length === 0) return null
+        return {
+          week: week.week_number,
+          start: Math.min(...stamps),
+          end: Math.max(...stamps),
+        }
+      })
+      .filter((range): range is { week: number; start: number; end: number } => range !== null)
+      .sort((a, b) => a.start - b.start)
+
+    const exact = ranges.find((range) => todayStamp >= range.start && todayStamp <= range.end)
+    if (exact) return exact.week
+    const future = ranges.find((range) => todayStamp < range.start)
+    if (future) return future.week
+    return ranges.at(-1)?.week ?? null
   }
 </script>
 
@@ -68,6 +113,18 @@
   refreshing={$scheduleStore.loading}
   loadedAt={$scheduleStore.loadedAt}
 >
+  {#snippet controls()}
+    {#if schedule}
+      <TopFilters
+        {filters}
+        groups={schedule.groups}
+        weeks={schedule.weeks}
+        {activeTab}
+        onFiltersChange={setFilters}
+      />
+    {/if}
+  {/snippet}
+
   {#if $scheduleStore.loading && !schedule}
     <Card contentClass="flex items-center justify-center gap-3 py-16 text-muted-foreground">
       <Loader2 class="h-5 w-5 animate-spin" />
@@ -82,88 +139,47 @@
       </div>
     </Card>
   {:else if schedule}
-    {#if activeTab === 'rooms'}
-      <div class="relative h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
-        <RoomsView
-          weeks={schedule.weeks}
-          groups={schedule.groups}
-          selectedWeek={filters.week}
-          onWeekChange={(weekNumber) => (filters = { ...filters, week: weekNumber })}
-        />
-        <aside class="filter-overlay">
-          <GlobalFilters
-            {filters}
-            groups={schedule.groups}
-            weeks={schedule.weeks}
-            lessons={schedule.lessons}
-            {activeTab}
-            onFiltersChange={setFilters}
-          />
-        </aside>
-      </div>
-    {:else if activeTab === 'teachers'}
-      <div class="relative h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
-        <TeachersView
-          lessons={schedule.lessons}
-          groups={schedule.groups}
-          search={debouncedSearch}
-          lessonTypes={filters.lessonTypes}
-          selectedWeek={filters.week}
-        />
-        <aside class="filter-overlay">
-          <GlobalFilters
-            {filters}
-            groups={schedule.groups}
-            weeks={schedule.weeks}
-            lessons={schedule.lessons}
-            {activeTab}
-            onFiltersChange={setFilters}
-          />
-        </aside>
-      </div>
-    {:else if activeTab === 'analytics'}
-      <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <AnalyticsView
-          course={filters.course}
-          groups={schedule.groups}
-          lessons={schedule.lessons}
-          plans={$scheduleStore.plans}
-          flatPlan={$scheduleStore.plan}
-          groupFilter={filters.group}
-          subgroupFilter={filters.subgroup}
-          search={debouncedSearch}
-          onPlanChange={scheduleStore.updatePlan}
-        />
-        <aside class="filter-sidebar lg:sticky lg:top-12 lg:self-start">
-          <GlobalFilters
-            {filters}
-            groups={schedule.groups}
-            weeks={schedule.weeks}
-            lessons={schedule.lessons}
-            {activeTab}
-            onFiltersChange={setFilters}
-          />
-        </aside>
-      </div>
-    {:else if activeTab === 'schedule'}
-      <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <ScheduleView
-          groups={schedule.groups}
-          lessons={filteredWeekLessons}
-          weekName={week?.name || `${filters.week}-я неделя`}
-          dateRange={week?.date_range || ''}
-        />
-        <aside class="filter-sidebar lg:sticky lg:top-12 lg:self-start">
-          <GlobalFilters
-            {filters}
-            groups={schedule.groups}
-            weeks={schedule.weeks}
-            lessons={schedule.lessons}
-            {activeTab}
-            onFiltersChange={setFilters}
-          />
-        </aside>
-      </div>
-    {/if}
+    <div class:hidden={activeTab !== 'rooms'} class="h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
+      <RoomsView
+        weeks={schedule.weeks}
+        groups={schedule.groups}
+        selectedWeek={filters.week}
+        groupFilter={filters.group}
+        search={debouncedSearch}
+        lessonTypes={filters.lessonTypes}
+      />
+    </div>
+
+    <div class:hidden={activeTab !== 'teachers'} class="h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
+      <TeachersView
+        lessons={schedule.lessons}
+        groups={schedule.groups}
+        search={debouncedSearch}
+        lessonTypes={filters.lessonTypes}
+        selectedWeek={filters.week}
+      />
+    </div>
+
+    <div class:hidden={activeTab !== 'analytics'}>
+      <AnalyticsView
+        course={filters.course}
+        groups={schedule.groups}
+        lessons={schedule.lessons}
+        plans={$scheduleStore.plans}
+        flatPlan={$scheduleStore.plan}
+        search={debouncedSearch}
+        lessonTypes={filters.lessonTypes}
+        onPlanChange={scheduleStore.updatePlan}
+      />
+    </div>
+
+    <div class:hidden={activeTab !== 'schedule'}>
+      <ScheduleView
+        groups={schedule.groups}
+        lessons={filteredWeekLessons}
+        weekName={week?.name || `${filters.week}-я неделя`}
+        dateRange={week?.date_range || ''}
+      />
+    </div>
   {/if}
 </AppShell>

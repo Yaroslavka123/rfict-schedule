@@ -25,6 +25,7 @@
     onRefresh: () => void
     refreshing: boolean
     loadedAt: number
+    controls?: Snippet
     children?: Snippet
   }
 
@@ -43,13 +44,14 @@
     onRefresh,
     refreshing,
     loadedAt,
+    controls,
     children,
   }: AppShellProps = $props()
 </script>
 
 <div class="min-h-screen bg-background text-foreground" style="--header-h: 3rem;">
-  <header class="sticky top-0 z-40 h-12 border-b border-border bg-card/95 backdrop-blur-xl">
-    <div class="flex h-full w-full items-center gap-3 px-3 md:px-5">
+  <header class="sticky top-0 z-40 min-h-12 border-b border-border bg-card/95 backdrop-blur-xl">
+    <div class="flex min-h-12 w-full flex-wrap items-center gap-2 px-3 py-1 md:px-5">
       <div class="flex items-center gap-2">
         <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <CalendarDays class="h-4 w-4" />
@@ -92,6 +94,8 @@
           </button>
         {/each}
       </nav>
+
+      {@render controls?.()}
 
       <div class="flex items-center gap-1">
         {#if loadedAt > 0}
