@@ -32,6 +32,7 @@
 
   const selectClass =
     'h-9 w-full rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20'
+  const allowAllCourses = COURSES.length > 1
 
   let { filters, groups, weeks, lessons, activeTab, onFiltersChange }: GlobalFiltersProps = $props()
 
@@ -99,7 +100,9 @@
         onFiltersChange({ ...filters, course: next, group: 'all', subgroup: 'all' })
       }}
     >
-      <option value="all">Все курсы</option>
+      {#if allowAllCourses}
+        <option value="all">Все курсы</option>
+      {/if}
       {#each COURSES as course (course)}
         <option value={course}>{course} курс</option>
       {/each}

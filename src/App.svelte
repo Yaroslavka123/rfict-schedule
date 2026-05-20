@@ -8,13 +8,14 @@
   import RoomsView from '@/features/rooms/RoomsView.svelte'
   import ScheduleView from '@/features/schedule/ScheduleView.svelte'
   import TeachersView from '@/features/teachers/TeachersView.svelte'
+  import { ACTIVE_COURSE } from '@/lib/constants'
   import { applyLessonFilters, getWeekByNumber } from '@/lib/schedule'
   import { scheduleStore } from '@/stores/scheduleStore'
   import { themeStore, toggleTheme } from '@/stores/themeStore'
   import type { FiltersState } from '@/types/schedule'
 
   const defaultFilters: FiltersState = {
-    course: 'all',
+    course: ACTIVE_COURSE,
     week: 1,
     group: 'all',
     subgroup: 'all',
