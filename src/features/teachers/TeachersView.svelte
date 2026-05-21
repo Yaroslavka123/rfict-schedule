@@ -1,56 +1,66 @@
 <script lang="ts">
   import Card from '@/components/ui/Card.svelte'
   import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
-  import {
-    getActiveSubgroupsForLesson,
-    getGroupNameById,
-    isLessonActiveForWeek,
-    normalizeRoom,
-    normalizeTeacherName,
-  } from '@/lib/schedule'
   import { cn, normalizeText } from '@/lib/utils'
-  import type { LessonType, ScheduleGroup, ScheduleGroupWithCourse, ScheduleLesson } from '@/types/schedule'
+  import type { TeacherCell, TeacherOccupancyIndex, TeacherSlotEntry } from '@/stores/scheduleStore'
+  import type { LessonType } from '@/types/schedule'
 
   interface TeachersViewProps {
-    lessons: ScheduleLesson[]
-    groups: (ScheduleGroup | ScheduleGroupWithCourse)[]
+    teacherData: TeacherOccupancyIndex | null
     search: string
     lessonTypes: LessonType[]
-    selectedWeek: number
-  }
-
-  interface TeacherSlot {
-    subject: string
-    group: string
-    groupId: string
-    room: string
-    type: LessonType
-    subgroup: string
-    time: string
-    pair: number
-    cancelled: boolean
-    course?: number
   }
 
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
-  let { lessons, groups, search, lessonTypes, selectedWeek }: TeachersViewProps = $props()
-  let tooltip = $state<{ x: number; y: number; entries: TeacherSlot[]; teacher: string } | null>(null)
+  let { teacherData, search, lessonTypes }: TeachersViewProps = $props()
+  let tooltip = $state<{ x: number; y: number; entries: TeacherSlotEntry[]; teacher: string } | null>(null)
+  let tooltipKey = $state<string | null>(null)
 
-  let teacherData = $derived(buildTeacherOccupancy(lessons, groups, selectedWeek))
+  let filteredTeacherData = $derived(filterTeacherData(teacherData, lessonTypes))
+  let orderedTeachers = $derived(filteredTeacherData?.orderedTeachers || [])
+  let occupancy = $derived(filteredTeacherData?.occupancy || {})
+  let tooltipEntriesByKey = $derived(buildTooltipEntriesByKey(filteredTeacherData))
   let normalizedSearch = $derived(normalizeText(search.trim()))
-  let teacherMatch = $derived(buildTeacherMatch(teacherData.orderedTeachers, normalizedSearch))
+  let teacherMatch = $derived(buildTeacherMatch(teacherData, normalizedSearch))
 
-  function buildTeacherMatch(teachers: string[], query: string) {
+  function buildTeacherMatch(data: TeacherOccupancyIndex | null, query: string) {
     if (!query) return null
+    if (!data) return new Set<string>()
     const matches = new Set<string>()
-    teachers.forEach((teacher) => {
-      if (normalizeText(teacher).includes(query)) matches.add(teacher)
+    data.orderedTeachers.forEach((teacher) => {
+      if (normalizeText(teacher).includes(query)) {
+        matches.add(teacher)
+        return
+      }
+      const hasEntryMatch = DAYS.some((day) =>
+        PAIRS.some((pair) => data.occupancy[teacher]?.[day]?.[pair]?.entries.some((entry) => entry.searchKey.includes(query))),
+      )
+      if (hasEntryMatch) matches.add(teacher)
     })
     return matches
   }
 
-  function showTooltip(event: MouseEvent, entries: TeacherSlot[], teacher: string) {
+  function slotKey(teacher: string, day: string, pair: number) {
+    return `${encodeURIComponent(teacher)}|${day}|${pair}`
+  }
+
+  function buildTooltipEntriesByKey(data: TeacherOccupancyIndex | null) {
+    const map = new Map<string, { entries: TeacherSlotEntry[]; teacher: string }>()
+    if (!data) return map
+    data.orderedTeachers.forEach((teacher) => {
+      DAYS.forEach((day) => {
+        PAIRS.forEach((pair) => {
+          const entries = data.occupancy[teacher]?.[day]?.[pair]?.entries
+          if (entries?.length) map.set(slotKey(teacher, day, pair), { entries, teacher })
+        })
+      })
+    })
+    return map
+  }
+
+  function showTooltip(event: MouseEvent, entries: TeacherSlotEntry[], teacher: string, key: string) {
+    tooltipKey = key
     tooltip = {
       x: Math.max(8, Math.min(event.clientX + 12, window.innerWidth - 340)),
       y: Math.max(8, Math.min(event.clientY + 12, window.innerHeight - 260)),
@@ -60,7 +70,58 @@
   }
 
   function hideTooltip() {
+    tooltipKey = null
     tooltip = null
+  }
+
+  function handleTableHover(event: MouseEvent) {
+    const cell = (event.target as HTMLElement).closest('td[data-slot-key]') as HTMLTableCellElement | null
+    if (!cell || !(event.currentTarget as HTMLElement).contains(cell)) {
+      hideTooltip()
+      return
+    }
+    const key = cell.dataset.slotKey
+    if (!key || key === tooltipKey) return
+    const data = tooltipEntriesByKey.get(key)
+    if (data) showTooltip(event, data.entries, data.teacher, key)
+    else hideTooltip()
+  }
+
+  function summarizeTeacherEntries(entries: TeacherSlotEntry[]): TeacherCell {
+    return {
+      entries,
+      allCancelled: entries.every((entry) => entry.cancelled),
+      types: Array.from(new Set(entries.map((entry) => entry.type))),
+      rooms: Array.from(new Set(entries.map((entry) => entry.room).filter(Boolean))),
+    }
+  }
+
+  function filterTeacherData(
+    source: TeacherOccupancyIndex | null,
+    activeTypes: LessonType[],
+  ): TeacherOccupancyIndex | null {
+    if (!source) return null
+    if (activeTypes.length === 0) return source
+
+    const occupancy: TeacherOccupancyIndex['occupancy'] = {}
+    source.orderedTeachers.forEach((teacher) => {
+      DAYS.forEach((day) => {
+        PAIRS.forEach((pair) => {
+          const cell = source.occupancy[teacher]?.[day]?.[pair]
+          if (!cell) return
+          const entries = cell.entries.filter((entry) => activeTypes.includes(entry.type))
+          if (entries.length === 0) return
+          if (!occupancy[teacher]) occupancy[teacher] = {}
+          if (!occupancy[teacher][day]) occupancy[teacher][day] = {}
+          occupancy[teacher][day][pair] = summarizeTeacherEntries(entries)
+        })
+      })
+    })
+
+    return {
+      orderedTeachers: source.orderedTeachers,
+      occupancy,
+    }
   }
 
   function formatSubgroup(raw: string): string {
@@ -81,60 +142,18 @@
     return `${trimmed.slice(0, 21)}...`
   }
 
-  function buildTeacherOccupancy(
-    sourceLessons: ScheduleLesson[],
-    sourceGroups: (ScheduleGroup | ScheduleGroupWithCourse)[],
-    activeWeek: number,
-  ) {
-    const occupancy: Record<string, Record<string, Record<number, TeacherSlot[]>>> = {}
-    const groupsById = new Map<string, ScheduleGroupWithCourse>()
-    sourceGroups.forEach((group) => groupsById.set(group.id, group as ScheduleGroupWithCourse))
-
-    sourceLessons.forEach((lesson) => {
-      const weekNumber = lesson.week_number ?? activeWeek
-      if (Number.isFinite(activeWeek) && weekNumber !== activeWeek) return
-      if (!isLessonActiveForWeek(lesson, weekNumber)) return
-      const teacher = normalizeTeacherName(lesson.teacher || '')
-      if (!teacher) return
-      if (!occupancy[teacher]) occupancy[teacher] = {}
-      const day = lesson.day
-      if (!occupancy[teacher][day]) occupancy[teacher][day] = {}
-      const duration = Math.max(lesson.duration || 1, 1)
-      const courseNumber = lesson.course_number ?? groupsById.get(lesson.group)?.course
-      const groupName = getGroupNameById(sourceGroups, lesson.group)
-      const activeSubgroups = getActiveSubgroupsForLesson(lesson, weekNumber)
-      for (let pair = lesson.pair; pair < lesson.pair + duration; pair += 1) {
-        if (!occupancy[teacher][day][pair]) occupancy[teacher][day][pair] = []
-        occupancy[teacher][day][pair].push({
-          subject: lesson.subject || '',
-          group: groupName,
-          groupId: lesson.group,
-          room: normalizeRoom(lesson.room) || '',
-          type: lesson.type,
-          subgroup: activeSubgroups.join(', '),
-          time: PAIR_TIMES[pair] || '',
-          pair,
-          cancelled: Boolean(lesson.cancelled),
-          course: courseNumber,
-        })
-      }
-    })
-
-    const orderedTeachers = Object.keys(occupancy).sort((a, b) => a.localeCompare(b, 'ru'))
-    return { occupancy, orderedTeachers }
-  }
 </script>
 
-{#if teacherData.orderedTeachers.length === 0}
+{#if orderedTeachers.length === 0}
   <Card contentClass="py-12 text-center text-muted-foreground">Преподаватели не найдены.</Card>
 {:else}
   <div class="teachers-page">
     <div class="teachers-matrix-wrap">
-      <table class="teachers-matrix" onmouseleave={hideTooltip}>
+      <table class="teachers-matrix" onpointerover={handleTableHover} onmouseleave={hideTooltip}>
         <colgroup>
           <col style="width: 2rem" />
           <col style="width: 2rem" />
-          {#each teacherData.orderedTeachers as teacher (teacher)}
+          {#each orderedTeachers as teacher (teacher)}
             <col />
           {/each}
         </colgroup>
@@ -142,7 +161,7 @@
           <tr>
             <th class="th-day">Д</th>
             <th class="th-pair">П</th>
-            {#each teacherData.orderedTeachers as teacher (teacher)}
+            {#each orderedTeachers as teacher (teacher)}
               {@const isMatch = teacherMatch?.has(teacher)}
               {@const isDim = teacherMatch && !isMatch}
               <th class={cn('th-teacher', isMatch && 'th-teacher-match', isDim && 'th-teacher-dim')} title={teacher}>
@@ -159,32 +178,27 @@
                   <td class="td-day" rowspan="8">{day}</td>
                 {/if}
                 <td class="td-pair" title={PAIR_TIMES[pair]}>{pair}</td>
-                {#each teacherData.orderedTeachers as teacher (teacher)}
-                  {@const entries = teacherData.occupancy[teacher]?.[day]?.[pair] || []}
-                  {@const filtered = lessonTypes.length > 0 ? entries.filter((entry) => lessonTypes.includes(entry.type)) : entries}
+                {#each orderedTeachers as teacher (teacher)}
+                  {@const cell = occupancy[teacher]?.[day]?.[pair]}
                   {@const isMatch = teacherMatch?.has(teacher)}
                   {@const isDim = teacherMatch && !isMatch}
-                  {#if filtered.length === 0}
+                  {#if !cell}
                     <td class={cn('slot-cell slot-free', isDim && 'slot-dim')}></td>
                   {:else}
-                    {@const allCancelled = filtered.every((entry) => entry.cancelled)}
-                    {@const types = Array.from(new Set(filtered.map((entry) => entry.type)))}
-                    {@const typeClass = allCancelled
+                    {@const typeClass = cell.allCancelled
                       ? 'slot-cancelled'
-                      : types.length > 1
+                      : cell.types.length > 1
                         ? 'slot-type-multi'
-                        : `slot-type-${types[0] || 'unknown'}`}
-                    {@const rooms = Array.from(new Set(filtered.map((entry) => entry.room).filter(Boolean)))}
+                        : `slot-type-${cell.types[0] || 'unknown'}`}
                     <td
                       class={cn('slot-cell slot-busy', typeClass, isMatch && 'slot-match', isDim && 'slot-dim')}
-                      onmouseenter={(event) => showTooltip(event, filtered, teacher)}
-                      onmouseleave={hideTooltip}
+                      data-slot-key={slotKey(teacher, day, pair)}
                     >
-                      <div class={cn('slot-content', allCancelled && 'line-through')}>
-                        <div class="slot-main">{rooms[0] || '—'}</div>
-                        {#if rooms.length > 1}
-                          <span class="slot-badge slot-badge-group" title={`Кабинетов: ${rooms.length}`}>
-                            {rooms.length}
+                      <div class={cn('slot-content', cell.allCancelled && 'line-through')}>
+                        <div class="slot-main">{cell.rooms[0] || '—'}</div>
+                        {#if cell.rooms.length > 1}
+                          <span class="slot-badge slot-badge-group" title={`Кабинетов: ${cell.rooms.length}`}>
+                            {cell.rooms.length}
                           </span>
                         {/if}
                       </div>

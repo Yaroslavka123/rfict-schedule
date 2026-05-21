@@ -8,12 +8,23 @@ import {
   type AllCoursesBundle,
   type CourseDataBundle,
 } from '@/api/scheduleClient'
+import { PAIR_TIMES } from '@/lib/constants'
+import {
+  categorizeRoom,
+  getActiveSubgroupsForLesson,
+  isLessonActiveForWeek,
+  normalizeRoom,
+  normalizeTeacherName,
+} from '@/lib/schedule'
+import { normalizeText } from '@/lib/utils'
 import type {
   CoursePlanEntry,
   CoursePlanMap,
   CourseSchedule,
   CourseSelection,
+  LessonType,
   MergedSchedule,
+  ScheduleGroupWithCourse,
   ScheduleLesson,
   WeekSchedule,
 } from '@/types/schedule'
@@ -55,6 +66,9 @@ export interface ScheduleIndex {
   lessonsByWeek: Record<number, ScheduleLesson[]>
   lessonsByRoom: Record<string, ScheduleLesson[]>
   lessonsByTeacher: Record<string, ScheduleLesson[]>
+  roomOccupancyByWeek: Record<number, RoomOccupancyIndex>
+  teacherOccupancyByWeek: Record<number, TeacherOccupancyIndex>
+  groupNameById: Record<string, string>
 }
 
 const emptyIndex: ScheduleIndex = {
@@ -62,6 +76,68 @@ const emptyIndex: ScheduleIndex = {
   lessonsByWeek: {},
   lessonsByRoom: {},
   lessonsByTeacher: {},
+  roomOccupancyByWeek: {},
+  teacherOccupancyByWeek: {},
+  groupNameById: {},
+}
+
+export type RoomCategory = 'lecture-hall' | 'computer' | 'regular'
+
+export interface RoomSlotEntry {
+  subject: string
+  teacher: string
+  group: string
+  groupId: string
+  course?: number
+  type: LessonType
+  subgroup: string
+  time: string
+  pair: number
+  cancelled: boolean
+  room: string
+  searchKey: string
+}
+
+export interface RoomCell {
+  entries: RoomSlotEntry[]
+  allCancelled: boolean
+  types: LessonType[]
+  groups: string[]
+  teachers: string[]
+  first: RoomSlotEntry
+}
+
+export interface RoomOccupancyIndex {
+  orderedRooms: string[]
+  categoryByRoom: Record<string, RoomCategory>
+  categoryStart: Record<string, boolean>
+  occupancy: Record<string, Record<string, Record<number, RoomCell>>>
+}
+
+export interface TeacherSlotEntry {
+  subject: string
+  group: string
+  groupId: string
+  room: string
+  type: LessonType
+  subgroup: string
+  time: string
+  pair: number
+  cancelled: boolean
+  course?: number
+  searchKey: string
+}
+
+export interface TeacherCell {
+  entries: TeacherSlotEntry[]
+  allCancelled: boolean
+  types: LessonType[]
+  rooms: string[]
+}
+
+export interface TeacherOccupancyIndex {
+  orderedTeachers: string[]
+  occupancy: Record<string, Record<string, Record<number, TeacherCell>>>
 }
 
 const initialState: ScheduleState = {
@@ -151,12 +227,103 @@ function combinePlans(plans: Record<number, CoursePlanMap>): CoursePlanMap {
   return merged
 }
 
+function numericRoomSort(a: string, b: string) {
+  const orderA = categorizeRoom(a).order
+  const orderB = categorizeRoom(b).order
+  if (orderA !== orderB) return orderA - orderB
+  const numA = parseInt(a.replace(/\D+/g, ''), 10)
+  const numB = parseInt(b.replace(/\D+/g, ''), 10)
+  if (!Number.isNaN(numA) && !Number.isNaN(numB) && numA !== numB) return numA - numB
+  return a.localeCompare(b, 'ru', { numeric: true })
+}
+
+function getScheduleCourse(schedule: CourseSchedule | MergedSchedule) {
+  return typeof schedule.course === 'number' ? schedule.course : undefined
+}
+
+function lessonCourse(
+  lesson: ScheduleLesson,
+  groupCourseById: Record<string, number>,
+  fallback?: number,
+) {
+  return lesson.course_number ?? groupCourseById[lesson.group] ?? fallback
+}
+
+function buildGroupMaps(schedule: CourseSchedule | MergedSchedule) {
+  const fallbackCourse = getScheduleCourse(schedule)
+  const groupNameById: Record<string, string> = {}
+  const groupNameByCourseAndId: Record<string, string> = {}
+  const groupCourseById: Record<string, number> = {}
+
+  schedule.groups.forEach((group) => {
+    const withCourse = group as ScheduleGroupWithCourse
+    const course = withCourse.course ?? fallbackCourse
+    if (groupNameById[group.id] === undefined) groupNameById[group.id] = group.name
+    if (course !== undefined) {
+      groupNameByCourseAndId[`${course}:${group.id}`] = group.name
+      groupCourseById[group.id] = course
+    }
+  })
+
+  return { groupNameById, groupNameByCourseAndId, groupCourseById }
+}
+
+function getGroupName(
+  groupId: string,
+  course: number | undefined,
+  groupNameById: Record<string, string>,
+  groupNameByCourseAndId: Record<string, string>,
+) {
+  if (course !== undefined) return groupNameByCourseAndId[`${course}:${groupId}`] || groupNameById[groupId] || `Группа ${groupId}`
+  return groupNameById[groupId] || `Группа ${groupId}`
+}
+
+function roomCell(entries: RoomSlotEntry[]): RoomCell {
+  const groups = Array.from(new Set(entries.map((entry) => entry.group).filter(Boolean)))
+  const teachers = Array.from(new Set(entries.map((entry) => entry.teacher).filter(Boolean)))
+  const types = Array.from(new Set(entries.map((entry) => entry.type)))
+  return {
+    entries,
+    allCancelled: entries.every((entry) => entry.cancelled),
+    types,
+    groups,
+    teachers,
+    first: entries[0],
+  }
+}
+
+function teacherCell(entries: TeacherSlotEntry[]): TeacherCell {
+  const rooms = Array.from(new Set(entries.map((entry) => entry.room).filter(Boolean)))
+  const types = Array.from(new Set(entries.map((entry) => entry.type)))
+  return {
+    entries,
+    allCancelled: entries.every((entry) => entry.cancelled),
+    types,
+    rooms,
+  }
+}
+
+function finalizeRoomIndex(index: RoomOccupancyIndex) {
+  index.orderedRooms = index.orderedRooms.sort(numericRoomSort)
+  const seenCategories = new Set<RoomCategory>()
+  index.orderedRooms.forEach((room) => {
+    const category = categorizeRoom(room).tone as RoomCategory
+    index.categoryByRoom[room] = category
+    index.categoryStart[room] = !seenCategories.has(category)
+    seenCategories.add(category)
+  })
+}
+
 function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): ScheduleIndex {
   if (!schedule) return emptyIndex
   const weeksByNumber: Record<number, WeekSchedule[]> = {}
   const lessonsByWeek: Record<number, ScheduleLesson[]> = {}
   const lessonsByRoom: Record<string, ScheduleLesson[]> = {}
   const lessonsByTeacher: Record<string, ScheduleLesson[]> = {}
+  const roomEntriesByWeek: Record<number, Record<string, Record<string, Record<number, RoomSlotEntry[]>>>> = {}
+  const teacherEntriesByWeek: Record<number, Record<string, Record<string, Record<number, TeacherSlotEntry[]>>>> = {}
+  const { groupNameById, groupNameByCourseAndId, groupCourseById } = buildGroupMaps(schedule)
+  const fallbackCourse = getScheduleCourse(schedule)
 
   schedule.weeks.forEach((week) => {
     if (!weeksByNumber[week.week_number]) weeksByNumber[week.week_number] = []
@@ -168,20 +335,128 @@ function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): S
     if (!lessonsByWeek[week]) lessonsByWeek[week] = []
     lessonsByWeek[week].push(lesson)
 
-    const room = (lesson.room || '').trim()
+    const room = normalizeRoom(lesson.room)
     if (room) {
       if (!lessonsByRoom[room]) lessonsByRoom[room] = []
       lessonsByRoom[room].push(lesson)
     }
 
-    const teacher = (lesson.teacher || '').trim()
+    const teacher = normalizeTeacherName(lesson.teacher || '')
     if (teacher) {
       if (!lessonsByTeacher[teacher]) lessonsByTeacher[teacher] = []
       lessonsByTeacher[teacher].push(lesson)
     }
+
+    if (!isLessonActiveForWeek(lesson, week)) return
+
+    const course = lessonCourse(lesson, groupCourseById, fallbackCourse)
+    const groupName = getGroupName(lesson.group, course, groupNameById, groupNameByCourseAndId)
+    const activeSubgroups = getActiveSubgroupsForLesson(lesson, week).join(', ')
+    const duration = Math.max(lesson.duration || 1, 1)
+
+    if (room && room !== 'ДО') {
+      if (!roomEntriesByWeek[week]) roomEntriesByWeek[week] = {}
+      if (!roomEntriesByWeek[week][room]) roomEntriesByWeek[week][room] = {}
+      if (!roomEntriesByWeek[week][room][lesson.day]) roomEntriesByWeek[week][room][lesson.day] = {}
+
+      for (let pair = lesson.pair; pair < lesson.pair + duration; pair += 1) {
+        const searchKey = normalizeText(
+          `${room} ${lesson.subject || ''} ${teacher} ${groupName} ${activeSubgroups} ${lesson.day || ''} ${lesson.date || ''} ${lesson.comment || ''}`,
+        )
+        if (!roomEntriesByWeek[week][room][lesson.day][pair]) roomEntriesByWeek[week][room][lesson.day][pair] = []
+        roomEntriesByWeek[week][room][lesson.day][pair].push({
+          subject: lesson.subject || '',
+          teacher,
+          group: groupName,
+          groupId: lesson.group,
+          course,
+          type: lesson.type,
+          subgroup: activeSubgroups,
+          time: PAIR_TIMES[pair] || '',
+          pair,
+          cancelled: Boolean(lesson.cancelled),
+          room,
+          searchKey,
+        })
+      }
+    }
+
+    if (teacher) {
+      if (!teacherEntriesByWeek[week]) teacherEntriesByWeek[week] = {}
+      if (!teacherEntriesByWeek[week][teacher]) teacherEntriesByWeek[week][teacher] = {}
+      if (!teacherEntriesByWeek[week][teacher][lesson.day]) teacherEntriesByWeek[week][teacher][lesson.day] = {}
+
+      for (let pair = lesson.pair; pair < lesson.pair + duration; pair += 1) {
+        const normalizedRoom = room || ''
+        const searchKey = normalizeText(
+          `${teacher} ${lesson.subject || ''} ${groupName} ${activeSubgroups} ${normalizedRoom} ${lesson.day || ''} ${lesson.date || ''} ${lesson.comment || ''}`,
+        )
+        if (!teacherEntriesByWeek[week][teacher][lesson.day][pair]) teacherEntriesByWeek[week][teacher][lesson.day][pair] = []
+        teacherEntriesByWeek[week][teacher][lesson.day][pair].push({
+          subject: lesson.subject || '',
+          group: groupName,
+          groupId: lesson.group,
+          room: normalizedRoom,
+          type: lesson.type,
+          subgroup: activeSubgroups,
+          time: PAIR_TIMES[pair] || '',
+          pair,
+          cancelled: Boolean(lesson.cancelled),
+          course,
+          searchKey,
+        })
+      }
+    }
   })
 
-  return { weeksByNumber, lessonsByWeek, lessonsByRoom, lessonsByTeacher }
+  const roomOccupancyByWeek: Record<number, RoomOccupancyIndex> = {}
+  Object.entries(roomEntriesByWeek).forEach(([week, roomMap]) => {
+    const index: RoomOccupancyIndex = {
+      orderedRooms: Object.keys(roomMap),
+      categoryByRoom: {},
+      categoryStart: {},
+      occupancy: {},
+    }
+    Object.entries(roomMap).forEach(([room, days]) => {
+      index.occupancy[room] = {}
+      Object.entries(days).forEach(([day, pairs]) => {
+        index.occupancy[room][day] = {}
+        Object.entries(pairs).forEach(([pair, entries]) => {
+          index.occupancy[room][day][Number(pair)] = roomCell(entries)
+        })
+      })
+    })
+    finalizeRoomIndex(index)
+    roomOccupancyByWeek[Number(week)] = index
+  })
+
+  const teacherOccupancyByWeek: Record<number, TeacherOccupancyIndex> = {}
+  Object.entries(teacherEntriesByWeek).forEach(([week, teacherMap]) => {
+    const index: TeacherOccupancyIndex = {
+      orderedTeachers: Object.keys(teacherMap).sort((a, b) => a.localeCompare(b, 'ru')),
+      occupancy: {},
+    }
+    Object.entries(teacherMap).forEach(([teacher, days]) => {
+      index.occupancy[teacher] = {}
+      Object.entries(days).forEach(([day, pairs]) => {
+        index.occupancy[teacher][day] = {}
+        Object.entries(pairs).forEach(([pair, entries]) => {
+          index.occupancy[teacher][day][Number(pair)] = teacherCell(entries)
+        })
+      })
+    })
+    teacherOccupancyByWeek[Number(week)] = index
+  })
+
+  return {
+    weeksByNumber,
+    lessonsByWeek,
+    lessonsByRoom,
+    lessonsByTeacher,
+    roomOccupancyByWeek,
+    teacherOccupancyByWeek,
+    groupNameById,
+  }
 }
 
 function stateFromCache(cached: CachedBundle, loading: boolean): ScheduleState {
@@ -310,6 +585,7 @@ function createScheduleStore() {
         plans: previousPlans,
         error: (error as Error).message,
       }))
+      throw error
     }
   }
 

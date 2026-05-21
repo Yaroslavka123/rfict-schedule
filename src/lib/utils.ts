@@ -42,8 +42,15 @@ export function formatUpdatedAt(iso: string) {
   return `обновлено ${hours} ч назад`
 }
 
+const normalizeCache = new Map<string, string>()
+
 export function normalizeText(value: string | null | undefined) {
-  return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim()
+  const key = String(value || '')
+  const cached = normalizeCache.get(key)
+  if (cached !== undefined) return cached
+  const normalized = key.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim()
+  normalizeCache.set(key, normalized)
+  return normalized
 }
 
 const TITLE_STEM_REPLACEMENTS: [RegExp, string][] = [

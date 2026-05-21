@@ -74,10 +74,17 @@
     onPlanChange,
   }: AnalyticsViewProps = $props()
 
-  const today = new Date()
+  let today = $state(new Date())
   let openEditors = $state<Record<number, boolean>>({})
   let planInputs = $state<Record<string, string>>({})
   let savingRows = $state<Record<string, boolean>>({})
+
+  $effect(() => {
+    const interval = setInterval(() => {
+      today = new Date()
+    }, 60_000)
+    return () => clearInterval(interval)
+  })
 
   let courses = $derived(
     course === 'all' ? Object.keys(plans).map(Number).sort((a, b) => a - b) : [course],
@@ -197,6 +204,8 @@
       const nextInputs = { ...planInputs }
       delete nextInputs[key]
       planInputs = nextInputs
+    } catch (error) {
+      alert(`Не удалось сохранить план для "${subject}": ${(error as Error).message}`)
     } finally {
       savingRows = { ...savingRows, [key]: false }
     }

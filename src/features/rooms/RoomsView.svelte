@@ -1,37 +1,15 @@
 <script lang="ts">
   import Card from '@/components/ui/Card.svelte'
   import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
-  import {
-    categorizeRoom,
-    getActiveSubgroupsForLesson,
-    getGroupNameById,
-    isLessonActiveForWeek,
-    normalizeRoom,
-  } from '@/lib/schedule'
   import { cn, normalizeText } from '@/lib/utils'
-  import type { LessonType, ScheduleGroup, ScheduleGroupWithCourse, WeekSchedule } from '@/types/schedule'
+  import type { RoomCell, RoomCategory, RoomOccupancyIndex, RoomSlotEntry } from '@/stores/scheduleStore'
+  import type { LessonType } from '@/types/schedule'
 
   interface RoomsViewProps {
-    weeks: WeekSchedule[]
-    groups: (ScheduleGroup | ScheduleGroupWithCourse)[]
-    selectedWeek: number
+    roomData: RoomOccupancyIndex | null
     groupFilter: string
     search: string
     lessonTypes: LessonType[]
-  }
-
-  interface SlotEntry {
-    subject: string
-    teacher: string
-    group: string
-    groupId: string
-    course?: number
-    type: LessonType
-    subgroup: string
-    time: string
-    pair: number
-    cancelled: boolean
-    room: string
   }
 
   interface TooltipPerSubject {
@@ -44,8 +22,6 @@
     cancelled: boolean
   }
 
-  type Category = 'lecture-hall' | 'computer' | 'regular'
-
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
   const typeLegend: Array<{ type: LessonType; label: string }> = [
     { type: 'lecture', label: 'Лек' },
@@ -55,24 +31,42 @@
     { type: 'curator_hour', label: 'Кур' },
   ]
 
-  let { weeks, groups, selectedWeek, groupFilter, search, lessonTypes }: RoomsViewProps = $props()
-  let tooltip = $state<{ x: number; y: number; entries: SlotEntry[] } | null>(null)
+  let { roomData, groupFilter, search, lessonTypes }: RoomsViewProps = $props()
+  let tooltip = $state<{ x: number; y: number; entries: RoomSlotEntry[] } | null>(null)
+  let tooltipKey = $state<string | null>(null)
 
   let normalizedSearch = $derived(normalizeText(search))
-  let roomList = $derived(buildRoomList(weeks, groups, groupFilter, normalizedSearch, lessonTypes))
-  let activeWeeks = $derived(getActiveWeeks(weeks, selectedWeek))
-  let groupsById = $derived(new Map(groups.map((group) => [group.id, group as ScheduleGroupWithCourse])))
-  let occupancy = $derived(buildOccupancy(activeWeeks, groups, groupsById, groupFilter, normalizedSearch, lessonTypes))
+  let filteredRoomData = $derived(filterRoomData(roomData, groupFilter, normalizedSearch, lessonTypes))
+  let orderedRooms = $derived(filteredRoomData?.orderedRooms || [])
+  let categoryByRoom = $derived(filteredRoomData?.categoryByRoom || {})
+  let categoryStart = $derived(filteredRoomData?.categoryStart || {})
+  let occupancy = $derived(filteredRoomData?.occupancy || {})
+  let tooltipEntriesByKey = $derived(buildTooltipEntriesByKey(orderedRooms, occupancy))
   let tooltipMerged = $derived(tooltip ? mergeTooltipEntries(tooltip.entries) : [])
   let tooltipRoom = $derived(tooltip?.entries[0]?.room || '')
 
-  function getActiveWeeks(source: WeekSchedule[], selected: number) {
-    if (!source.length) return []
-    const target = source.filter((week) => week.week_number === selected)
-    return target.length > 0 ? target : [source[source.length - 1]]
+  function slotKey(room: string, day: string, pair: number) {
+    return `${encodeURIComponent(room)}|${day}|${pair}`
   }
 
-  function showTooltip(event: MouseEvent, entries: SlotEntry[]) {
+  function buildTooltipEntriesByKey(
+    rooms: string[],
+    source: RoomOccupancyIndex['occupancy'],
+  ) {
+    const map = new Map<string, RoomSlotEntry[]>()
+    rooms.forEach((room) => {
+      DAYS.forEach((day) => {
+        PAIRS.forEach((pair) => {
+          const entries = source[room]?.[day]?.[pair]?.entries
+          if (entries?.length) map.set(slotKey(room, day, pair), entries)
+        })
+      })
+    })
+    return map
+  }
+
+  function showTooltip(event: MouseEvent, entries: RoomSlotEntry[], key: string) {
+    tooltipKey = key
     tooltip = {
       x: Math.max(8, Math.min(event.clientX + 12, window.innerWidth - 340)),
       y: Math.max(8, Math.min(event.clientY + 12, window.innerHeight - 260)),
@@ -81,7 +75,86 @@
   }
 
   function hideTooltip() {
+    tooltipKey = null
     tooltip = null
+  }
+
+  function handleTableHover(event: MouseEvent) {
+    const cell = (event.target as HTMLElement).closest('td[data-slot-key]') as HTMLTableCellElement | null
+    if (!cell || !(event.currentTarget as HTMLElement).contains(cell)) {
+      hideTooltip()
+      return
+    }
+    const key = cell.dataset.slotKey
+    if (!key || key === tooltipKey) return
+    const entries = tooltipEntriesByKey.get(key)
+    if (entries?.length) showTooltip(event, entries, key)
+    else hideTooltip()
+  }
+
+  function entryMatches(entry: RoomSlotEntry, activeGroup: string, query: string, types: LessonType[]) {
+    if (activeGroup !== 'all' && entry.groupId !== activeGroup) return false
+    if (types.length > 0 && !types.includes(entry.type)) return false
+    return !query || entry.searchKey.includes(query)
+  }
+
+  function summarizeRoomEntries(entries: RoomSlotEntry[]): RoomCell {
+    return {
+      entries,
+      allCancelled: entries.every((entry) => entry.cancelled),
+      types: Array.from(new Set(entries.map((entry) => entry.type))),
+      groups: Array.from(new Set(entries.map((entry) => entry.group).filter(Boolean))),
+      teachers: Array.from(new Set(entries.map((entry) => entry.teacher).filter(Boolean))),
+      first: entries[0],
+    }
+  }
+
+  function filteredCategoryStart(source: RoomOccupancyIndex, rooms: string[]) {
+    const result: Record<string, boolean> = {}
+    const seen = new Set<RoomCategory>()
+    rooms.forEach((room) => {
+      const category = source.categoryByRoom[room]
+      result[room] = !seen.has(category)
+      seen.add(category)
+    })
+    return result
+  }
+
+  function filterRoomData(
+    source: RoomOccupancyIndex | null,
+    activeGroup: string,
+    query: string,
+    types: LessonType[],
+  ): RoomOccupancyIndex | null {
+    if (!source) return null
+    if (activeGroup === 'all' && !query && types.length === 0) return source
+
+    const occupancy: RoomOccupancyIndex['occupancy'] = {}
+    const orderedRooms: string[] = []
+
+    source.orderedRooms.forEach((room) => {
+      let hasRoomEntries = false
+      DAYS.forEach((day) => {
+        PAIRS.forEach((pair) => {
+          const cell = source.occupancy[room]?.[day]?.[pair]
+          if (!cell) return
+          const entries = cell.entries.filter((entry) => entryMatches(entry, activeGroup, query, types))
+          if (entries.length === 0) return
+          if (!occupancy[room]) occupancy[room] = {}
+          if (!occupancy[room][day]) occupancy[room][day] = {}
+          occupancy[room][day][pair] = summarizeRoomEntries(entries)
+          hasRoomEntries = true
+        })
+      })
+      if (hasRoomEntries) orderedRooms.push(room)
+    })
+
+    return {
+      orderedRooms,
+      categoryByRoom: source.categoryByRoom,
+      categoryStart: filteredCategoryStart(source, orderedRooms),
+      occupancy,
+    }
   }
 
   function formatSubgroup(raw: string): string {
@@ -96,7 +169,7 @@
     return trimmed
   }
 
-  function mergeTooltipEntries(entries: SlotEntry[]): TooltipPerSubject[] {
+  function mergeTooltipEntries(entries: RoomSlotEntry[]): TooltipPerSubject[] {
     const map = new Map<string, TooltipPerSubject>()
     entries.forEach((entry) => {
       const key = [entry.subject, entry.teacher, entry.type, entry.time, entry.cancelled].join('|')
@@ -128,110 +201,9 @@
     if (!subject) return 'Занято'
     return subject.length > 14 ? `${subject.slice(0, 13)}...` : subject
   }
-
-  function numericRoomSort(a: string, b: string) {
-    const numA = parseInt(a.replace(/\D+/g, ''), 10)
-    const numB = parseInt(b.replace(/\D+/g, ''), 10)
-    if (!Number.isNaN(numA) && !Number.isNaN(numB) && numA !== numB) return numA - numB
-    return a.localeCompare(b, 'ru')
-  }
-
-  function lessonMatches(
-    lesson: WeekSchedule['lessons'][number],
-    sourceGroups: (ScheduleGroup | ScheduleGroupWithCourse)[],
-    activeGroup: string,
-    query: string,
-    types: LessonType[],
-  ) {
-    if (activeGroup !== 'all' && lesson.group !== activeGroup) return false
-    if (types.length > 0 && !types.includes(lesson.type)) return false
-    if (!query) return true
-    const room = normalizeRoom(lesson.room)
-    const haystack = normalizeText(
-      `${room} ${lesson.subject || ''} ${lesson.teacher || ''} ${getGroupNameById(sourceGroups, lesson.group)} ${lesson.day || ''}`,
-    )
-    return haystack.includes(query)
-  }
-
-  function buildRoomList(
-    sourceWeeks: WeekSchedule[],
-    sourceGroups: (ScheduleGroup | ScheduleGroupWithCourse)[],
-    activeGroup: string,
-    query: string,
-    types: LessonType[],
-  ) {
-    const seen = new Set<string>()
-    sourceWeeks.forEach((week) => {
-      week.lessons.forEach((lesson) => {
-        if (!lessonMatches(lesson, sourceGroups, activeGroup, query, types)) return
-        const room = normalizeRoom(lesson.room)
-        if (room && room !== 'ДО') seen.add(room)
-      })
-    })
-
-    const buckets: Record<Category, string[]> = { 'lecture-hall': [], computer: [], regular: [] }
-    const categoryByRoom: Record<string, Category> = {}
-    seen.forEach((room) => {
-      const category = categorizeRoom(room).tone as Category
-      buckets[category].push(room)
-      categoryByRoom[room] = category
-    })
-    ;(Object.keys(buckets) as Category[]).forEach((key) => buckets[key].sort(numericRoomSort))
-
-    const orderedRooms = [...buckets['lecture-hall'], ...buckets.computer, ...buckets.regular]
-    const categoryStart: Record<string, boolean> = {}
-    ;(['lecture-hall', 'computer', 'regular'] as const).forEach((category) => {
-      const first = buckets[category][0]
-      if (first) categoryStart[first] = true
-    })
-    return { orderedRooms, categoryByRoom, categoryStart }
-  }
-
-  function buildOccupancy(
-    sourceWeeks: WeekSchedule[],
-    sourceGroups: (ScheduleGroup | ScheduleGroupWithCourse)[],
-    groupMap: Map<string, ScheduleGroupWithCourse>,
-    activeGroup: string,
-    query: string,
-    types: LessonType[],
-  ) {
-    const result: Record<string, Record<string, Record<number, SlotEntry[]>>> = {}
-    sourceWeeks.forEach((week) => {
-      week.lessons.forEach((lesson) => {
-        if (!isLessonActiveForWeek(lesson, week.week_number)) return
-        if (!lessonMatches(lesson, sourceGroups, activeGroup, query, types)) return
-        const room = normalizeRoom(lesson.room)
-        if (!room || room === 'ДО') return
-        const groupName = getGroupNameById(sourceGroups, lesson.group)
-        const activeSubgroups = getActiveSubgroupsForLesson(lesson, week.week_number)
-        if (!result[room]) result[room] = {}
-        const day = lesson.day
-        if (!result[room][day]) result[room][day] = {}
-        const duration = Math.max(lesson.duration || 1, 1)
-        const courseNumber = lesson.course_number ?? groupMap.get(lesson.group)?.course
-        for (let pair = lesson.pair; pair < lesson.pair + duration; pair += 1) {
-          if (!result[room][day][pair]) result[room][day][pair] = []
-          result[room][day][pair].push({
-            subject: lesson.subject || '',
-            teacher: lesson.teacher || '',
-            group: groupName,
-            groupId: lesson.group,
-            course: courseNumber,
-            type: lesson.type,
-            subgroup: activeSubgroups.join(', '),
-            time: PAIR_TIMES[pair] || '',
-            pair,
-            cancelled: Boolean(lesson.cancelled),
-            room,
-          })
-        }
-      })
-    })
-    return result
-  }
 </script>
 
-{#if !activeWeeks.length || roomList.orderedRooms.length === 0}
+{#if orderedRooms.length === 0}
   <Card contentClass="py-12 text-center text-muted-foreground">Кабинеты не найдены.</Card>
 {:else}
   <div class="rooms-page">
@@ -264,11 +236,11 @@
     </div>
 
     <div class="room-matrix-wrap">
-      <table class="room-matrix" onmouseleave={hideTooltip}>
+      <table class="room-matrix" onpointerover={handleTableHover} onmouseleave={hideTooltip}>
         <colgroup>
           <col style="width: 2rem" />
           <col style="width: 2rem" />
-          {#each roomList.orderedRooms as room (room)}
+          {#each orderedRooms as room (room)}
             <col />
           {/each}
         </colgroup>
@@ -276,9 +248,9 @@
           <tr>
             <th class="th-day">Д</th>
             <th class="th-pair">П</th>
-            {#each roomList.orderedRooms as room (room)}
-              {@const category = roomList.categoryByRoom[room]}
-              {@const start = roomList.categoryStart[room]}
+            {#each orderedRooms as room (room)}
+              {@const category = categoryByRoom[room]}
+              {@const start = categoryStart[room]}
               <th class={cn('th-room', `th-cat-${category}`, `cat-bg-${category}`, start && 'room-cat-start')} title={room}>
                 {room}
               </th>
@@ -293,42 +265,36 @@
                   <td class="td-day" rowspan="8">{day}</td>
                 {/if}
                 <td class="td-pair" title={PAIR_TIMES[pair]}>{pair}</td>
-                {#each roomList.orderedRooms as room (room)}
-                  {@const entries = occupancy[room]?.[day]?.[pair] || []}
-                  {@const category = roomList.categoryByRoom[room]}
-                  {@const start = roomList.categoryStart[room]}
-                  {#if entries.length === 0}
+                {#each orderedRooms as room (room)}
+                  {@const cell = occupancy[room]?.[day]?.[pair]}
+                  {@const category = categoryByRoom[room]}
+                  {@const start = categoryStart[room]}
+                  {#if !cell}
                     <td class={cn('slot-cell slot-free', `cat-bg-${category}`, start && 'room-cat-start')}></td>
                   {:else}
-                    {@const allCancelled = entries.every((entry) => entry.cancelled)}
-                    {@const types = Array.from(new Set(entries.map((entry) => entry.type)))}
-                    {@const typeClass = allCancelled
+                    {@const typeClass = cell.allCancelled
                       ? 'slot-cancelled'
-                      : types.length > 1
+                      : cell.types.length > 1
                         ? 'slot-type-multi'
-                        : `slot-type-${types[0] || 'unknown'}`}
-                    {@const first = entries[0]}
-                    {@const groupSet = Array.from(new Set(entries.map((entry) => entry.group).filter(Boolean)))}
-                    {@const teacherSet = Array.from(new Set(entries.map((entry) => entry.teacher).filter(Boolean)))}
+                        : `slot-type-${cell.types[0] || 'unknown'}`}
                     <td
                       class={cn('slot-cell slot-busy', typeClass, start && 'room-cat-start')}
-                      onmouseenter={(event) => showTooltip(event, entries)}
-                      onmouseleave={hideTooltip}
+                      data-slot-key={slotKey(room, day, pair)}
                     >
                       <div class="slot-content">
-                        <div class={cn('slot-main', allCancelled && 'line-through')}>{shortenSubject(first.subject)}</div>
-                        {#if groupSet.length > 0}
-                          <div class="slot-meta">{groupSet[0]}</div>
+                        <div class={cn('slot-main', cell.allCancelled && 'line-through')}>{shortenSubject(cell.first.subject)}</div>
+                        {#if cell.groups.length > 0}
+                          <div class="slot-meta">{cell.groups[0]}</div>
                         {/if}
                       </div>
-                      {#if teacherSet.length > 1}
-                        <span class="slot-badge slot-badge-teacher" title={`Преподавателей: ${teacherSet.length}`}>
-                          {teacherSet.length}
+                      {#if cell.teachers.length > 1}
+                        <span class="slot-badge slot-badge-teacher" title={`Преподавателей: ${cell.teachers.length}`}>
+                          {cell.teachers.length}
                         </span>
                       {/if}
-                      {#if groupSet.length > 1}
-                        <span class="slot-badge slot-badge-group" title={`Групп: ${groupSet.length}`}>
-                          {groupSet.length}
+                      {#if cell.groups.length > 1}
+                        <span class="slot-badge slot-badge-group" title={`Групп: ${cell.groups.length}`}>
+                          {cell.groups.length}
                         </span>
                       {/if}
                     </td>

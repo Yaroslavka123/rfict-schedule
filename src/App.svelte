@@ -22,6 +22,8 @@
     lessonTypes: [],
     search: '',
   }
+  const SEARCH_DEBOUNCE_MS = 200
+  const FETCH_DEBOUNCE_MS = 100
 
   let activeTab = $state<AppTab>('rooms')
   let filters = $state<FiltersState>({ ...defaultFilters })
@@ -32,26 +34,47 @@
   let selectedWeeks = $derived($scheduleStore.index.weeksByNumber[filters.week] || [])
   let week = $derived(selectedWeeks[0] || null)
   let selectedWeekLessons = $derived($scheduleStore.index.lessonsByWeek[filters.week] || [])
+  let lessonFilters = $derived({
+    course: filters.course,
+    week: filters.week,
+    group: filters.group,
+    subgroup: filters.subgroup,
+    lessonTypes: filters.lessonTypes,
+    search: debouncedSearch,
+  })
   let filteredWeekLessons = $derived(
-    schedule ? applyLessonFilters(selectedWeekLessons, schedule.groups, filters, debouncedSearch) : [],
+    schedule ? applyLessonFilters(selectedWeekLessons, schedule.groups, lessonFilters, debouncedSearch) : [],
   )
 
   $effect(() => {
     const course = filters.course
-    void scheduleStore.fetch(course)
-  })
-
-  $effect(() => {
-    const search = filters.search
     const timeout = setTimeout(() => {
-      debouncedSearch = search
-    }, 80)
+      void scheduleStore.fetch(course)
+    }, FETCH_DEBOUNCE_MS)
     return () => clearTimeout(timeout)
   })
 
   $effect(() => {
+    const search = filters.search
+    let cancelled = false
+    const timeout = setTimeout(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) return
+        setTimeout(() => {
+          if (!cancelled) debouncedSearch = search
+        }, 0)
+      })
+    }, SEARCH_DEBOUNCE_MS)
+    return () => {
+      cancelled = true
+      clearTimeout(timeout)
+    }
+  })
+
+  $effect(() => {
     if (!schedule || autoWeekCourse === filters.course) return
-    const currentWeek = findCurrentWeek(schedule.weeks)
+    const availableWeeks = Array.from(new Set(schedule.weeks.map((entry) => entry.week_number))).sort((a, b) => a - b)
+    const currentWeek = findCurrentWeek(schedule.weeks) || availableWeeks[0] || null
     autoWeekCourse = filters.course
     if (currentWeek && currentWeek !== filters.week) {
       filters = { ...filters, week: currentWeek }
@@ -139,28 +162,27 @@
       </div>
     </Card>
   {:else if schedule}
-    <div class:hidden={activeTab !== 'rooms'} class="h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
+    {#if activeTab === 'rooms'}
+    <div class="h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
       <RoomsView
-        weeks={schedule.weeks}
-        groups={schedule.groups}
-        selectedWeek={filters.week}
+        roomData={$scheduleStore.index.roomOccupancyByWeek[filters.week] || null}
         groupFilter={filters.group}
         search={debouncedSearch}
         lessonTypes={filters.lessonTypes}
       />
     </div>
+    {:else if activeTab === 'teachers'}
 
-    <div class:hidden={activeTab !== 'teachers'} class="h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
+    <div class="h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
       <TeachersView
-        lessons={schedule.lessons}
-        groups={schedule.groups}
+        teacherData={$scheduleStore.index.teacherOccupancyByWeek[filters.week] || null}
         search={debouncedSearch}
         lessonTypes={filters.lessonTypes}
-        selectedWeek={filters.week}
       />
     </div>
+    {:else if activeTab === 'analytics'}
 
-    <div class:hidden={activeTab !== 'analytics'}>
+    <div>
       <AnalyticsView
         course={filters.course}
         groups={schedule.groups}
@@ -172,8 +194,9 @@
         onPlanChange={scheduleStore.updatePlan}
       />
     </div>
+    {:else if activeTab === 'schedule'}
 
-    <div class:hidden={activeTab !== 'schedule'}>
+    <div>
       <ScheduleView
         groups={schedule.groups}
         lessons={filteredWeekLessons}
@@ -181,5 +204,6 @@
         dateRange={week?.date_range || ''}
       />
     </div>
+    {/if}
   {/if}
 </AppShell>

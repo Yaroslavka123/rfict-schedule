@@ -3,7 +3,7 @@
 
   import Card from '@/components/ui/Card.svelte'
   import { DAY_ORDER, LESSON_TYPE_LABELS } from '@/lib/constants'
-  import { buildStats, formatActiveSubgroups, getGoogleSheetUrl, getGroupNameById, getPairRange } from '@/lib/schedule'
+  import { buildStats, formatActiveSubgroups, getGoogleSheetUrl, getPairRange } from '@/lib/schedule'
   import { cn } from '@/lib/utils'
   import type { ScheduleGroup, ScheduleLesson } from '@/types/schedule'
 
@@ -18,6 +18,7 @@
 
   let stats = $derived(buildStats(lessons))
   let byDay = $derived(groupByDay(lessons))
+  let groupNameMap = $derived(new Map(groups.map((group) => [group.id, group.name])))
   let populatedDays = $derived(DAY_ORDER.filter((day) => (byDay[day] || []).length > 0))
   let statItems = $derived([
     { label: 'Занятий', value: stats.total, tone: 'default' as const },
@@ -128,7 +129,7 @@
                 </td>
                 <td class="text-muted-foreground">{lesson.teacher || '—'}</td>
                 <td class="font-semibold text-amber-500">{lesson.room || '—'}</td>
-                <td>{getGroupNameById(groups, lesson.group)}</td>
+                <td>{groupNameMap.get(lesson.group) ?? lesson.group}</td>
                 <td class="text-xs text-purple-400">{formatActiveSubgroups(lesson)}</td>
                 <td class="text-xs text-muted-foreground">{periodFor(lesson)}</td>
                 <td class="text-xs text-muted-foreground">{infoFor(lesson)}</td>
