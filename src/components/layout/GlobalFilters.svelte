@@ -31,7 +31,7 @@
   ) as [LessonType, string][]
 
   const selectClass =
-    'h-9 w-full rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20'
+    'h-9 w-full rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20'
   const allowAllCourses = COURSES.length > 1
 
   let { filters, groups, weeks, lessons, activeTab, onFiltersChange }: GlobalFiltersProps = $props()
@@ -76,7 +76,7 @@
 <Card contentClass="space-y-3 p-3">
   {#if showSearch}
     <div class="space-y-1">
-      <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Поиск</p>
+      <p class="text-[10px] font-semibold uppercase text-muted-foreground">Поиск</p>
       <div class="relative">
         <Search class="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
@@ -90,7 +90,7 @@
   {/if}
 
   <div class="space-y-1">
-    <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Курс</p>
+    <p class="text-[10px] font-semibold uppercase text-muted-foreground">Курс</p>
     <select
       class={selectClass}
       value={filters.course === 'all' ? 'all' : String(filters.course)}
@@ -104,13 +104,13 @@
         <option value="all">Все курсы</option>
       {/if}
       {#each COURSES as course (course)}
-        <option value={course}>{course} курс</option>
+        <option value={String(course)}>{course} курс</option>
       {/each}
     </select>
   </div>
 
   <div class="space-y-1">
-    <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Группа</p>
+    <p class="text-[10px] font-semibold uppercase text-muted-foreground">Группа</p>
     <select class={selectClass} value={filters.group} onchange={(event) => setFilter('group', event.currentTarget.value)}>
       <option value="all">Все группы</option>
       {#each visibleGroups as group (group.id)}
@@ -124,7 +124,7 @@
 
   {#if showSubgroup && subgroupOptions.length > 0}
     <div class="space-y-1">
-      <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Подгруппа</p>
+      <p class="text-[10px] font-semibold uppercase text-muted-foreground">Подгруппа</p>
       <select
         class={selectClass}
         value={filters.subgroup}
@@ -140,7 +140,7 @@
 
   {#if showWeek && availableWeeks.length > 0}
     <div class="space-y-1">
-      <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Неделя</p>
+      <p class="text-[10px] font-semibold uppercase text-muted-foreground">Неделя</p>
       <div class="flex flex-wrap gap-1">
         {#each availableWeeks as weekNumber (weekNumber)}
           <button
@@ -159,7 +159,7 @@
 
   {#if showTypes}
     <div class="space-y-1">
-      <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Тип</p>
+      <p class="text-[10px] font-semibold uppercase text-muted-foreground">Тип</p>
       <div class="flex flex-wrap gap-1">
         {#each filterableTypes as [type, label] (type)}
           <button

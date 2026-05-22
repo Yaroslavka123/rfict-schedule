@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ExternalLink } from '@lucide/svelte'
+  import { CalendarRange, ExternalLink } from '@lucide/svelte'
 
   import Card from '@/components/ui/Card.svelte'
   import { DAY_ORDER, LESSON_TYPE_LABELS } from '@/lib/constants'
@@ -21,11 +21,11 @@
   let groupNameMap = $derived(new Map(groups.map((group) => [group.id, group.name])))
   let populatedDays = $derived(DAY_ORDER.filter((day) => (byDay[day] || []).length > 0))
   let statItems = $derived([
-    { label: 'Занятий', value: stats.total, tone: 'default' as const },
+    { label: 'Всего занятий', value: stats.total, tone: 'default' as const },
     { label: 'Лекций', value: stats.lectures, tone: 'green' as const },
-    { label: 'Лаб', value: stats.labs, tone: 'orange' as const },
+    { label: 'Лабораторных', value: stats.labs, tone: 'orange' as const },
     { label: 'Практик', value: stats.practices, tone: 'blue' as const },
-    { label: 'Отмен', value: stats.cancelled, tone: 'red' as const },
+    { label: 'Отменено', value: stats.cancelled, tone: 'red' as const },
   ])
 
   function groupByDay(source: ScheduleLesson[]) {
@@ -64,20 +64,31 @@
 </script>
 
 <div class="space-y-3">
-  <div class="flex flex-wrap items-center gap-2">
-    {#each statItems as stat (stat.label)}
-      <div class="flex items-baseline gap-2 rounded-md border border-border bg-card px-3 py-1.5">
-        <span class={cn('text-lg font-bold tabular-nums', toneClass(stat.tone))}>{stat.value}</span>
-        <span class="text-xs text-muted-foreground">{stat.label}</span>
+  <div class="view-toolbar">
+    <div class="flex min-w-[12rem] flex-1 items-center gap-2">
+      <div class="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <CalendarRange class="h-4 w-4" />
       </div>
-    {/each}
-    <span class="ml-auto text-xs text-muted-foreground">
-      {weekName}{dateRange ? ` · ${dateRange}` : ''}
-    </span>
+      <div>
+        <div class="view-title">{weekName}</div>
+        <div class="view-subtitle">{dateRange || 'Диапазон дат не указан'}</div>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      {#each statItems as stat (stat.label)}
+        <div class="stat-pill">
+          <span class={cn('stat-value', toneClass(stat.tone))}>{stat.value}</span>
+          <span class="stat-label">{stat.label}</span>
+        </div>
+      {/each}
+    </div>
   </div>
 
   {#if lessons.length === 0}
-    <Card contentClass="py-12 text-center text-muted-foreground">По выбранным фильтрам занятий нет.</Card>
+    <Card contentClass="py-12 text-center">
+      <div class="text-sm font-semibold">По выбранным фильтрам занятий нет</div>
+      <div class="mt-1 text-sm text-muted-foreground">Измените неделю, группу, тип занятия или поисковый запрос.</div>
+    </Card>
   {:else}
     <div class="overflow-x-auto rounded-lg border border-border bg-card">
       <table class="dense-table">

@@ -21,8 +21,8 @@ export default {
         destructive: 'hsl(var(--destructive))',
       },
       boxShadow: {
-        glow: '0 20px 80px rgba(14, 165, 233, 0.18)',
-        card: '0 18px 50px rgba(15, 23, 42, 0.08)',
+        glow: '0 12px 36px rgba(15, 118, 110, 0.14)',
+        card: '0 10px 28px rgba(15, 23, 42, 0.06)',
       },
       borderRadius: {
         xl: '1rem',

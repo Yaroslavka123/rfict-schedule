@@ -3,6 +3,7 @@
 
   import AppShell, { type AppTab } from '@/components/layout/AppShell.svelte'
   import TopFilters from '@/components/layout/TopFilters.svelte'
+  import Button from '@/components/ui/Button.svelte'
   import Card from '@/components/ui/Card.svelte'
   import AnalyticsView from '@/features/analytics/AnalyticsView.svelte'
   import RoomsView from '@/features/rooms/RoomsView.svelte'
@@ -25,7 +26,7 @@
   const SEARCH_DEBOUNCE_MS = 200
   const FETCH_DEBOUNCE_MS = 100
 
-  let activeTab = $state<AppTab>('rooms')
+  let activeTab = $state<AppTab>('schedule')
   let filters = $state<FiltersState>({ ...defaultFilters })
   let debouncedSearch = $state('')
   let autoWeekCourse = $state<CourseSelection | null>(null)
@@ -125,6 +126,14 @@
     if (future) return future.week
     return ranges.at(-1)?.week ?? null
   }
+
+  function formatScheduleError(error: string | null) {
+    if (!error) return 'Проверьте соединение и попробуйте еще раз.'
+    if (error === 'Failed to fetch') {
+      return 'Не удалось соединиться с API. Проверьте доступность backend и настройки CORS.'
+    }
+    return error
+  }
 </script>
 
 <AppShell
@@ -149,17 +158,23 @@
   {/snippet}
 
   {#if $scheduleStore.loading && !schedule}
-    <Card contentClass="flex items-center justify-center gap-3 py-16 text-muted-foreground">
-      <Loader2 class="h-5 w-5 animate-spin" />
-      Загружаю расписание
+    <Card contentClass="flex flex-col items-center justify-center gap-3 py-16 text-center">
+      <Loader2 class="h-6 w-6 animate-spin text-primary" />
+      <div>
+        <div class="text-sm font-semibold">Загружаю расписание</div>
+        <div class="mt-1 text-sm text-muted-foreground">Получаю данные по курсам, неделям и план-факту.</div>
+      </div>
     </Card>
   {:else if !$scheduleStore.loading && $scheduleStore.error && !schedule}
     <Card contentClass="flex flex-col items-center gap-3 py-16 text-center">
       <AlertCircle class="h-10 w-10 text-destructive" />
       <div>
         <h2 class="text-lg font-semibold">Не удалось загрузить расписание</h2>
-        <p class="mt-1 text-sm text-muted-foreground">{$scheduleStore.error}</p>
+        <p class="mt-1 text-sm text-muted-foreground">{formatScheduleError($scheduleStore.error)}</p>
       </div>
+      <Button variant="secondary" class="h-9" onclick={scheduleStore.refresh}>
+        Повторить загрузку
+      </Button>
     </Card>
   {:else if schedule}
     {#if activeTab === 'rooms'}

@@ -22,9 +22,8 @@
     onFiltersChange: (filters: FiltersState) => void
   }
 
-  const selectClass =
-    'h-8 rounded-md border border-border bg-background px-2 text-xs font-semibold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20'
-  const searchClass = 'h-8 w-40 rounded-md bg-background pl-8 text-xs lg:w-56'
+  const selectClass = 'filter-select'
+  const searchClass = 'filter-search'
   const lessonTypes = Object.entries(LESSON_TYPE_LABELS).filter(
     ([type]) => type !== 'unknown',
   ) as [LessonType, string][]
@@ -72,54 +71,69 @@
 </script>
 
 <div class="top-filters">
-  <select class={selectClass} value={filters.course === 'all' ? 'all' : String(filters.course)} onchange={(event) => setCourse(event.currentTarget.value)} aria-label="Курс">
-    <option value="all">Все курсы</option>
-    {#each COURSES as course (course)}
-      <option value={course}>{course} курс</option>
-    {/each}
-  </select>
-
-  {#if showGroup}
-    <select class={selectClass} value={filters.group} onchange={(event) => setGroup(event.currentTarget.value)} aria-label="Группа">
-      <option value="all">Все группы</option>
-      {#each visibleGroups as group (groupKey(group))}
-        {@const withCourse = group as ScheduleGroupWithCourse}
-        <option value={group.id}>
-          {group.name}{#if filters.course === 'all' && withCourse.course} · {withCourse.course} курс{:else if group.department} · {group.department}{/if}
-        </option>
+  <label class="filter-field">
+    <span class="filter-label">Курс</span>
+    <select class={selectClass} value={filters.course === 'all' ? 'all' : String(filters.course)} onchange={(event) => setCourse(event.currentTarget.value)} aria-label="Курс">
+      <option value="all">Все курсы</option>
+      {#each COURSES as course (course)}
+        <option value={String(course)}>{course} курс</option>
       {/each}
     </select>
+  </label>
+
+  {#if showGroup}
+    <label class="filter-field">
+      <span class="filter-label">Группа</span>
+      <select class={selectClass} value={filters.group} onchange={(event) => setGroup(event.currentTarget.value)} aria-label="Группа">
+        <option value="all">Все группы</option>
+        {#each visibleGroups as group (groupKey(group))}
+          {@const withCourse = group as ScheduleGroupWithCourse}
+          <option value={group.id}>
+            {group.name}{#if filters.course === 'all' && withCourse.course} · {withCourse.course} курс{:else if group.department} · {group.department}{/if}
+          </option>
+        {/each}
+      </select>
+    </label>
   {/if}
 
   {#if showWeek && availableWeeks.length > 0}
-    <select class={selectClass} value={String(filters.week)} onchange={(event) => update({ week: Number(event.currentTarget.value) })} aria-label="Неделя">
-      {#each availableWeeks as weekNumber (weekNumber)}
-        <option value={weekNumber}>{weekNumber} неделя</option>
-      {/each}
-    </select>
+    <label class="filter-field">
+      <span class="filter-label">Неделя</span>
+      <select class={selectClass} value={String(filters.week)} onchange={(event) => update({ week: Number(event.currentTarget.value) })} aria-label="Неделя">
+        {#each availableWeeks as weekNumber (weekNumber)}
+          <option value={String(weekNumber)}>{weekNumber} неделя</option>
+        {/each}
+      </select>
+    </label>
   {/if}
 
-  <select class={selectClass} value={selectedType} onchange={(event) => setType(event.currentTarget.value)} aria-label="Тип занятия">
-    <option value="all">Все типы</option>
-    {#each lessonTypes as [type, label] (type)}
-      <option value={type}>{label}</option>
-    {/each}
-  </select>
+  <label class="filter-field">
+    <span class="filter-label">Тип занятия</span>
+    <select class={selectClass} value={selectedType} onchange={(event) => setType(event.currentTarget.value)} aria-label="Тип занятия">
+      <option value="all">Все типы</option>
+      {#each lessonTypes as [type, label] (type)}
+        <option value={type}>{label}</option>
+      {/each}
+    </select>
+  </label>
 
-  <div class="relative">
-    <Search class="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
-    <Input
-      class={searchClass}
-      placeholder="Поиск"
-      value={filters.search}
-      oninput={(event) => update({ search: event.currentTarget.value })}
-    />
-  </div>
+  <label class="filter-field">
+    <span class="filter-label">Поиск</span>
+    <div class="relative">
+      <Search class="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <Input
+        class={searchClass}
+        placeholder="Предмет, ФИО, ауд."
+        value={filters.search}
+        oninput={(event) => update({ search: event.currentTarget.value })}
+      />
+    </div>
+  </label>
 
   {#if hasActiveFilters}
     <Button
       variant="ghost"
-      class="h-8 w-8 rounded-md p-0"
+      class="mt-auto h-9 w-9 p-0"
       onclick={() => update({ group: 'all', subgroup: 'all', lessonTypes: [], search: '' })}
       title="Сбросить фильтры"
       aria-label="Сбросить фильтры"

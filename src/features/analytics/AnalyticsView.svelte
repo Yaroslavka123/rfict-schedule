@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Download, Save } from '@lucide/svelte'
+  import { BarChart3, Download, Save } from '@lucide/svelte'
 
   import { planKey } from '@/api/scheduleClient'
   import Button from '@/components/ui/Button.svelte'
@@ -105,6 +105,17 @@
   let subjectRows = $derived(courseRows.map((row) => regroupBySubject(row, 'all', 'all')))
   let visibleRows = $derived(subjectRows.filter((row) => row.subjects.length > 0))
   let subjectsByCourse = $derived(buildSubjectsByCourse(courses, filteredLessons, groups, course))
+  let summary = $derived(
+    visibleRows.reduce(
+      (acc, row) => ({
+        planned: acc.planned + row.totalPlanned,
+        scheduled: acc.scheduled + row.totalScheduled,
+        done: acc.done + row.totalDone,
+      }),
+      { planned: 0, scheduled: 0, done: 0 },
+    ),
+  )
+  let completion = $derived(summary.planned > 0 ? Math.round((summary.done / summary.planned) * 100) : null)
 
   function buildSubjectsByCourse(
     sourceCourses: number[],
@@ -288,12 +299,37 @@
 </script>
 
 <div class="space-y-3">
-  <div class="flex flex-wrap items-center gap-2">
-    <h2 class="text-sm font-semibold text-muted-foreground">
-      План-факт {course === 'all' ? 'по всем курсам' : `по ${course} курсу`}
-    </h2>
-    <span class="text-xs text-muted-foreground">на {today.toLocaleDateString('ru-RU')}</span>
-    <Button variant="secondary" class="ml-auto h-9" onclick={exportCsv}>
+  <div class="view-toolbar">
+    <div class="flex min-w-[12rem] flex-1 items-center gap-2">
+      <div class="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <BarChart3 class="h-4 w-4" />
+      </div>
+      <div>
+        <div class="view-title">План-факт {course === 'all' ? 'по всем курсам' : `по ${course} курсу`}</div>
+        <div class="view-subtitle">На {today.toLocaleDateString('ru-RU')}</div>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+      <div class="stat-pill">
+        <span class="stat-value text-primary">{summary.planned || '—'}</span>
+        <span class="stat-label">План</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-value text-sky-500">{summary.scheduled}</span>
+        <span class="stat-label">В расписании</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-value text-emerald-500">{summary.done}</span>
+        <span class="stat-label">Проведено</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-value text-amber-500">{completion !== null ? `${completion}%` : '—'}</span>
+        <span class="stat-label">Выполнение</span>
+      </div>
+    </div>
+
+    <Button variant="secondary" class="h-9" onclick={exportCsv}>
       <Download class="h-4 w-4" />
       CSV
     </Button>

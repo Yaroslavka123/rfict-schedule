@@ -30,10 +30,34 @@
   }
 
   const tabs = [
-    { id: 'rooms' as const, label: 'Кабинеты', icon: DoorOpen },
-    { id: 'teachers' as const, label: 'Преподаватели', icon: GraduationCap },
-    { id: 'analytics' as const, label: 'План-факт', icon: BarChart3 },
-    { id: 'schedule' as const, label: 'Расписание', icon: CalendarDays },
+    {
+      id: 'rooms' as const,
+      label: 'Кабинеты',
+      title: 'Занятость кабинетов',
+      description: 'Свободные и занятые аудитории по дням, парам и типам занятий.',
+      icon: DoorOpen,
+    },
+    {
+      id: 'teachers' as const,
+      label: 'Преподаватели',
+      title: 'Занятость преподавателей',
+      description: 'Нагрузка преподавателей по неделе с быстрым поиском и подсветкой совпадений.',
+      icon: GraduationCap,
+    },
+    {
+      id: 'analytics' as const,
+      label: 'План-факт',
+      title: 'План-факт по занятиям',
+      description: 'Сравнение запланированных, поставленных в расписание и уже проведенных пар.',
+      icon: BarChart3,
+    },
+    {
+      id: 'schedule' as const,
+      label: 'Расписание',
+      title: 'Расписание недели',
+      description: 'Список занятий по дням с группами, аудиториями, периодами и ссылками на источник.',
+      icon: CalendarDays,
+    },
   ]
 
   let {
@@ -47,90 +71,83 @@
     controls,
     children,
   }: AppShellProps = $props()
+
+  let activeTabConfig = $derived(tabs.find((tab) => tab.id === activeTab) ?? tabs[0])
 </script>
 
-<div class="min-h-screen bg-background text-foreground" style="--header-h: 3rem;">
-  <header class="sticky top-0 z-40 min-h-12 border-b border-border bg-card/95 backdrop-blur-xl">
-    <div class="flex min-h-12 w-full flex-wrap items-center gap-2 px-3 py-1 md:px-5">
-      <div class="flex items-center gap-2">
-        <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <CalendarDays class="h-4 w-4" />
+<div class="app-shell" style="--header-h: 8.5rem;">
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="header-top">
+        <div class="brand-mark">
+          <CalendarDays class="h-5 w-5" />
         </div>
-        <div class="hidden sm:block">
-          <p class="text-[9px] font-semibold uppercase tracking-widest leading-none text-muted-foreground">
-            РФиКТ БГУ
-          </p>
-          <h1 class="text-xs font-bold leading-tight tracking-tight md:text-sm">Расписание</h1>
+        <div class="header-meta">
+          <p class="section-eyebrow">РФиКТ БГУ</p>
+          <div>
+            <h1 class="header-title">{activeTabConfig.title}</h1>
+            <p class="header-description">{activeTabConfig.description}</p>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          {#if loadedAt > 0}
+            <span class="hidden rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground lg:inline-flex">
+              {formatUpdatedAt(new Date(loadedAt).toISOString())}
+            </span>
+          {/if}
+          <Button
+            variant="secondary"
+            class="h-9 px-3"
+            onclick={onRefresh}
+            disabled={refreshing}
+            aria-label="Обновить"
+            title="Обновить данные"
+          >
+            <RefreshCw class={cn('h-4 w-4', refreshing && 'animate-spin')} />
+            <span class="hidden sm:inline">Обновить</span>
+          </Button>
+          <Button
+            variant="secondary"
+            class="h-9 px-3"
+            onclick={onToggleTheme}
+            aria-label="Переключить тему"
+            title="Сменить тему"
+          >
+            {#if theme === 'dark'}
+              <Sun class="h-4 w-4" />
+            {:else}
+              <Moon class="h-4 w-4" />
+            {/if}
+            <span class="hidden sm:inline">Тема</span>
+          </Button>
         </div>
       </div>
 
-      <nav class="flex flex-1 gap-0.5 overflow-x-auto">
-        {#each tabs as tab (tab.id)}
-          {@const Icon = tab.icon}
-          <button
-            type="button"
-            class={cn(
-              'group relative inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold transition-all duration-300 ease-out',
-              activeTab === tab.id
-                ? 'scale-[1.02] bg-primary/10 text-foreground'
-                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-            )}
-            onclick={() => onTabChange(tab.id)}
-          >
-            <Icon
-              class={cn(
-                'h-3.5 w-3.5 transition-transform duration-300 ease-out',
-                activeTab === tab.id ? 'scale-110 text-primary' : '',
-              )}
-            />
-            {tab.label}
-            <span
-              aria-hidden="true"
-              class={cn(
-                'absolute inset-x-1 -bottom-0.5 h-0.5 rounded-full bg-primary transition-all duration-300 ease-out',
-                activeTab === tab.id ? 'scale-x-100 opacity-100' : 'scale-x-0 opacity-0',
-              )}
-            ></span>
-          </button>
-        {/each}
-      </nav>
+      <div class="flex flex-col gap-3 2xl:flex-row 2xl:items-start">
+        <nav class="app-tabs" aria-label="Разделы расписания">
+          {#each tabs as tab (tab.id)}
+            {@const Icon = tab.icon}
+            <button
+              type="button"
+              class={cn('app-tab', activeTab === tab.id ? 'app-tab-active' : 'app-tab-idle')}
+              onclick={() => onTabChange(tab.id)}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
+            >
+              <Icon class={cn('h-4 w-4', activeTab === tab.id && 'text-primary')} />
+              {tab.label}
+            </button>
+          {/each}
+        </nav>
 
-      {@render controls?.()}
-
-      <div class="flex items-center gap-1">
-        {#if loadedAt > 0}
-          <span class="hidden text-[10px] text-muted-foreground lg:inline">
-            {formatUpdatedAt(new Date(loadedAt).toISOString())}
-          </span>
-        {/if}
-        <Button
-          variant="secondary"
-          class="h-7 px-2 text-xs"
-          onclick={onRefresh}
-          disabled={refreshing}
-          aria-label="Обновить"
-          title="Перезагрузить данные"
-        >
-          <RefreshCw class={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
-        </Button>
-        <Button
-          variant="secondary"
-          class="h-7 px-2 text-xs"
-          onclick={onToggleTheme}
-          aria-label="Переключить тему"
-          title="Сменить тему"
-        >
-          {#if theme === 'dark'}
-            <Sun class="h-3.5 w-3.5" />
-          {:else}
-            <Moon class="h-3.5 w-3.5" />
-          {/if}
-        </Button>
+        <div class="header-controls flex-1">
+          {@render controls?.()}
+        </div>
       </div>
     </div>
   </header>
 
-  <main class="w-full px-3 py-3 md:px-5">
+  <main class="w-full px-3 py-4 md:px-5">
     {@render children?.()}
   </main>
 </div>

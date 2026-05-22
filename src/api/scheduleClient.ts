@@ -12,8 +12,7 @@ import { COURSES } from '@/lib/constants'
 
 export const SUPPORTED_COURSES = COURSES
 
-const DEFAULT_API_BASE_URL = 'https://rfict.up.railway.app'
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : DEFAULT_API_BASE_URL)).replace(/\/$/, '')
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
 interface BackendScheduleEnvelope {
   schedule?: WeekSchedule

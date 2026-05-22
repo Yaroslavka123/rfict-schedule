@@ -4,34 +4,34 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    --background: 210 24% 98%;
+    --foreground: 222 24% 13%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 222 24% 13%;
     --popover: 0 0% 100%;
-    --muted: 210 40% 94%;
-    --muted-foreground: 215 16% 47%;
-    --border: 214 32% 91%;
-    --primary: 199 89% 48%;
+    --muted: 210 22% 94%;
+    --muted-foreground: 215 14% 42%;
+    --border: 214 24% 88%;
+    --primary: 174 74% 31%;
     --primary-foreground: 0 0% 100%;
-    --accent: 221 83% 53%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 24 90% 12%;
     --destructive: 0 84% 60%;
   }
 
   .dark {
-    --background: 222 47% 7%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 10%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 8%;
-    --muted: 217 33% 16%;
-    --muted-foreground: 215 20% 65%;
-    --border: 217 33% 18%;
-    --primary: 199 89% 48%;
+    --background: 220 18% 9%;
+    --foreground: 210 24% 96%;
+    --card: 220 17% 12%;
+    --card-foreground: 210 24% 96%;
+    --popover: 220 17% 10%;
+    --muted: 220 14% 18%;
+    --muted-foreground: 215 14% 68%;
+    --border: 220 14% 22%;
+    --primary: 172 68% 42%;
     --primary-foreground: 0 0% 100%;
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 38 90% 56%;
+    --accent-foreground: 24 90% 10%;
     --destructive: 0 72% 51%;
   }
 
@@ -42,10 +42,76 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
   }
 }
 
 @layer components {
+  .app-shell {
+    @apply min-h-screen bg-background text-foreground;
+    background:
+      linear-gradient(180deg, hsl(var(--muted) / 0.55), transparent 18rem),
+      hsl(var(--background));
+  }
+
+  .app-header {
+    @apply sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl;
+  }
+
+  .header-inner {
+    @apply flex w-full flex-col gap-3 px-3 py-3 md:px-5;
+  }
+
+  .header-top {
+    @apply flex flex-wrap items-center gap-3;
+  }
+
+  .brand-mark {
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm;
+  }
+
+  .section-eyebrow {
+    @apply text-xs font-semibold text-muted-foreground;
+    letter-spacing: 0;
+  }
+
+  .app-tabs {
+    @apply grid w-full grid-cols-2 gap-1 rounded-lg border border-border bg-muted/55 p-1 md:w-auto md:grid-cols-4;
+  }
+
+  .app-tab {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30;
+  }
+
+  .app-tab-active {
+    @apply bg-card text-foreground shadow-sm ring-1 ring-border;
+  }
+
+  .app-tab-idle {
+    @apply text-muted-foreground hover:bg-card/70 hover:text-foreground;
+  }
+
+  .header-meta {
+    @apply flex min-w-0 flex-1 flex-col gap-1;
+  }
+
+  .header-title {
+    @apply text-lg font-bold leading-tight md:text-xl;
+    letter-spacing: 0;
+  }
+
+  .header-description {
+    @apply max-w-3xl text-sm text-muted-foreground;
+  }
+
+  .header-actions {
+    @apply ml-auto flex items-center gap-1.5;
+  }
+
+  .header-controls {
+    @apply min-w-0;
+  }
+
   .filter-chip {
     @apply rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground transition hover:border-muted-foreground/40 hover:text-foreground;
   }
@@ -55,7 +121,24 @@
   }
 
   .top-filters {
-    @apply flex min-w-0 flex-wrap items-center gap-1.5;
+    @apply grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(8rem,auto))_minmax(14rem,1fr)_auto];
+  }
+
+  .filter-field {
+    @apply min-w-0;
+  }
+
+  .filter-label {
+    @apply mb-1 block text-xs font-semibold text-muted-foreground;
+    letter-spacing: 0;
+  }
+
+  .filter-select {
+    @apply h-9 w-full rounded-md border border-border bg-background px-2.5 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20;
+  }
+
+  .filter-search {
+    @apply h-9 rounded-md bg-background pl-9 text-sm;
   }
 
   .inline-link {
@@ -69,19 +152,21 @@
 
   .dense-table th,
   .dense-table td {
-    @apply border-b border-border px-2.5 py-1.5 text-left align-middle;
+    @apply border-b border-border px-3 py-2 text-left align-middle;
   }
 
   .dense-table th {
-    @apply bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground;
+    @apply sticky top-0 z-10 bg-muted text-xs font-bold uppercase text-muted-foreground;
+    letter-spacing: 0;
   }
 
   .dense-table tbody tr {
-    @apply transition hover:bg-muted/40;
+    @apply transition hover:bg-muted/50;
   }
 
   .dense-table .day-header td {
-    @apply bg-primary/10 text-sm font-bold uppercase tracking-wider text-primary;
+    @apply bg-primary/10 text-sm font-bold uppercase text-primary;
+    letter-spacing: 0;
   }
 
   .dense-table tr.day-header:hover td {
@@ -90,7 +175,8 @@
 
   /* Type badge */
   .type-badge {
-    @apply inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider;
+    @apply inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-bold uppercase;
+    letter-spacing: 0;
   }
 
   .type-lecture { @apply bg-emerald-500/15 text-emerald-500; }
@@ -135,7 +221,7 @@
    */
   .room-matrix-wrap,
   .teachers-matrix-wrap {
-    @apply rounded-lg border border-border bg-card;
+    @apply rounded-lg border border-border bg-card shadow-card;
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
@@ -161,7 +247,7 @@
 
   .room-matrix thead th,
   .teachers-matrix thead th {
-    @apply sticky top-0 z-30 bg-muted py-1 text-center font-bold text-muted-foreground;
+    @apply sticky top-0 z-30 bg-muted py-1.5 text-center font-bold text-muted-foreground;
   }
 
   .room-matrix .th-day,
@@ -180,7 +266,8 @@
   }
 
   .room-matrix .th-room {
-    @apply px-0.5 text-[10px] leading-none align-middle;
+    @apply px-1 text-[10px] leading-none align-middle;
+    min-width: 3.25rem;
   }
 
   .room-matrix .th-cat-lecture-hall { @apply text-amber-500; }
@@ -250,6 +337,7 @@
   .slot-cell {
     @apply relative min-w-0 align-middle text-center;
     padding: 0;
+    height: 2rem;
   }
 
   .slot-free {
@@ -272,11 +360,11 @@
 
   .slot-main {
     @apply truncate font-semibold w-full;
-    font-size: clamp(8px, 0.9vw, 11px);
+    font-size: 10px;
   }
   .slot-meta {
     @apply truncate w-full opacity-80 mt-0.5;
-    font-size: clamp(7px, 0.7vw, 9px);
+    font-size: 9px;
   }
 
   /* Hide secondary text on narrow viewports. */
@@ -328,12 +416,36 @@
     overflow-y: auto;
   }
 
+  .view-toolbar {
+    @apply flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-card;
+  }
+
+  .view-title {
+    @apply text-sm font-bold text-foreground;
+  }
+
+  .view-subtitle {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .stat-pill {
+    @apply inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5;
+  }
+
+  .stat-value {
+    @apply text-lg font-bold tabular-nums;
+  }
+
+  .stat-label {
+    @apply text-xs text-muted-foreground;
+  }
+
   /* Plan-fact: nested course → subject → group → subgroup cards */
   .plan-fact-section {
-    @apply rounded-lg border border-border bg-card overflow-hidden;
+    @apply rounded-lg border border-border bg-card overflow-hidden shadow-card;
   }
   .plan-fact-section-header {
-    @apply flex items-center justify-between gap-3 px-3 py-2 text-sm font-semibold bg-muted/50;
+    @apply flex flex-wrap items-center justify-between gap-3 px-3 py-2 text-sm font-semibold bg-muted/50;
   }
   .plan-fact-subject-header {
     @apply flex items-center justify-between gap-3 px-3 py-2 text-[13px] font-semibold;
@@ -342,7 +454,7 @@
     @apply border-t border-border;
   }
   .plan-fact-group-row {
-    @apply grid items-center gap-3 px-3 py-1.5 text-xs;
+    @apply grid items-center gap-3 px-3 py-2 text-xs;
     grid-template-columns: 1fr 6rem 5rem 5rem 6rem;
   }
   .plan-fact-group-row + .plan-fact-group-row { @apply border-t border-border/50; }

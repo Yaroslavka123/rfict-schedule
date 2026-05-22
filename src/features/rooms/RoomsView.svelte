@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { DoorOpen } from '@lucide/svelte'
+
   import Card from '@/components/ui/Card.svelte'
   import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
   import { cn, normalizeText } from '@/lib/utils'
@@ -204,20 +206,33 @@
 </script>
 
 {#if orderedRooms.length === 0}
-  <Card contentClass="py-12 text-center text-muted-foreground">Кабинеты не найдены.</Card>
+  <Card contentClass="py-12 text-center">
+    <div class="text-sm font-semibold">Кабинеты не найдены</div>
+    <div class="mt-1 text-sm text-muted-foreground">Проверьте фильтры по группе, типу занятия или поиску.</div>
+  </Card>
 {:else}
   <div class="rooms-page">
-    <div class="flex flex-wrap items-center gap-2">
-      <div class="ml-auto flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-        <span class="inline-flex items-center gap-1 rounded-full border border-border bg-card/40 px-1.5 py-0.5">
+    <div class="view-toolbar">
+      <div class="flex min-w-[12rem] flex-1 items-center gap-2">
+        <div class="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <DoorOpen class="h-4 w-4" />
+        </div>
+        <div>
+          <div class="view-title">Карта аудиторий</div>
+          <div class="view-subtitle">Показано кабинетов: {orderedRooms.length}</div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+        <span class="inline-flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5">
           <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
           Поточные
         </span>
-        <span class="inline-flex items-center gap-1 rounded-full border border-border bg-card/40 px-1.5 py-0.5">
+        <span class="inline-flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5">
           <span class="h-1.5 w-1.5 rounded-full bg-sky-500"></span>
           Комп. классы
         </span>
-        <span class="inline-flex items-center gap-1 rounded-full border border-border bg-card/40 px-1.5 py-0.5">
+        <span class="inline-flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5">
           <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
           Кабинеты
         </span>
@@ -225,7 +240,7 @@
         {#each typeLegend as item (item.type)}
           <span
             class={cn(
-              'inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider',
+              'inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase',
               `slot-type-${item.type}`,
             )}
           >
@@ -246,8 +261,8 @@
         </colgroup>
         <thead>
           <tr>
-            <th class="th-day">Д</th>
-            <th class="th-pair">П</th>
+            <th class="th-day" title="День">Дн</th>
+            <th class="th-pair" title="Пара">№</th>
             {#each orderedRooms as room (room)}
               {@const category = categoryByRoom[room]}
               {@const start = categoryStart[room]}
