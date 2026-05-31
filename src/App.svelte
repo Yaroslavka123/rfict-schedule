@@ -200,6 +200,7 @@
     <div>
       <AnalyticsView
         course={filters.course}
+        groupFilter={filters.group}
         groups={schedule.groups}
         lessons={schedule.lessons}
         plans={$scheduleStore.plans}

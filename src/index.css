@@ -59,15 +59,23 @@
   }
 
   .header-inner {
-    @apply flex w-full flex-col gap-3 px-3 py-3 md:px-5;
+    @apply flex w-full flex-col gap-2 px-3 py-2 md:px-5;
   }
 
   .header-top {
     @apply flex flex-wrap items-center gap-3;
   }
 
+  .compact-header {
+    @apply gap-2;
+  }
+
   .brand-mark {
     @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm;
+  }
+
+  .brand-mark-compact {
+    @apply h-9 w-9;
   }
 
   .section-eyebrow {
@@ -79,8 +87,12 @@
     @apply grid w-full grid-cols-2 gap-1 rounded-lg border border-border bg-muted/55 p-1 md:w-auto md:grid-cols-4;
   }
 
+  .compact-tabs {
+    @apply order-last w-full md:order-none md:flex md:w-auto md:min-w-[31rem];
+  }
+
   .app-tab {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30;
+    @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30;
   }
 
   .app-tab-active {
@@ -96,7 +108,7 @@
   }
 
   .header-title {
-    @apply text-lg font-bold leading-tight md:text-xl;
+    @apply text-lg font-bold leading-tight;
     letter-spacing: 0;
   }
 
@@ -121,11 +133,15 @@
   }
 
   .top-filters {
-    @apply grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(8rem,auto))_minmax(14rem,1fr)_auto];
+    @apply flex min-w-0 flex-wrap items-end gap-2;
   }
 
   .filter-field {
-    @apply min-w-0;
+    @apply min-w-0 flex-[1_1_8.5rem] md:flex-none;
+  }
+
+  .filter-field-search {
+    @apply flex-[3_1_18rem];
   }
 
   .filter-label {
@@ -138,7 +154,7 @@
   }
 
   .filter-search {
-    @apply h-9 rounded-md bg-background pl-9 text-sm;
+    @apply h-9 rounded-md bg-background pl-10 text-sm;
   }
 
   .inline-link {
@@ -417,7 +433,7 @@
   }
 
   .view-toolbar {
-    @apply flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-card;
+    @apply flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2;
   }
 
   .view-title {
@@ -429,7 +445,7 @@
   }
 
   .stat-pill {
-    @apply inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5;
+    @apply inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1;
   }
 
   .stat-value {
@@ -441,6 +457,123 @@
   }
 
   /* Plan-fact: nested course → subject → group → subgroup cards */
+  .analytics-page {
+    @apply space-y-2;
+  }
+
+  .analytics-summary {
+    @apply flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2;
+  }
+
+  .summary-metric {
+    @apply inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs text-muted-foreground;
+  }
+
+  .summary-metric span {
+    @apply text-sm font-bold tabular-nums text-foreground;
+  }
+
+  .summary-metric small {
+    @apply text-xs;
+  }
+
+  .plan-course {
+    @apply space-y-2;
+  }
+
+  .plan-course-title {
+    @apply px-1 text-sm font-bold text-primary;
+  }
+
+  .plan-group {
+    @apply overflow-hidden rounded-lg border border-border bg-card;
+  }
+
+  .plan-group + .plan-group {
+    @apply mt-2;
+  }
+
+  .plan-group-head {
+    @apply flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/45 px-3 py-2;
+  }
+
+  .plan-group-name {
+    @apply text-sm font-bold text-foreground;
+  }
+
+  .plan-muted {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .plan-row-metrics {
+    @apply flex flex-wrap items-center gap-2 text-xs text-muted-foreground;
+  }
+
+  .plan-row-metrics span {
+    @apply rounded-md border border-border bg-background px-2 py-1 tabular-nums;
+  }
+
+  .plan-subgroup {
+    @apply border-b border-border/70 last:border-b-0;
+  }
+
+  .plan-subgroup-head {
+    @apply flex items-center justify-between gap-2 px-3 py-1.5 text-xs font-semibold text-muted-foreground;
+  }
+
+  .plan-table-wrap {
+    @apply overflow-x-auto;
+  }
+
+  .plan-table {
+    @apply w-full min-w-[46rem] border-collapse text-sm;
+  }
+
+  .plan-table th {
+    @apply border-y border-border bg-muted/45 px-3 py-2 text-left text-xs font-bold uppercase text-muted-foreground;
+    letter-spacing: 0;
+  }
+
+  .plan-table td {
+    @apply border-b border-border/70 px-3 py-2 align-middle;
+  }
+
+  .plan-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .plan-subject {
+    @apply max-w-[28rem] truncate font-semibold;
+  }
+
+  .plan-number {
+    @apply text-center font-semibold tabular-nums;
+  }
+
+  .plan-input-wrap {
+    @apply flex items-center gap-1;
+  }
+
+  .plan-input {
+    @apply h-8 w-16 px-2 text-center tabular-nums;
+  }
+
+  .plan-progress {
+    @apply flex min-w-24 items-center gap-2;
+  }
+
+  .plan-progress-track {
+    @apply h-1.5 flex-1 overflow-hidden rounded-full bg-muted;
+  }
+
+  .plan-progress-bar {
+    @apply h-full transition-all;
+  }
+
+  .plan-progress span {
+    @apply w-8 text-right text-xs tabular-nums text-muted-foreground;
+  }
+
   .plan-fact-section {
     @apply rounded-lg border border-border bg-card overflow-hidden shadow-card;
   }

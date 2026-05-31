@@ -76,6 +76,7 @@ export interface FiltersState {
 export interface CoursePlanEntry {
   course: number
   subject: string
+  lesson_type?: LessonType
   planned_pairs: number
 }
 

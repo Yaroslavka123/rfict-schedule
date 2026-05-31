@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { GraduationCap } from '@lucide/svelte'
-
   import Card from '@/components/ui/Card.svelte'
   import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
   import { cn, normalizeText } from '@/lib/utils'
@@ -14,13 +12,6 @@
   }
 
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
-  const typeLegend: Array<{ type: LessonType; label: string }> = [
-    { type: 'lecture', label: 'Лек' },
-    { type: 'lab', label: 'Лаб' },
-    { type: 'practice', label: 'Пр' },
-    { type: 'seminar', label: 'Сем' },
-    { type: 'curator_hour', label: 'Кур' },
-  ]
 
   let { teacherData, search, lessonTypes }: TeachersViewProps = $props()
   let tooltip = $state<{ x: number; y: number; entries: TeacherSlotEntry[]; teacher: string } | null>(null)
@@ -160,35 +151,6 @@
   </Card>
 {:else}
   <div class="teachers-page">
-    <div class="view-toolbar">
-      <div class="flex min-w-[12rem] flex-1 items-center gap-2">
-        <div class="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <GraduationCap class="h-4 w-4" />
-        </div>
-        <div>
-          <div class="view-title">Карта преподавателей</div>
-          <div class="view-subtitle">Показано преподавателей: {orderedTeachers.length}</div>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-        {#each typeLegend as item (item.type)}
-          <span
-            class={cn(
-              'inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase',
-              `slot-type-${item.type}`,
-            )}
-          >
-            {item.label}
-          </span>
-        {/each}
-        <span class="inline-flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5">
-          <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>
-          Отмена
-        </span>
-      </div>
-    </div>
-
     <div class="teachers-matrix-wrap">
       <table class="teachers-matrix" onpointerover={handleTableHover} onmouseleave={hideTooltip}>
         <colgroup>

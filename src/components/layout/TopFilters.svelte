@@ -31,7 +31,7 @@
   let { filters, groups, weeks, activeTab, onFiltersChange }: TopFiltersProps = $props()
 
   let showWeek = $derived(activeTab !== 'analytics')
-  let showGroup = $derived(activeTab !== 'analytics')
+  let showGroup = $derived(activeTab !== 'analytics' || groups.length > 0)
   let visibleGroups = $derived(
     filters.course === 'all'
       ? groups
@@ -117,10 +117,10 @@
     </select>
   </label>
 
-  <label class="filter-field">
+  <label class="filter-field filter-field-search">
     <span class="filter-label">Поиск</span>
     <div class="relative">
-      <Search class="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <Search class="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
       <Input
         class={searchClass}
         placeholder="Предмет, ФИО, ауд."

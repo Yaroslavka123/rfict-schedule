@@ -2,13 +2,14 @@ import type {
   CoursePlanEntry,
   CoursePlanMap,
   CourseSchedule,
+  LessonType,
   MergedSchedule,
   ScheduleGroup,
   ScheduleGroupWithCourse,
   ScheduleLesson,
   WeekSchedule,
 } from '@/types/schedule'
-import { COURSES } from '@/lib/constants'
+import { COURSES, LESSON_TYPE_LABELS } from '@/lib/constants'
 
 export const SUPPORTED_COURSES = COURSES
 
@@ -145,8 +146,32 @@ export async function loadCourseSchedule(
   }
 }
 
-function planKey(subject: string) {
-  return subject.trim().toLowerCase()
+const PLAN_TYPE_SEPARATOR = ' · '
+
+function planKey(subject: string, type?: LessonType | null) {
+  const normalizedSubject = subject.trim().toLowerCase()
+  return type && type !== 'unknown' ? `${normalizedSubject}::${type}` : normalizedSubject
+}
+
+function planSubjectForType(subject: string, type?: LessonType | null) {
+  if (!type || type === 'unknown') return subject
+  return `${subject}${PLAN_TYPE_SEPARATOR}${LESSON_TYPE_LABELS[type] || type}`
+}
+
+function planEntryKey(entry: CoursePlanEntry) {
+  if (entry.lesson_type && entry.lesson_type !== 'unknown') {
+    return planKey(entry.subject, entry.lesson_type)
+  }
+
+  for (const [type, label] of Object.entries(LESSON_TYPE_LABELS) as [LessonType, string][]) {
+    if (type === 'unknown') continue
+    const suffix = `${PLAN_TYPE_SEPARATOR}${label}`
+    if (entry.subject.endsWith(suffix)) {
+      return planKey(entry.subject.slice(0, -suffix.length), type)
+    }
+  }
+
+  return planKey(entry.subject)
 }
 
 interface BackendPlanResponse {
@@ -164,7 +189,7 @@ function planEntriesToMap(entries: CoursePlanEntry[]): CoursePlanMap {
   const map: CoursePlanMap = {}
   entries.forEach((entry) => {
     if (entry && entry.subject && Number.isFinite(entry.planned_pairs)) {
-      map[planKey(entry.subject)] = entry.planned_pairs
+      map[planEntryKey(entry)] = entry.planned_pairs
     }
   })
   return map
@@ -273,12 +298,15 @@ export async function loadAllCoursesBundle(
 }
 
 export async function saveCoursePlanEntry(entry: CoursePlanEntry): Promise<void> {
+  const payload: CoursePlanEntry = entry.lesson_type
+    ? { ...entry, subject: planSubjectForType(entry.subject, entry.lesson_type) }
+    : entry
   const response = await fetch(`${API_BASE_URL}/api/v1/plan`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(entry),
+    body: JSON.stringify(payload),
   })
   if (!response.ok) throw new Error(`HTTP ${response.status} PUT /api/v1/plan`)
 }
 
-export { planKey, API_BASE_URL }
+export { planKey, planSubjectForType, API_BASE_URL }

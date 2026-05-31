@@ -477,6 +477,7 @@ export function progress(cell: AnalyticsCell): number {
  */
 export interface PlanFactSubject {
   subject: string
+  type: LessonType
   parity: SubgroupParity
   cell: AnalyticsCell
 }
@@ -568,9 +569,17 @@ export function buildPlanFactHierarchy({
           const subgroupLessons = groupLessons.filter((lesson) =>
             matchesSubgroup(lesson, subgroupName),
           )
-          const subjectSet = new Set<string>()
+          const subjectMap = new Map<string, { subject: string; type: LessonType; lessons: ScheduleLesson[] }>()
           subgroupLessons.forEach((lesson) => {
-            if (lesson.subject) subjectSet.add(lesson.subject)
+            if (!lesson.subject) return
+            const type = lesson.type || 'unknown'
+            const key = `${lesson.subject}::${type}`
+            const current = subjectMap.get(key)
+            if (current) {
+              current.lessons.push(lesson)
+              return
+            }
+            subjectMap.set(key, { subject: lesson.subject, type, lessons: [lesson] })
           })
 
           const subjects: PlanFactSubject[] = []
@@ -578,16 +587,15 @@ export function buildPlanFactHierarchy({
           let sgScheduled = 0
           let sgDone = 0
 
-          Array.from(subjectSet)
-            .sort((a, b) => a.localeCompare(b, 'ru'))
-            .forEach((subject) => {
-              const sl = subgroupLessons.filter((lesson) => lesson.subject === subject)
+          Array.from(subjectMap.values())
+            .sort((a, b) => a.subject.localeCompare(b.subject, 'ru') || getLessonTypeLabel(a.type).localeCompare(getLessonTypeLabel(b.type), 'ru'))
+            .forEach(({ subject, type, lessons: sl }) => {
               const scheduled = sl.reduce((sum, l) => sum + pairsFor(l), 0)
               const done = sl.reduce(
                 (sum, l) => sum + (isLessonBeforeToday(l, today) ? pairsFor(l) : 0),
                 0,
               )
-              const planned = coursePlan[planKey(subject)]
+              const planned = coursePlan[planKey(subject, type)]
               const plannedValue =
                 typeof planned === 'number' && Number.isFinite(planned) ? planned : null
               const weekNumbers = sl
@@ -597,11 +605,11 @@ export function buildPlanFactHierarchy({
               const parity = subgroupName ? detectParity(weekNumbers) : 'none'
               if (query) {
                 const haystack = normalizeText(
-                  `${subject} ${group.name} ${subgroupName || ''} ${course} курс`,
+                  `${subject} ${getLessonTypeLabel(type)} ${group.name} ${subgroupName || ''} ${course} курс`,
                 )
                 if (!haystack.includes(query)) return
               }
-              subjects.push({ subject, parity, cell })
+              subjects.push({ subject, type, parity, cell })
               if (plannedValue !== null) sgPlanned += plannedValue
               sgScheduled += scheduled
               sgDone += done
