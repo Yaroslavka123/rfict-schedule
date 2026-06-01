@@ -76,7 +76,8 @@ mount(App, { target: document.getElementById('root')! })
 | `CourseSchedule` | Весь курс: course, weeks, lessons, groups |
 | `MergedSchedule` | Все курсы вместе (для `course='all'`) |
 | `FiltersState` | Состояние фильтров: course, week, group, subgroup, lessonTypes, search |
-| `CoursePlanMap` | План: `Record<string, number>` (subject → planned_pairs) |
+| `CoursePlanEntry` | Запись плана: курс, предмет, тип, количество пар, опционально группа (оверрайд) |
+| `CoursePlanMap` | План: `Record<string, number>` (subject::type → planned_pairs, с учётом group) |
 | `AnalyticsCell` | Ячейка аналитики: planned, scheduled, done |
 | `AnalyticsGroup` / `AnalyticsSubgroup` / `AnalyticsRow` | Иерархия план-факта |
 | `SubjectPlanRow` / `SubjectPlanGroup` / `SubjectPlanSubgroup` | Альтернативная иерархия (subject-first) |
@@ -103,7 +104,7 @@ HTTP-клиент к Go backend. 312 строк, **чистый TypeScript бе�
 | `loadCourseBundle(course, options?)` | Параллельный fetch schedule + plan |
 | `loadAllCoursesBundle(options?)` | `Promise.all` по всем 4 курсам → `MergedSchedule` |
 | `saveCoursePlanEntry(entry)` | PUT `/api/v1/plan` |
-| `planKey(subject, type?)` | Генерирует ключ для плана (`subject::type`) |
+| `planKey(subject, type?, group?)` | Генерирует ключ для плана (`subject::type` или `subject::type::group` для оверрайда) |
 | `planSubjectForType(subject, type?)` | Форматирует subject с типом для отображения |
 
 **Нормализация ответов:**
@@ -376,18 +377,32 @@ Pre-computed структуры для матриц:
 **Тултип:** аналогично RoomsView
 
 #### `src/features/analytics/AnalyticsView.svelte`
-347 строк. План-факт аналитика.
+~347 строк. План-факт аналитика.
 
 **Логика:**
 - `buildPlanFactHierarchy()` — построение иерархии курс → группа → подгруппа → предмет
-- Редактируемые поля плана для каждого предмета + кнопка Save
+- Два режима: **«📊 Просмотр»** (read-only таблица с progress bars, CSV) и **«✏️ Редактор»**
+- В режиме редактора — split layout: `PlanFormEditor` слева + read-only таблица справа
 - `today` реактивный (обновляется каждые 60 сек)
 - `exportCsv()` — экспорт в CSV с BOM
 
 **Проблемы:**
 - Баг отображения предметов (см. Roadmap B3)
 - Сохранение плана может не работать (silent rollback, см. B4)
-- Нет оверрайда на группу (будет в Фазе 3)
+
+#### `src/features/analytics/PlanFormEditor.svelte`
+**Новый файл** (Фаза 3). Форма-редактор для плана.
+
+**Логика:**
+- Собирает уникальные `{ subject, type }` из lessons выбранного курса
+- Для каждого предмета — поле ввода на уровне курса
+- Кнопка «➕ Для группы» раскрывает оверрайды для конкретных групп
+- Batch сохранение через `scheduleStore.batchUpdatePlan()`
+
+**Структура UI:**
+```
+Заголовок курса → Список предметов (scroll) → Поле ввода + кнопка +гр → Footer с batch-save
+```
 
 ---
 

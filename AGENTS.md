@@ -31,7 +31,8 @@ src/
     schedule/ScheduleView.svelte — Day-by-day schedule table
     rooms/RoomsView.svelte       — Room occupancy matrix (day x pair x room)
     teachers/TeachersView.svelte — Teacher occupancy matrix (day x pair x teacher)
-    analytics/AnalyticsView.svelte — Plan-fact analytics with editable plan input
+    analytics/AnalyticsView.svelte — Plan-fact analytics: view/edit toggle, split layout
+    analytics/PlanFormEditor.svelte — Plan form-editor: subject inputs, group overrides, batch save
   stores/
     scheduleStore.ts            — fetch + cache + optimistic plan (with pre-computed indices)
     themeStore.ts               — Dark/light theme toggle
@@ -110,7 +111,10 @@ src/
 
 ### Analytics
 - Hierarchical plan-fact comparison: course → group → subgroup → subject (via `buildPlanFactHierarchy`)
-- Edit plan via `PUT /api/v1/plan` with optimistic updates
+- **Two modes:** View (read-only table with progress bars, CSV) and Edit (form-editor panel + preview)
+- `PlanFormEditor.svelte` — form-editor with per-subject inputs, group overrides via ➕ button, batch save
+- Edit plan via `PUT /api/v1/plan` with optimistic updates (single + batch)
+- Plan entries support `group?: string` for course-level defaults and group-level overrides
 - 3 different hierarchy functions exist (`buildCourseAnalytics`, `buildSubjectPlanRows`, `buildPlanFactHierarchy`) — candidate for refactoring
 
 ## Data Flow
