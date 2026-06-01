@@ -1,0 +1,1 @@
+{{ (await import('fs')).readFileSync('/tmp/docx.b64', 'utf8') }}
