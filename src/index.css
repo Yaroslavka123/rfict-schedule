@@ -286,6 +286,13 @@
     min-width: 2rem;
   }
 
+  .matrix-group-tone-0 { --matrix-group-color: 176 68% 33%; }
+  .matrix-group-tone-1 { --matrix-group-color: 38 88% 43%; }
+  .matrix-group-tone-2 { --matrix-group-color: 210 78% 45%; }
+  .matrix-group-tone-3 { --matrix-group-color: 274 58% 50%; }
+  .matrix-group-tone-4 { --matrix-group-color: 344 70% 48%; }
+  .matrix-group-tone-5 { --matrix-group-color: 142 56% 36%; }
+
   .room-matrix thead .matrix-group-row th,
   .teachers-matrix thead .matrix-group-row th {
     @apply sticky top-0 z-40 border-b-2 border-b-primary/35 bg-card py-1 text-xs;
@@ -305,16 +312,23 @@
 
   .room-matrix thead .matrix-group-head,
   .teachers-matrix thead .matrix-group-head {
-    @apply h-8 bg-primary/10 text-center align-middle text-primary;
+    @apply h-8 text-center align-middle;
+    background-color: hsl(var(--matrix-group-color, var(--primary)) / 0.12);
+    border-top: 2px solid hsl(var(--matrix-group-color, var(--primary)) / 0.74) !important;
+    border-right: 2px solid hsl(var(--matrix-group-color, var(--primary)) / 0.58) !important;
+    border-left: 2px solid hsl(var(--matrix-group-color, var(--primary)) / 0.58) !important;
+    border-bottom-color: hsl(var(--matrix-group-color, var(--primary)) / 0.22) !important;
+    color: hsl(var(--matrix-group-color, var(--primary)));
   }
 
   .room-matrix thead .matrix-group-head-empty,
   .teachers-matrix thead .matrix-group-head-empty {
-    @apply bg-primary/5 text-primary/85;
+    color: hsl(var(--matrix-group-color, var(--primary)) / 0.9);
+    background-color: hsl(var(--matrix-group-color, var(--primary)) / 0.07);
     background-image: repeating-linear-gradient(
       135deg,
-      hsl(var(--primary) / 0.08) 0,
-      hsl(var(--primary) / 0.08) 6px,
+      hsl(var(--matrix-group-color, var(--primary)) / 0.10) 0,
+      hsl(var(--matrix-group-color, var(--primary)) / 0.10) 6px,
       transparent 6px,
       transparent 12px
     );
@@ -325,7 +339,8 @@
   }
 
   .matrix-group-head-delete {
-    @apply ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded align-middle text-primary/70 transition hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30;
+    @apply ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded align-middle transition hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30;
+    color: hsl(var(--matrix-group-color, var(--primary)) / 0.7);
   }
 
   .room-matrix thead .matrix-group-ungrouped,
@@ -335,15 +350,18 @@
 
   .room-matrix thead .matrix-empty-group-slot,
   .teachers-matrix thead .matrix-empty-group-slot {
-    @apply h-8 cursor-copy bg-primary/5 px-1 text-[10px] font-semibold text-primary/70;
+    @apply h-8 cursor-copy px-1 text-[10px] font-semibold;
+    background-color: hsl(var(--matrix-group-color, var(--primary)) / 0.05);
+    color: hsl(var(--matrix-group-color, var(--primary)) / 0.72);
   }
 
   .matrix-empty-group-body {
-    @apply cursor-copy bg-primary/5;
+    @apply cursor-copy;
+    background-color: hsl(var(--matrix-group-color, var(--primary)) / 0.035);
     background-image: repeating-linear-gradient(
       135deg,
-      hsl(var(--primary) / 0.05) 0,
-      hsl(var(--primary) / 0.05) 6px,
+      hsl(var(--matrix-group-color, var(--primary)) / 0.055) 0,
+      hsl(var(--matrix-group-color, var(--primary)) / 0.055) 6px,
       transparent 6px,
       transparent 12px
     );
@@ -373,7 +391,45 @@
   }
 
   .matrix-user-group-member {
-    box-shadow: inset 2px 0 0 hsl(var(--primary) / 0.65);
+    background-image: linear-gradient(
+      hsl(var(--matrix-group-color, var(--primary)) / 0.045),
+      hsl(var(--matrix-group-color, var(--primary)) / 0.045)
+    );
+  }
+
+  .matrix-user-group-member:not(.matrix-group-end) {
+    border-right-color: hsl(var(--matrix-group-color, var(--primary)) / 0.08) !important;
+  }
+
+  .matrix-group-start {
+    border-left: 2px solid hsl(var(--matrix-group-color, var(--primary)) / 0.55) !important;
+  }
+
+  .matrix-group-end {
+    border-right: 2px solid hsl(var(--matrix-group-color, var(--primary)) / 0.55) !important;
+  }
+
+  .matrix-empty-group-body.matrix-user-group-member {
+    background-image:
+      repeating-linear-gradient(
+        135deg,
+        hsl(var(--matrix-group-color, var(--primary)) / 0.055) 0,
+        hsl(var(--matrix-group-color, var(--primary)) / 0.055) 6px,
+        transparent 6px,
+        transparent 12px
+      ),
+      linear-gradient(
+        hsl(var(--matrix-group-color, var(--primary)) / 0.04),
+        hsl(var(--matrix-group-color, var(--primary)) / 0.04)
+      );
+  }
+
+  .matrix-column-row .matrix-group-start {
+    border-left-color: hsl(var(--matrix-group-color, var(--primary)) / 0.68) !important;
+  }
+
+  .matrix-column-row .matrix-group-end {
+    border-right-color: hsl(var(--matrix-group-color, var(--primary)) / 0.68) !important;
   }
 
   .room-matrix .th-cat-lecture-hall { @apply text-amber-500; }

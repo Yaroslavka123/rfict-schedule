@@ -193,6 +193,19 @@
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
   }
 
+  function groupToneClass(tone: number | undefined) {
+    return tone === undefined ? null : `matrix-group-tone-${tone}`
+  }
+
+  function groupSlotClasses(slot: ReturnType<typeof buildColumnSlots>[number]) {
+    return cn(
+      groupToneClass(slot.tone),
+      slot.groupId && 'matrix-user-group-member',
+      slot.groupStart && 'matrix-group-start',
+      slot.groupEnd && 'matrix-group-end',
+    )
+  }
+
   function dropColumn(event: DragEvent, teacher: string) {
     event.preventDefault()
     const source = draggedTeacher || event.dataTransfer?.getData('text/plain')
@@ -253,7 +266,11 @@
             {#each columnSections as section (section.id)}
               {#if section.type === 'group'}
                 <th
-                  class={cn('matrix-group-head', section.columns.length === 0 && 'matrix-group-head-empty')}
+                  class={cn(
+                    'matrix-group-head',
+                    groupToneClass(section.tone),
+                    section.columns.length === 0 && 'matrix-group-head-empty',
+                  )}
                   colspan={Math.max(section.columns.length, 1)}
                   ondragover={(event) => allowColumnDrop(event)}
                   ondrop={(event) => {
@@ -284,7 +301,7 @@
             {#each columnSlots as slot (slot.id)}
               {#if slot.type === 'group-empty'}
                 <th
-                  class="matrix-empty-group-slot"
+                  class={cn('matrix-empty-group-slot', groupSlotClasses(slot))}
                   role="columnheader"
                   title="Перетащите преподавателя в группу"
                   ondragover={(event) => allowColumnDrop(event)}
@@ -304,7 +321,7 @@
                   'th-teacher matrix-draggable-header',
                   isMatch && 'th-teacher-match',
                   isDim && 'th-teacher-dim',
-                  slot.groupId && 'matrix-user-group-member',
+                  groupSlotClasses(slot),
                   draggedTeacher === teacher && 'matrix-col-dragging',
                 )}
                 title={teacher}
@@ -332,7 +349,7 @@
                 {#each columnSlots as slot (slot.id)}
                   {#if slot.type === 'group-empty'}
                     <td
-                      class="slot-cell matrix-empty-group-body"
+                      class={cn('slot-cell matrix-empty-group-body', groupSlotClasses(slot))}
                       role="gridcell"
                       ondragover={(event) => allowColumnDrop(event)}
                       ondrop={(event) => {
@@ -346,7 +363,7 @@
                   {@const isMatch = teacherMatch?.has(teacher)}
                   {@const isDim = teacherMatch && !isMatch}
                   {#if !cell}
-                    <td class={cn('slot-cell slot-free', isDim && 'slot-dim', slot.groupId && 'matrix-user-group-member')}></td>
+                    <td class={cn('slot-cell slot-free', isDim && 'slot-dim', groupSlotClasses(slot))}></td>
                   {:else}
                     {@const typeClass = cell.allCancelled
                       ? 'slot-cancelled'
@@ -354,7 +371,7 @@
                         ? 'slot-type-multi'
                         : `slot-type-${cell.types[0] || 'unknown'}`}
                     <td
-                      class={cn('slot-cell slot-busy', typeClass, isMatch && 'slot-match', isDim && 'slot-dim', slot.groupId && 'matrix-user-group-member')}
+                      class={cn('slot-cell slot-busy', typeClass, isMatch && 'slot-match', isDim && 'slot-dim', groupSlotClasses(slot))}
                       data-slot-key={slotKey(teacher, day, pair)}
                     >
                       <div class={cn('slot-content', cell.allCancelled && 'line-through')}>

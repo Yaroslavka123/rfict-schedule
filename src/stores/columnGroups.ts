@@ -15,6 +15,7 @@ export interface ColumnSection {
   type: 'group' | 'column'
   name: string
   groupId?: string
+  tone?: number
   columns: string[]
 }
 
@@ -23,6 +24,9 @@ export interface ColumnSlot {
   type: 'group-empty' | 'column'
   column?: string
   groupId?: string
+  tone?: number
+  groupStart?: boolean
+  groupEnd?: boolean
 }
 
 type ColumnGroupsState = Record<ColumnGroupScope, ColumnGroup[]>
@@ -153,6 +157,7 @@ export function columnGroupIdByItem(groups: ColumnGroup[], columns: string[]) {
 export function buildColumnSections(columns: string[], groups: ColumnGroup[]): ColumnSection[] {
   const groupIdByItem = columnGroupIdByItem(groups, columns)
   const groupById = new Map(groups.map((group) => [group.id, group]))
+  const groupToneById = new Map(groups.map((group, index) => [group.id, index % 6]))
   const renderedGroups = new Set<string>()
   const sections: ColumnSection[] = []
 
@@ -174,13 +179,21 @@ export function buildColumnSections(columns: string[], groups: ColumnGroup[]): C
       type: 'group',
       name: group.name,
       groupId: group.id,
+      tone: groupToneById.get(group.id),
       columns: columns.filter((item) => groupIdByItem[item] === group.id),
     })
   })
 
   groups.forEach((group) => {
     if (!renderedGroups.has(group.id)) {
-      sections.push({ id: group.id, type: 'group', name: group.name, groupId: group.id, columns: [] })
+      sections.push({
+        id: group.id,
+        type: 'group',
+        name: group.name,
+        groupId: group.id,
+        tone: groupToneById.get(group.id),
+        columns: [],
+      })
     }
   })
 
@@ -195,14 +208,24 @@ export function buildColumnSlots(sections: ColumnSection[]): ColumnSlot[] {
     }
 
     if (section.columns.length === 0) {
-      return [{ id: `group-empty:${section.groupId}`, type: 'group-empty' as const, groupId: section.groupId }]
+      return [{
+        id: `group-empty:${section.groupId}`,
+        type: 'group-empty' as const,
+        groupId: section.groupId,
+        tone: section.tone,
+        groupStart: true,
+        groupEnd: true,
+      }]
     }
 
-    return section.columns.map((column) => ({
+    return section.columns.map((column, index) => ({
       id: `group:${section.groupId}:${column}`,
       type: 'column' as const,
       column,
       groupId: section.groupId,
+      tone: section.tone,
+      groupStart: index === 0,
+      groupEnd: index === section.columns.length - 1,
     }))
   })
 }
