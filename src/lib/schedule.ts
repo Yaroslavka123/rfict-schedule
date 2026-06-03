@@ -483,59 +483,143 @@ function planNumber(value: number | undefined) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-function courseSubjectPlan(plan: CoursePlanMap, subject: string, types: LessonType[]) {
-  const direct = planNumber(plan[planKey(subject)])
-  if (direct !== null) return direct
-
-  const typedValues = types
-    .map((type) => planNumber(plan[planKey(subject, type)]))
-    .filter((value): value is number => value !== null)
-  return typedValues.length > 0 ? typedValues.reduce((sum, value) => sum + value, 0) : null
+function emptyCell(): AnalyticsCell {
+  return { planned: null, scheduled: 0, done: 0 }
 }
 
-function resolvedSubjectPlan(
-  plan: CoursePlanMap,
-  subject: string,
-  types: LessonType[],
-  groupId?: string,
-  subgroup?: string | null,
-) {
-  if (groupId && subgroup) {
-    const subgroupValue = planNumber(plan[planKey(subject, null, groupId, subgroup)])
-    if (subgroupValue !== null) return subgroupValue
-  }
-
-  if (groupId) {
-    const groupValue = planNumber(plan[planKey(subject, null, groupId)])
-    if (groupValue !== null) return groupValue
-  }
-
-  return courseSubjectPlan(plan, subject, types)
+function addCell(target: AnalyticsCell, source: AnalyticsCell) {
+  if (source.planned !== null) target.planned = (target.planned ?? 0) + source.planned
+  target.scheduled += source.scheduled
+  target.done += source.done
 }
 
-function planFactSubgroupSlots(lessons: ScheduleLesson[]) {
+function getActiveType(type: LessonType | null | undefined): LessonType {
+  if (!type || type === 'unknown') return 'unknown'
+  return type
+}
+
+function planFactSubgroupSlots(lessons: ScheduleLesson[]): (string | null)[] {
   let hasWholeGroupLessons = false
   const subgroups = new Set<string>()
-
   lessons.forEach((lesson) => {
     lessonSubgroupTargets(lesson).forEach((target) => {
       if (target === null) hasWholeGroupLessons = true
       else subgroups.add(target)
     })
   })
-
   return [
     ...(hasWholeGroupLessons ? [null] : []),
     ...Array.from(subgroups).sort((a, b) => a.localeCompare(b, 'ru', { numeric: true })),
-  ] as (string | null)[]
+  ]
+}
+
+interface PlanFactTypeRow {
+  type: LessonType
+  cell: AnalyticsCell
+  plannedSource: 'subject' | 'subject-type' | 'group' | 'group-type' | 'subgroup' | 'subgroup-type' | 'none'
+}
+
+function buildPlanFactTypeRow(
+  type: LessonType,
+  subject: string,
+  groupId: string,
+  subgroup: string | null,
+  plan: CoursePlanMap,
+  cell: AnalyticsCell,
+): PlanFactTypeRow {
+  const subjTyped = planNumber(plan[planKey(subject, type)])
+  const subjDefault = planNumber(plan[planKey(subject)])
+  const grpTyped = planNumber(plan[planKey(subject, type, groupId)])
+  const grpDefault = planNumber(plan[planKey(subject, null, groupId)])
+  const sgTyped = subgroup ? planNumber(plan[planKey(subject, type, groupId, subgroup)]) : null
+  const sgDefault = subgroup ? planNumber(plan[planKey(subject, null, groupId, subgroup)]) : null
+
+  let planned: number | null = null
+  let source: PlanFactTypeRow['plannedSource'] = 'none'
+  if (sgTyped !== null) {
+    planned = sgTyped
+    source = 'subgroup-type'
+  } else if (sgDefault !== null) {
+    planned = sgDefault
+    source = 'subgroup'
+  } else if (grpTyped !== null) {
+    planned = grpTyped
+    source = 'group-type'
+  } else if (grpDefault !== null) {
+    planned = grpDefault
+    source = 'group'
+  } else if (subjTyped !== null) {
+    planned = subjTyped
+    source = 'subject-type'
+  } else if (subjDefault !== null) {
+    planned = subjDefault
+    source = 'subject'
+  }
+
+  return {
+    type,
+    cell: { planned, scheduled: cell.scheduled, done: cell.done },
+    plannedSource: source,
+  }
+}
+
+interface PlanFactSubgroupRow {
+  subgroup: string | null
+  parity: SubgroupParity
+  types: PlanFactTypeRow[]
+  cell: AnalyticsCell
+}
+
+function buildPlanFactSubgroupRow(
+  subgroup: string | null,
+  groupLessons: ScheduleLesson[],
+  subject: string,
+  groupId: string,
+  plan: CoursePlanMap,
+  today: Date,
+): PlanFactSubgroupRow | null {
+  const matching = groupLessons.filter((lesson) => matchesPlanFactSubgroup(lesson, subgroup))
+  if (matching.length === 0) return null
+
+  const typesMap = new Map<LessonType, AnalyticsCell>()
+  matching.forEach((lesson) => {
+    const t = getActiveType(lesson.type)
+    if (!typesMap.has(t)) typesMap.set(t, emptyCell())
+    const cell = typesMap.get(t)!
+    cell.scheduled += pairsFor(lesson)
+    if (isLessonBeforeToday(lesson, today)) cell.done += pairsFor(lesson)
+  })
+
+  const weekNumbers = matching
+    .map((lesson) => lesson.week_number)
+    .filter((value): value is number => Number.isFinite(value as number))
+
+  const orderedTypes = Array.from(typesMap.keys()).sort((a, b) =>
+    getLessonTypeLabel(a).localeCompare(getLessonTypeLabel(b), 'ru'),
+  )
+  const types: PlanFactTypeRow[] = orderedTypes.map((type) => {
+    const cell = typesMap.get(type)!
+    return buildPlanFactTypeRow(type, subject, groupId, subgroup, plan, cell)
+  })
+
+  const aggregated: AnalyticsCell = emptyCell()
+  types.forEach((row) => addCell(aggregated, row.cell))
+
+  return {
+    subgroup,
+    parity: subgroup ? detectParity(weekNumbers) : 'none',
+    types,
+    cell: aggregated,
+  }
 }
 
 /**
  * Course-first hierarchy used by Plan-Fact view:
- *   Course → Group → Subgroup → Subject
+ *   Course → Subject → Group → Type → Subgroup (optional)
  *
- * Plans are scoped per course (resolved from `plans[course]`), and each
- * subgroup carries its own scheduled/done counters plus chetnost parity.
+ * Plans are scoped per course. Each (subject, type) combination carries its
+ * own planned value, with overrides at group and subgroup level. If a group
+ * has no subgroup slots, only type rows are emitted for that group.
  */
 export interface PlanFactSubject {
   subject: string
@@ -546,9 +630,16 @@ export interface PlanFactSubject {
   totalDone: number
 }
 
+export interface PlanFactTypeRowExport {
+  type: LessonType
+  cell: AnalyticsCell
+  plannedSource: 'subject' | 'subject-type' | 'group' | 'group-type' | 'subgroup' | 'subgroup-type' | 'none'
+}
+
 export interface PlanFactSubgroup {
   subgroup: string | null
   parity: SubgroupParity
+  types: PlanFactTypeRowExport[]
   cell: AnalyticsCell
 }
 
@@ -556,6 +647,8 @@ export interface PlanFactGroup {
   groupId: string
   groupName: string
   department?: string
+  hasSubgroups: boolean
+  types: PlanFactTypeRowExport[]
   subgroups: PlanFactSubgroup[]
   totalPlanned: number
   totalScheduled: number
@@ -624,9 +717,9 @@ export function buildPlanFactHierarchy({
       Array.from(subjectMap.entries())
         .sort(([a], [b]) => a.localeCompare(b, 'ru'))
         .forEach(([subject, subjectLessons]) => {
-          const types = Array.from(new Set(subjectLessons.map((lesson) => lesson.type || 'unknown'))).sort((a, b) =>
-            getLessonTypeLabel(a).localeCompare(getLessonTypeLabel(b), 'ru'),
-          )
+          const types = Array.from(
+            new Set(subjectLessons.map((lesson) => getActiveType(lesson.type))),
+          ).sort((a, b) => getLessonTypeLabel(a).localeCompare(getLessonTypeLabel(b), 'ru'))
 
           if (query) {
             const subjectHaystack = normalizeText(`${subject} ${types.map(getLessonTypeLabel).join(' ')} ${course} курс`)
@@ -644,39 +737,77 @@ export function buildPlanFactHierarchy({
             const groupLessons = subjectLessons.filter((lesson) => lesson.group === group.id)
             if (groupLessons.length === 0) return
 
-            const subgroupResults: PlanFactSubgroup[] = planFactSubgroupSlots(groupLessons)
-              .map<PlanFactSubgroup>((subgroupName) => {
-                const subgroupLessons = groupLessons.filter((lesson) =>
-                  matchesPlanFactSubgroup(lesson, subgroupName),
-                )
-                const scheduled = subgroupLessons.reduce((sum, lesson) => sum + pairsFor(lesson), 0)
-                const done = subgroupLessons.reduce(
-                  (sum, lesson) => sum + (isLessonBeforeToday(lesson, today) ? pairsFor(lesson) : 0),
-                  0,
-                )
-                const plannedValue = resolvedSubjectPlan(coursePlan, subject, types, group.id, subgroupName)
-                const weekNumbers = subgroupLessons
-                  .map((lesson) => lesson.week_number)
-                  .filter((value): value is number => Number.isFinite(value as number))
+            const slotNames = planFactSubgroupSlots(groupLessons)
+            const hasSubgroups = slotNames.some((slot) => slot !== null)
 
-                return {
-                  subgroup: subgroupName,
-                  parity: subgroupName ? detectParity(weekNumbers) : 'none',
-                  cell: { planned: plannedValue, scheduled, done },
-                }
+            if (!hasSubgroups) {
+              const cell = emptyCell()
+              groupLessons.forEach((lesson) => {
+                cell.scheduled += pairsFor(lesson)
+                if (isLessonBeforeToday(lesson, today)) cell.done += pairsFor(lesson)
               })
-              .filter((entry) => entry.cell.scheduled > 0 || entry.cell.done > 0 || entry.cell.planned !== null)
+              const types: PlanFactTypeRowExport[] = Array.from(
+                new Set(groupLessons.map((lesson) => getActiveType(lesson.type))),
+              )
+                .sort((a, b) => getLessonTypeLabel(a).localeCompare(getLessonTypeLabel(b), 'ru'))
+                .map((type) => {
+                  const typeCell = emptyCell()
+                  groupLessons
+                    .filter((lesson) => getActiveType(lesson.type) === type)
+                    .forEach((lesson) => {
+                      typeCell.scheduled += pairsFor(lesson)
+                      if (isLessonBeforeToday(lesson, today)) typeCell.done += pairsFor(lesson)
+                    })
+                  return buildPlanFactTypeRow(type, subject, group.id, null, coursePlan, typeCell)
+                })
+
+              const aggregated: AnalyticsCell = emptyCell()
+              types.forEach((row) => addCell(aggregated, row.cell))
+
+              groupResults.push({
+                groupId: group.id,
+                groupName: group.name,
+                department: group.department,
+                hasSubgroups: false,
+                types,
+                subgroups: [],
+                totalPlanned: aggregated.planned ?? 0,
+                totalScheduled: aggregated.scheduled,
+                totalDone: aggregated.done,
+              })
+              return
+            }
+
+            const subgroupResults: PlanFactSubgroup[] = slotNames
+              .map((subgroupName) => buildPlanFactSubgroupRow(subgroupName, groupLessons, subject, group.id, coursePlan, today))
+              .filter((row): row is PlanFactSubgroup => row !== null)
 
             if (subgroupResults.length === 0) return
 
-            const gPlanned = subgroupResults.reduce((sum, sg) => sum + (sg.cell.planned ?? 0), 0)
-            const gScheduled = subgroupResults.reduce((sum, sg) => sum + sg.cell.scheduled, 0)
-            const gDone = subgroupResults.reduce((sum, sg) => sum + sg.cell.done, 0)
+            const groupTypeMap = new Map<LessonType, AnalyticsCell>()
+            subgroupResults.forEach((sg) => {
+              sg.types.forEach((t) => {
+                if (!groupTypeMap.has(t.type)) groupTypeMap.set(t.type, emptyCell())
+                addCell(groupTypeMap.get(t.type)!, t.cell)
+              })
+            })
+            const groupTypes: PlanFactTypeRowExport[] = Array.from(groupTypeMap.keys())
+              .sort((a, b) => getLessonTypeLabel(a).localeCompare(getLessonTypeLabel(b), 'ru'))
+              .map((type) => {
+                const c = groupTypeMap.get(type)!
+                return buildPlanFactTypeRow(type, subject, group.id, null, coursePlan, c)
+              })
+
+            const gPlanned = groupTypes.reduce((sum, t) => sum + (t.cell.planned ?? 0), 0)
+            const gScheduled = groupTypes.reduce((sum, t) => sum + t.cell.scheduled, 0)
+            const gDone = groupTypes.reduce((sum, t) => sum + t.cell.done, 0)
 
             groupResults.push({
               groupId: group.id,
               groupName: group.name,
               department: group.department,
+              hasSubgroups: true,
+              types: groupTypes,
               subgroups: subgroupResults,
               totalPlanned: gPlanned,
               totalScheduled: gScheduled,

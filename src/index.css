@@ -686,21 +686,29 @@
     @apply bg-muted/50;
   }
 
-  .plan-row-subgroup > td {
-    @apply bg-card;
+  .plan-row-subgroup-head > td {
+    @apply bg-muted/15 py-1.5 text-xs;
   }
 
-  .plan-row-subgroup:hover > td {
+  .plan-row-subgroup-head:hover > td {
     @apply bg-muted/30;
   }
 
-  .plan-row-subgroup-first > td {
-    @apply border-t border-border;
+  .plan-row-type > td {
+    @apply bg-card py-1.5;
+  }
+
+  .plan-row-type:hover > td {
+    @apply bg-muted/20;
   }
 
   .plan-col-subject {
     width: 32%;
     min-width: 12rem;
+  }
+
+  .plan-col-type {
+    width: 5.5rem;
   }
 
   .plan-col-group {
@@ -719,6 +727,20 @@
   .plan-col-progress {
     width: 11rem;
     min-width: 9rem;
+  }
+
+  .plan-col-toggle {
+    width: 1.75rem;
+    padding-left: 0.25rem !important;
+    padding-right: 0 !important;
+  }
+
+  .plan-toggle {
+    @apply inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition hover:bg-muted hover:text-foreground;
+  }
+
+  .plan-type-chip {
+    @apply inline-flex items-center rounded border border-border/60 bg-background px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground;
   }
 
   .plan-subject-name {
