@@ -617,7 +617,7 @@ function createScheduleStore() {
   }
 
   async function updatePlan(entry: CoursePlanEntry) {
-    const key = planKey(entry.subject, entry.lesson_type)
+    const key = planKey(entry.subject, entry.lesson_type, entry.group, entry.subgroup)
     const state = get(store)
     const previousPlans = state.plans
     const targetPlan = { ...(previousPlans[entry.course] || {}), [key]: entry.planned_pairs }

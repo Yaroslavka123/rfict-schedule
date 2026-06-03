@@ -710,7 +710,7 @@
   }
 
   .plan-input {
-    @apply h-8 w-16 px-2 text-center tabular-nums;
+    @apply h-8 w-20 px-2 text-center tabular-nums;
   }
 
   .plan-progress {
@@ -749,5 +749,94 @@
   .plan-fact-subgroup-row {
     @apply grid items-center gap-3 pl-8 pr-3 py-1 text-xs text-muted-foreground;
     grid-template-columns: 1fr 6rem 5rem 5rem 6rem;
+  }
+
+  .plan-subject-card {
+    @apply overflow-hidden rounded-lg border border-border bg-card shadow-card;
+  }
+
+  .plan-subject-card + .plan-subject-card {
+    @apply mt-2;
+  }
+
+  .plan-subject-head {
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/45 px-3 py-2;
+  }
+
+  .plan-subject-main {
+    @apply min-w-0 flex-1;
+  }
+
+  .plan-subject-title {
+    @apply max-w-[48rem] truncate text-sm font-bold text-foreground;
+  }
+
+  .plan-subject-meta {
+    @apply mt-0.5 truncate text-xs text-muted-foreground;
+  }
+
+  .plan-subject-actions {
+    @apply flex flex-wrap items-center justify-end gap-2;
+  }
+
+  .plan-scope-control {
+    @apply inline-flex h-9 items-center gap-1 rounded-md border border-border bg-background px-1.5 text-xs text-muted-foreground;
+  }
+
+  .plan-scope-control span {
+    @apply px-1 font-semibold;
+  }
+
+  .plan-fact-metrics {
+    @apply flex flex-wrap items-center justify-end gap-1.5 text-xs text-muted-foreground;
+  }
+
+  .plan-fact-metrics span,
+  .plan-row-value {
+    @apply inline-flex h-8 items-center rounded-md border border-border bg-background px-2 font-semibold tabular-nums text-muted-foreground;
+  }
+
+  .plan-fact-groups {
+    @apply divide-y divide-border/70;
+  }
+
+  .plan-fact-group-row {
+    @apply bg-card;
+    display: block;
+  }
+
+  .plan-fact-group-head {
+    @apply flex flex-wrap items-center justify-between gap-2 bg-muted/20 px-3 py-2;
+  }
+
+  .plan-fact-subgroups {
+    @apply divide-y divide-border/50;
+  }
+
+  .plan-fact-subgroup-row {
+    @apply grid items-center gap-2 px-3 py-2 text-xs text-muted-foreground;
+    grid-template-columns: minmax(9rem, 1fr) auto auto auto auto minmax(7rem, 10rem);
+  }
+
+  .plan-fact-label {
+    @apply flex min-w-0 items-center gap-2 font-semibold text-foreground;
+  }
+
+  .plan-fact-label span {
+    @apply truncate;
+  }
+
+  .plan-fact-label small {
+    @apply rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground;
+  }
+
+  @media (max-width: 980px) {
+    .plan-fact-subgroup-row {
+      grid-template-columns: 1fr;
+    }
+
+    .plan-fact-subgroup-row > * {
+      @apply justify-self-start;
+    }
   }
 }

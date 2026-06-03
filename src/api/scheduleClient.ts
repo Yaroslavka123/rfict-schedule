@@ -148,9 +148,12 @@ export async function loadCourseSchedule(
 
 const PLAN_TYPE_SEPARATOR = ' · '
 
-function planKey(subject: string, type?: LessonType | null) {
+function planKey(subject: string, type?: LessonType | null, group?: string | null, subgroup?: string | null) {
   const normalizedSubject = subject.trim().toLowerCase()
-  return type && type !== 'unknown' ? `${normalizedSubject}::${type}` : normalizedSubject
+  const parts = [type && type !== 'unknown' ? `${normalizedSubject}::${type}` : normalizedSubject]
+  if (group) parts.push(`group:${group}`)
+  if (subgroup) parts.push(`subgroup:${subgroup}`)
+  return parts.join('::')
 }
 
 function planSubjectForType(subject: string, type?: LessonType | null) {
@@ -159,6 +162,10 @@ function planSubjectForType(subject: string, type?: LessonType | null) {
 }
 
 function planEntryKey(entry: CoursePlanEntry) {
+  if (entry.group || entry.subgroup) {
+    return planKey(entry.subject, entry.lesson_type, entry.group, entry.subgroup)
+  }
+
   if (entry.lesson_type && entry.lesson_type !== 'unknown') {
     return planKey(entry.subject, entry.lesson_type)
   }

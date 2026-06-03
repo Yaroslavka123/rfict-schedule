@@ -202,7 +202,7 @@ export function buildColumnSections(columns: string[], groups: ColumnGroup[]): C
 }
 
 export function buildColumnSlots(sections: ColumnSection[]): ColumnSlot[] {
-  return sections.flatMap((section) => {
+  return sections.flatMap<ColumnSlot>((section) => {
     if (section.type === 'column') {
       const column = section.columns[0]
       return column ? [{ id: `column:${column}`, type: 'column' as const, column }] : []

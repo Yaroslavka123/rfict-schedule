@@ -77,6 +77,8 @@ export interface CoursePlanEntry {
   course: number
   subject: string
   lesson_type?: LessonType
+  group?: string | null
+  subgroup?: string | null
   planned_pairs: number
 }
 
