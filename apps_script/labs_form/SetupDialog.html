@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 16px; color: #202124; font-size: 13px; }
+    h2 { margin: 0 0 8px; font-size: 18px; }
+    p { margin: 0 0 14px; line-height: 1.45; color: #5f6368; }
+    .status { border: 1px solid #dadce0; border-radius: 6px; margin-bottom: 16px; }
+    .status-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 11px; border-bottom: 1px solid #eeeeee; }
+    .status-row:last-child { border-bottom: 0; }
+    .ok { color: #137333; font-weight: bold; }
+    .warn { color: #b06000; font-weight: bold; }
+    label { display: block; font-weight: bold; margin-bottom: 5px; }
+    input { box-sizing: border-box; width: 100%; padding: 8px 9px; border: 1px solid #bdc1c6; border-radius: 4px; }
+    .hint { margin-top: 5px; font-size: 11px; color: #5f6368; }
+    .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+    button { padding: 8px 14px; border: 1px solid #dadce0; border-radius: 4px; background: #ffffff; cursor: pointer; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #ffffff; }
+    button:disabled { opacity: 0.6; cursor: default; }
+    #message { margin-top: 14px; padding: 10px; border-radius: 4px; white-space: pre-wrap; display: none; }
+    #message.ok-message { display: block; color: #155724; background: #d4edda; }
+    #message.error-message { display: block; color: #721c24; background: #f8d7da; }
+  </style>
+</head>
+<body>
+  <h2>Первоначальная настройка</h2>
+  <p>Запустите настройку один раз после создания копии эталонной таблицы. Публикация расписания останется выключенной, пока вы не включите её вручную.</p>
+
+  <div class="status" id="status">
+    <div class="status-row"><span>Таблица</span><span>проверяется…</span></div>
+  </div>
+
+  <label for="token">Код публикации</label>
+  <input id="token" type="password" autocomplete="off" placeholder="Оставьте пустым, если уже настроен">
+  <div class="hint">Код выдаёт администратор. Он нужен только для сохранения расписания на сайте.</div>
+
+  <div class="actions">
+    <button type="button" onclick="google.script.host.close()">Закрыть</button>
+    <button type="button" id="setup" class="primary" onclick="runSetup()">Настроить таблицу</button>
+  </div>
+  <div id="message"></div>
+
+  <script>
+    google.script.run
+      .withSuccessHandler(renderStatus)
+      .withFailureHandler(showError)
+      .getInitialSetupStatus();
+
+    function statusRow(label, ready, readyText, missingText) {
+      return '<div class="status-row"><span>' + label + '</span><span class="' +
+        (ready ? 'ok' : 'warn') + '">' + (ready ? readyText : missingText) + '</span></div>';
+    }
+
+    function renderStatus(s) {
+      document.getElementById('status').innerHTML =
+        statusRow('Встроенный шаблон', s.template_ready, 'готов', 'не найден') +
+        statusRow('Триггер изменений', s.trigger_configured, 'готов', 'нужно настроить') +
+        statusRow('Код публикации', s.token_configured, 'готов', 'не задан') +
+        statusRow('Автосохранение', s.push_enabled, 'включено', 'выключено');
+    }
+
+    function runSetup() {
+      var button = document.getElementById('setup');
+      var message = document.getElementById('message');
+      button.disabled = true;
+      message.className = '';
+      message.style.display = 'block';
+      message.textContent = 'Настройка…';
+      google.script.run
+        .withSuccessHandler(function(resp) {
+          button.disabled = false;
+          renderStatus(resp.status);
+          message.className = 'ok-message';
+          message.textContent = resp.message;
+          document.getElementById('token').value = '';
+        })
+        .withFailureHandler(function(err) {
+          button.disabled = false;
+          showError(err);
+        })
+        .completeInitialSetup({
+          github_token: document.getElementById('token').value
+        });
+    }
+
+    function showError(err) {
+      var message = document.getElementById('message');
+      message.className = 'error-message';
+      message.textContent = 'Ошибка: ' + (err.message || err);
+    }
+  </script>
+</body>
+</html>

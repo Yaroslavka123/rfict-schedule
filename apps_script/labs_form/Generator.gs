@@ -7,10 +7,8 @@
 // листов алгоритм НЕ опирается — даты считаются с нуля.
 //
 // Логика начала семестра:
-//   • Семестр 1 (осенний): start = понедельник недели, содержащей 1 сентября.
-//     → первый понедельник сентября гарантированно входит в расписание.
-//   • Семестр 2 (весенний): start = понедельник недели, содержащей 8 февраля.
-//     → 8 февраля гарантированно входит в неделю 1.
+//   • Семестр 1 (осенний): start = первый понедельник не раньше 1 сентября.
+//   • Семестр 2 (весенний): start = первый понедельник не раньше 8 февраля.
 //   • Запас: пользователь может вручную задать число недель больше 14 (по
 //     умолчанию 18 = 14 учебных + 4 буфер). Всё, что выходит за нужное,
 //     потом легко удалить вручную.
@@ -20,19 +18,19 @@
 // и форматируем в timezone проекта, чтобы UTC-сдвиг не менял день недели.
 // ──────────────────────────────────────────────────────────────────────────
 
+var GENERATOR_BIG_BREAK_AFTER_PAIR_ = 5;
+
 var GENERATOR_DEFAULTS_ = {
   year: null,            // вычислится в форме (год начала учебного года)
   course: 1,             // курс 1..4 (нужен только для шапки листа)
   semester: 1,           // 1 = осень, 2 = весна (в рамках курса)
-  pair_min: 85,          // длительность пары, мин
+  pair_min: 90,          // длительность пары, мин
   break_min: 10,         // перерыв между парами, мин
-  first_start: '09:00',  // начало 1-й пары, HH:MM
-  lunch_after: 3,        // большой перерыв после пары №… (0 = нет)
-  lunch_min: 30,         // длительность большого перерыва, мин (0 = нет)
+  first_start: '08:30',  // начало 1-й пары, HH:MM
+  lunch_min: 40,         // длительность большого перерыва, мин (0 = нет)
   num_weeks: 18,         // сколько недель сгенерировать
   num_pairs: 8,          // сколько пар в день
-  days_per_week: 6,      // дней в неделе (Пн..Сб = 6, Пн..Вс = 7)
-  date_format: 'short'   // 'short' = DD.MM,  'full' = DD.MM.YYYY
+  days_per_week: 6       // дней в неделе (Пн..Сб = 6, Пн..Вс = 7)
 };
 
 /** Открывает диалог генератора. */
@@ -59,9 +57,16 @@ function getGeneratorDefaults() {
   // Осенью генерируется текущий учебный год, весной — учебный год,
   // начавшийся прошлой осенью.
   var defaultYear = defaultSemester === 1 ? now.getFullYear() : now.getFullYear() - 1;
+  var activeCourse = GENERATOR_DEFAULTS_.course;
+  try {
+    var courseValue = SpreadsheetApp.getActiveSheet().getRange('A2').getDisplayValue();
+    var parsedCourse = parseInt(courseValue, 10);
+    if (parsedCourse >= 1 && parsedCourse <= 4) activeCourse = parsedCourse;
+  } catch (_) {}
   return {
     defaults: Object.assign({}, GENERATOR_DEFAULTS_, {
       year: defaultYear,
+      course: activeCourse,
       semester: defaultSemester
     }),
     template_source: getTemplateSource_()
@@ -163,37 +168,34 @@ function parseGeneratorParams_(raw) {
   var semester     = num('semester',     GENERATOR_DEFAULTS_.semester,     1,    2);
   var pair_min     = num('pair_min',     GENERATOR_DEFAULTS_.pair_min,     20,   180);
   var break_min    = num('break_min',    GENERATOR_DEFAULTS_.break_min,    0,    120);
-  var lunch_after  = num('lunch_after',  GENERATOR_DEFAULTS_.lunch_after,  0,    20);
   var lunch_min    = num('lunch_min',    GENERATOR_DEFAULTS_.lunch_min,    0,    180);
   var num_weeks    = num('num_weeks',    GENERATOR_DEFAULTS_.num_weeks,    1,    30);
   var num_pairs    = num('num_pairs',    GENERATOR_DEFAULTS_.num_pairs,    1,    12);
   var days_per_week= num('days_per_week',GENERATOR_DEFAULTS_.days_per_week,5,    7);
   var first_start  = str('first_start',  GENERATOR_DEFAULTS_.first_start);
-  var date_format  = str('date_format',  GENERATOR_DEFAULTS_.date_format);
   if (!/^\d{1,2}:\d{2}$/.test(first_start)) {
     throw new Error('Поле «Начало 1-й пары»: ожидается HH:MM.');
   }
-  if (date_format !== 'short' && date_format !== 'full') date_format = 'short';
   return {
     year: year, course: course, semester: semester,
     pair_min: pair_min, break_min: break_min,
-    lunch_after: lunch_after, lunch_min: lunch_min,
+    lunch_min: lunch_min,
     num_weeks: num_weeks, num_pairs: num_pairs,
     days_per_week: days_per_week,
-    first_start: first_start, date_format: date_format
+    first_start: first_start
   };
 }
 
 /**
  * Возвращает дату понедельника, с которого начинается семестр.
- *   • Семестр 1: понедельник недели, содержащей 1 сентября `year`.
- *   • Семестр 2: понедельник недели, содержащей 8 февраля `year + 1`.
+ *   • Семестр 1: первый понедельник не раньше 1 сентября `year`.
+ *   • Семестр 2: первый понедельник не раньше 8 февраля `year + 1`.
  */
 function computeSemesterStart_(year, semester) {
   var target;
   if (semester === 1) target = calendarDate_(year,     8, 1);  // 1 сентября `year`
   else                target = calendarDate_(year + 1, 1, 8);  // 8 февраля `year + 1`
-  return mondayOfWeek_(target);
+  return mondayOnOrAfter_(target);
 }
 
 function getGeneratorTimeZone_() {
@@ -225,10 +227,11 @@ function weekdayIndex_(date) {
   return dow === 0 ? 6 : dow - 1;
 }
 
-/** Возвращает понедельник недели, содержащей указанную дату. */
-function mondayOfWeek_(date) {
+/** Возвращает первый понедельник, который не раньше указанной даты. */
+function mondayOnOrAfter_(date) {
   var d = cloneCalendarDate_(date);
-  d.setDate(d.getDate() - weekdayIndex_(d));
+  var offset = (7 - weekdayIndex_(d)) % 7;
+  d.setDate(d.getDate() + offset);
   return cloneCalendarDate_(d);
 }
 
@@ -268,14 +271,13 @@ function formatHHMM_(totalMin) {
 
 /**
  * Считает расписание звонков. Возвращает массив из num_pairs элементов вида
- * {pair: 1, label: '09:00 - 10:25', start_min, end_min}.
+ * {pair: 1, label: '08:30 - 10:00', start_min, end_min}.
  *
  * Алгоритм:
  *   - Начинаем с first_start.
  *   - Длительность пары = pair_min.
- *   - Между парами — break_min, КРОМЕ перехода после lunch_after,
- *     где вместо break_min используется lunch_min (если lunch_after > 0
- *     и lunch_min > 0, иначе обычный break_min).
+ *   - Между парами — break_min.
+ *   - После 5-й пары используется lunch_min.
  */
 function computeBellSchedule_(params) {
   var startParts = params.first_start.split(':');
@@ -286,7 +288,7 @@ function computeBellSchedule_(params) {
     var e = minute + params.pair_min;
     out.push({pair: p, start_min: s, end_min: e, label: formatHHMM_(s) + ' - ' + formatHHMM_(e)});
     var gap = params.break_min;
-    if (params.lunch_after > 0 && params.lunch_min > 0 && p === params.lunch_after) gap = params.lunch_min;
+    if (params.lunch_min > 0 && p === GENERATOR_BIG_BREAK_AFTER_PAIR_) gap = params.lunch_min;
     minute = e + gap;
   }
   return out;
@@ -377,7 +379,7 @@ function customizeWeekSheet_(sheet, template, struct, params, weekNum, monday, s
       );
     }
     var dayName = DAY_NAMES_[actualDayIndex];
-    var dateStr = params.date_format === 'full' ? formatDDMMYYYY_(date) : formatDDMM_(date);
+    var dateStr = formatDDMM_(date);
     var text = dayName + '\n' + dateStr;
 
     // Стиль: имя дня — как в исходной ячейке (берём из шаблона); дата — italic, меньший шрифт.

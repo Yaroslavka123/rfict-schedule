@@ -71,8 +71,11 @@ function onOpen() {
 
   SpreadsheetApp.getUi()
     .createMenu('Расписание')
+    .addItem('🚀 Первоначальная настройка', 'openInitialSetup')
+    .addSeparator()
     .addItem('➕ Добавить или изменить занятие', 'showSidebar')
     .addItem('🧹 Очистить ячейки', 'clearActiveCell')
+    .addItem('📋 Копировать с прошлой недели', 'copyFromPreviousWeek')
     .addSeparator()
     .addItem(pushLabel, 'togglePushEnabled')
     .addItem('💾 Сохранить расписание сейчас', 'manualDispatch')
@@ -84,6 +87,59 @@ function onOpen() {
 /** Пересоздаёт меню после смены настроек (чтобы лейблы обновились). */
 function rebuildMenu_() {
   try { onOpen(); } catch (_) { /* не в контексте таблицы */ }
+}
+
+/** Открывает мастер первого запуска для копии эталонной таблицы. */
+function openInitialSetup() {
+  var html = HtmlService.createHtmlOutputFromFile('SetupDialog')
+    .setWidth(440)
+    .setHeight(520);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Первоначальная настройка');
+}
+
+/** Статус мастера настройки — вызывается из SetupDialog.html. */
+function getInitialSetupStatus() {
+  var scriptProps = PropertiesService.getScriptProperties();
+  var editTriggers = getEditTriggers_();
+  return {
+    spreadsheet_name: SpreadsheetApp.getActive().getName(),
+    template_ready: !!loadTemplate_(),
+    token_configured: !!scriptProps.getProperty('GITHUB_TOKEN'),
+    trigger_configured: editTriggers.length === 1,
+    trigger_count: editTriggers.length,
+    push_enabled: isPushEnabled_(),
+  };
+}
+
+/**
+ * Выполняет настройку копии эталонной таблицы.
+ * Триггер создаётся заранее, но публикация остаётся выключенной до ручной проверки.
+ */
+function completeInitialSetup(data) {
+  if (!loadTemplate_()) {
+    throw new Error('В скрипте отсутствует встроенный шаблон листа. Обратитесь к администратору.');
+  }
+
+  var token = String(data && data.github_token || '').trim();
+  var scriptProps = PropertiesService.getScriptProperties();
+  if (token) scriptProps.setProperty('GITHUB_TOKEN', token);
+
+  setPushEnabled_(false);
+  deletePendingExportTrigger_();
+  var triggerState = ensureSingleEditTrigger_();
+  rebuildMenu_();
+
+  var status = getInitialSetupStatus();
+  var details = [
+    'Таблица готова к работе.',
+    'Триггер автосохранения: ' + (status.trigger_configured ? 'настроен' : 'нужна проверка'),
+    'Код публикации: ' + (status.token_configured ? 'настроен' : 'не задан'),
+    'Автосохранение: выключено до ручного включения в меню.',
+  ];
+  if (triggerState.removedDuplicates > 0) {
+    details.push('Удалено лишних триггеров: ' + triggerState.removedDuplicates + '.');
+  }
+  return {status: status, message: details.join('\n')};
 }
 
 /** Меню → Автосохранение на сайт: вкл/выкл */
@@ -496,6 +552,215 @@ function clearActiveCell() {
   if (isPushEnabled_()) {
     sendAutosaveScheduleForRange_(sheet.getParent(), range);
   }
+}
+
+/**
+ * Копирует расписание предыдущей недели на активный лист.
+ * Шапка, даты, номера пар, время, ширины колонок и высоты строк не меняются.
+ */
+function copyFromPreviousWeek() {
+  var ui = SpreadsheetApp.getUi();
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var targetSheet = ss.getActiveSheet();
+    if (/черновик/i.test(targetSheet.getName())) {
+      throw new Error('Копирование на лист-черновик отключено. Откройте рабочую неделю.');
+    }
+    var targetWeek = extractWeekNumberFromSheetName_(targetSheet.getName());
+    if (!targetWeek) {
+      throw new Error('Активный лист не похож на лист недели. Откройте нужную неделю и повторите.');
+    }
+    if (targetWeek <= 1) {
+      throw new Error('Для первой недели предыдущего листа в этой таблице нет.');
+    }
+
+    var sourceWeek = targetWeek - 1;
+    var sourceCandidates = [];
+    var sheets = ss.getSheets();
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === targetSheet.getSheetId()) continue;
+      if (/черновик/i.test(sheets[i].getName())) continue;
+      if (extractWeekNumberFromSheetName_(sheets[i].getName()) === sourceWeek) sourceCandidates.push(sheets[i]);
+    }
+    if (!sourceCandidates.length) {
+      throw new Error('Не найден лист предыдущей недели №' + sourceWeek + '.');
+    }
+    if (sourceCandidates.length > 1) {
+      throw new Error(
+        'Найдено несколько листов предыдущей недели №' + sourceWeek + ': ' +
+        sourceCandidates.map(function(sheet) { return sheet.getName(); }).join(', ') +
+        '. Оставьте один рабочий лист и повторите.'
+      );
+    }
+    var sourceSheet = sourceCandidates[0];
+
+    var sourceLayout = getScheduleCopyLayout_(sourceSheet);
+    var targetLayout = getScheduleCopyLayout_(targetSheet);
+    validateScheduleCopyLayouts_(sourceLayout, targetLayout);
+
+    var sourceRange = sourceSheet.getRange(
+      sourceLayout.start_row,
+      sourceLayout.start_col,
+      sourceLayout.num_rows,
+      sourceLayout.num_cols
+    );
+    var targetRange = targetSheet.getRange(
+      targetLayout.start_row,
+      targetLayout.start_col,
+      targetLayout.num_rows,
+      targetLayout.num_cols
+    );
+    ensureMergesStayInsideRange_(sourceRange, 'прошлой недели');
+    ensureMergesStayInsideRange_(targetRange, 'активного листа');
+    var sourceMerges = getRelativeMerges_(sourceRange);
+
+    var targetHasContent = rangeHasContent_(targetRange);
+    var confirmText =
+      'Источник: ' + sourceSheet.getName() + '\n' +
+      'Активный лист: ' + targetSheet.getName() + '\n\n' +
+      'Будут заменены только занятия и аудитории в колонках групп. ' +
+      'Даты, номера пар, время, шапка и размеры ячеек останутся без изменений.';
+    if (targetHasContent) {
+      confirmText += '\n\nНа активном листе уже есть расписание. Оно будет заменено.';
+    }
+    if (isPushEnabled_()) {
+      confirmText += '\n\nПосле копирования активный лист будет опубликован на сайте.';
+    }
+
+    var answer = ui.alert('Копировать расписание с прошлой недели?', confirmText, ui.ButtonSet.YES_NO);
+    if (answer !== ui.Button.YES) return;
+
+    breakApartContainedMerges_(targetRange);
+    sourceRange.copyTo(targetRange, SpreadsheetApp.CopyPasteType.PASTE_NORMAL, false);
+    breakApartContainedMerges_(targetRange);
+    applyRelativeMerges_(targetRange, sourceMerges);
+    SpreadsheetApp.flush();
+
+    var publishResult = null;
+    if (isPushEnabled_()) {
+      publishResult = dispatchScheduleUpdate_('copy-previous-week', '', targetSheet.getName(), ss.getId());
+    }
+
+    var resultText = 'Расписание скопировано с недели №' + sourceWeek + ' на неделю №' + targetWeek + '.';
+    if (publishResult) {
+      resultText += '\n' + (publishResult.sent
+        ? 'Активный лист опубликован на сайте.'
+        : 'Копирование выполнено, но публикация не удалась: ' + (publishResult.message || publishResult.reason) + '.');
+    }
+    ui.alert('Готово', resultText, ui.ButtonSet.OK);
+  } catch (err) {
+    ui.alert('Не удалось скопировать расписание', err.message || String(err), ui.ButtonSet.OK);
+  }
+}
+
+function getScheduleCopyLayout_(sheet) {
+  var groups = discoverGroups_(sheet);
+  if (!groups.length) {
+    throw new Error('На листе «' + sheet.getName() + '» не найдены колонки групп.');
+  }
+
+  var pairValues = sheet.getRange(1, 2, sheet.getMaxRows(), 1).getDisplayValues();
+  var pairRows = [];
+  for (var r = 0; r < pairValues.length; r++) {
+    var raw = String(pairValues[r][0] || '').trim();
+    if (!/^\d{1,2}$/.test(raw)) continue;
+    var pair = Number(raw);
+    if (pair < 1 || pair > 20) continue;
+    pairRows.push({row: r + 1, pair: pair});
+  }
+  if (!pairRows.length) {
+    throw new Error('На листе «' + sheet.getName() + '» не найдены строки с номерами пар.');
+  }
+
+  var startCol = groups[0].content_col;
+  var endCol = groups[0].room_col;
+  for (var i = 1; i < groups.length; i++) {
+    startCol = Math.min(startCol, groups[i].content_col);
+    endCol = Math.max(endCol, groups[i].room_col);
+  }
+  var startRow = pairRows[0].row;
+  var endRow = pairRows[pairRows.length - 1].row;
+  return {
+    sheet_name: sheet.getName(),
+    start_row: startRow,
+    start_col: startCol,
+    num_rows: endRow - startRow + 1,
+    num_cols: endCol - startCol + 1,
+    pair_signature: pairRows.map(function(p) { return (p.row - startRow) + ':' + p.pair; }).join('|'),
+    group_signature: groups.map(function(g) {
+      return g.id + '@' + (g.content_col - startCol) + ':' + (g.room_col - startCol);
+    }).join('|'),
+  };
+}
+
+function validateScheduleCopyLayouts_(source, target) {
+  if (source.num_rows !== target.num_rows || source.pair_signature !== target.pair_signature) {
+    throw new Error('Строки пар на прошлой неделе и активном листе различаются. Копирование остановлено, чтобы не повредить разметку.');
+  }
+  if (source.num_cols !== target.num_cols || source.group_signature !== target.group_signature) {
+    throw new Error('Набор или расположение групп на прошлой неделе и активном листе различаются. Копирование остановлено.');
+  }
+}
+
+function ensureMergesStayInsideRange_(range, label) {
+  var startRow = range.getRow();
+  var endRow = range.getLastRow();
+  var startCol = range.getColumn();
+  var endCol = range.getLastColumn();
+  var merges = range.getMergedRanges();
+  for (var i = 0; i < merges.length; i++) {
+    var mr = merges[i];
+    if (mr.getRow() < startRow || mr.getLastRow() > endRow ||
+        mr.getColumn() < startCol || mr.getLastColumn() > endCol) {
+      throw new Error(
+        'Объединение ' + mr.getA1Notation() + ' на листе ' + label +
+        ' выходит за границы расписания. Исправьте его вручную и повторите.'
+      );
+    }
+  }
+}
+
+function breakApartContainedMerges_(range) {
+  var merges = range.getMergedRanges();
+  for (var i = 0; i < merges.length; i++) {
+    merges[i].breakApart();
+  }
+}
+
+function getRelativeMerges_(range) {
+  var startRow = range.getRow();
+  var startCol = range.getColumn();
+  return range.getMergedRanges().map(function(mr) {
+    return {
+      row_offset: mr.getRow() - startRow,
+      col_offset: mr.getColumn() - startCol,
+      num_rows: mr.getNumRows(),
+      num_cols: mr.getNumColumns(),
+    };
+  });
+}
+
+function applyRelativeMerges_(targetRange, merges) {
+  var sheet = targetRange.getSheet();
+  for (var i = 0; i < merges.length; i++) {
+    var merge = merges[i];
+    sheet.getRange(
+      targetRange.getRow() + merge.row_offset,
+      targetRange.getColumn() + merge.col_offset,
+      merge.num_rows,
+      merge.num_cols
+    ).merge();
+  }
+}
+
+function rangeHasContent_(range) {
+  var values = range.getDisplayValues();
+  for (var r = 0; r < values.length; r++) {
+    for (var c = 0; c < values[r].length; c++) {
+      if (String(values[r][c] || '').trim()) return true;
+    }
+  }
+  return false;
 }
 
 
@@ -990,12 +1255,19 @@ function getSheetHeaderMeta_(sheet) {
 }
 
 function getWeekInfoFromSheetName_(sheetName) {
-  var weekMatch = sheetName.match(/(\d+)-я неделя/);
   var dateMatch = sheetName.match(/^([\d.]+\s*-\s*[\d.]+)/);
   return {
-    week_number: weekMatch ? parseInt(weekMatch[1], 10) : null,
+    week_number: extractWeekNumberFromSheetName_(sheetName),
     date_range: dateMatch ? dateMatch[1] : '',
   };
+}
+
+/** Поддерживает имена вида «(3-я неделя)» и старый формат «(3-неделя)». */
+function extractWeekNumberFromSheetName_(sheetName) {
+  var text = String(sheetName || '');
+  var match = text.match(/(\d+)\s*-\s*(?:я\s*)?неделя/i);
+  if (!match) match = text.match(/(\d+)\s+неделя/i);
+  return match ? parseInt(match[1], 10) : null;
 }
 
 function refreshDictionariesAfterAutosave_() {
@@ -1260,8 +1532,7 @@ function getSheetMeta_(ss) {
  */
 function pushSheet_(ws, meta, token) {
   var sheetName = ws.getName().trim();
-  var weekMatch = sheetName.match(/(\d+)-я неделя/);
-  var weekNumber = weekMatch ? parseInt(weekMatch[1], 10) : 0;
+  var weekNumber = extractWeekNumberFromSheetName_(sheetName) || 0;
   var dateMatch = sheetName.match(/^([\d.]+\s*-\s*[\d.]+)/);
   var dateRange = dateMatch ? dateMatch[1] : '';
 
