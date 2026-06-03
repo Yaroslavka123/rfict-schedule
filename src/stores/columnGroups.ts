@@ -156,46 +156,23 @@ export function columnGroupIdByItem(groups: ColumnGroup[], columns: string[]) {
 
 export function buildColumnSections(columns: string[], groups: ColumnGroup[]): ColumnSection[] {
   const groupIdByItem = columnGroupIdByItem(groups, columns)
-  const groupById = new Map(groups.map((group) => [group.id, group]))
   const groupToneById = new Map(groups.map((group, index) => [group.id, index % 6]))
-  const renderedGroups = new Set<string>()
   const sections: ColumnSection[] = []
 
   groups.forEach((group) => {
-    const hasVisibleColumns = columns.some((column) => groupIdByItem[column] === group.id)
-    if (hasVisibleColumns) return
-    renderedGroups.add(group.id)
     sections.push({
       id: group.id,
       type: 'group',
       name: group.name,
       groupId: group.id,
       tone: groupToneById.get(group.id),
-      columns: [],
+      columns: columns.filter((column) => groupIdByItem[column] === group.id),
     })
   })
 
   columns.forEach((column) => {
-    const groupId = groupIdByItem[column]
-    if (!groupId) {
-      sections.push({ id: `column:${column}`, type: 'column', name: '', columns: [column] })
-      return
-    }
-
-    if (renderedGroups.has(groupId)) return
-
-    const group = groupById.get(groupId)
-    if (!group) return
-
-    renderedGroups.add(groupId)
-    sections.push({
-      id: group.id,
-      type: 'group',
-      name: group.name,
-      groupId: group.id,
-      tone: groupToneById.get(group.id),
-      columns: columns.filter((item) => groupIdByItem[item] === group.id),
-    })
+    if (groupIdByItem[column]) return
+    sections.push({ id: `column:${column}`, type: 'column', name: '', columns: [column] })
   })
 
   return sections

@@ -27,6 +27,10 @@
   let tooltip = $state<{ x: number; y: number; entries: TeacherSlotEntry[]; teacher: string } | null>(null)
   let tooltipKey = $state<string | null>(null)
   let draggedTeacher = $state<string | null>(null)
+  let dragOverTeacher = $state<string | null>(null)
+  let dragOverGroupId = $state<string | null>(null)
+  let recentlyDropped = $state<string | null>(null)
+  let dropFlashTimer: ReturnType<typeof setTimeout> | null = null
 
   let filteredTeacherData = $derived(filterTeacherData(teacherData, groupFilter, lessonTypes))
   let orderedTeachers = $derived(applyColumnOrder(filteredTeacherData?.orderedTeachers || [], $columnOrderStore.teachers))
@@ -77,14 +81,29 @@
     return map
   }
 
+  function computeTooltipPos(event: MouseEvent): { x: number; y: number } {
+    const TIP_W = 320
+    const TIP_H = 240
+    const PAD = 8
+    const OFFSET = 14
+    let x = event.clientX + OFFSET
+    let y = event.clientY + OFFSET
+    if (x + TIP_W > window.innerWidth - PAD) {
+      x = event.clientX - TIP_W - OFFSET
+    }
+    if (y + TIP_H > window.innerHeight - PAD) {
+      y = event.clientY - TIP_H - OFFSET
+    }
+    return {
+      x: Math.max(PAD, x),
+      y: Math.max(PAD, y),
+    }
+  }
+
   function showTooltip(event: MouseEvent, entries: TeacherSlotEntry[], teacher: string, key: string) {
     tooltipKey = key
-    tooltip = {
-      x: Math.max(8, Math.min(event.clientX + 12, window.innerWidth - 340)),
-      y: Math.max(8, Math.min(event.clientY + 12, window.innerHeight - 260)),
-      entries,
-      teacher,
-    }
+    const { x, y } = computeTooltipPos(event)
+    tooltip = { x, y, entries, teacher }
   }
 
   function hideTooltip() {
@@ -103,7 +122,16 @@
       return
     }
     const key = cell.dataset.slotKey
-    if (!key || key === tooltipKey) return
+    if (!key) {
+      hideTooltip()
+      return
+    }
+    if (key === tooltipKey && tooltip) {
+      const { x, y } = computeTooltipPos(event)
+      tooltip.x = x
+      tooltip.y = y
+      return
+    }
     const data = tooltipEntriesByKey.get(key)
     if (data) showTooltip(event, data.entries, data.teacher, key)
     else hideTooltip()
@@ -173,6 +201,17 @@
 
   function clearColumnDrag() {
     draggedTeacher = null
+    dragOverTeacher = null
+    dragOverGroupId = null
+  }
+
+  function flashDropped(teacher: string) {
+    recentlyDropped = teacher
+    if (dropFlashTimer) clearTimeout(dropFlashTimer)
+    dropFlashTimer = setTimeout(() => {
+      recentlyDropped = null
+      dropFlashTimer = null
+    }, 220)
   }
 
   function startColumnDrag(event: DragEvent, teacher: string) {
@@ -196,9 +235,37 @@
   }
 
   function allowColumnDrop(event: DragEvent, teacher?: string) {
-    if (!draggedTeacher || draggedTeacher === teacher) return
+    if (!draggedTeacher) return
+    if (teacher && draggedTeacher === teacher) {
+      dragOverTeacher = null
+      dragOverGroupId = null
+      return
+    }
     event.preventDefault()
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+    if (teacher) {
+      if (dragOverTeacher !== teacher) dragOverTeacher = teacher
+      if (dragOverGroupId !== null) dragOverGroupId = null
+    } else {
+      // hovering over a group zone (header or empty slot)
+      if (dragOverTeacher !== null) dragOverTeacher = null
+    }
+  }
+
+  function clearColumnHover(teacher: string) {
+    if (dragOverTeacher === teacher) dragOverTeacher = null
+  }
+
+  function allowGroupDrop(event: DragEvent, groupId: string | undefined) {
+    if (!draggedTeacher || !groupId) return
+    event.preventDefault()
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+    if (dragOverGroupId !== groupId) dragOverGroupId = groupId
+    if (dragOverTeacher !== null) dragOverTeacher = null
+  }
+
+  function clearGroupHover(groupId: string | undefined) {
+    if (groupId && dragOverGroupId === groupId) dragOverGroupId = null
   }
 
   function groupToneClass(tone: number | undefined) {
@@ -224,17 +291,20 @@
       const targetSlot = columnSlots.find((slot) => slot.column === teacher)
       if (targetSlot?.groupId) columnGroupsStore.assignItem('teachers', targetSlot.groupId, source)
       else columnGroupsStore.unassignItem('teachers', source)
+      flashDropped(source)
     }
     clearColumnDrag()
   }
 
   function dropTeacherOnGroup(groupId: string) {
     if (!draggedTeacher) return
+    const source = draggedTeacher
     const group = teacherGroups.find((item) => item.id === groupId)
-    const target = group?.items.filter((item) => item !== draggedTeacher && orderedTeachers.includes(item)).at(-1)
-    columnGroupsStore.assignItem('teachers', groupId, draggedTeacher)
-    if (target) columnOrderStore.move('teachers', orderedTeachers, draggedTeacher, target, 'after')
-    else columnOrderStore.moveToEnd('teachers', orderedTeachers, draggedTeacher)
+    const target = group?.items.filter((item) => item !== source && orderedTeachers.includes(item)).at(-1)
+    columnGroupsStore.assignItem('teachers', groupId, source)
+    if (target) columnOrderStore.move('teachers', orderedTeachers, source, target, 'after')
+    else columnOrderStore.moveToEnd('teachers', orderedTeachers, source)
+    flashDropped(source)
     clearColumnDrag()
   }
 
@@ -260,7 +330,7 @@
     </div>
 
     <div class="teachers-matrix-wrap">
-      <table class="teachers-matrix" onpointerover={handleTableHover} onmouseleave={hideTooltip}>
+      <table class="teachers-matrix" onpointermove={handleTableHover} onmouseleave={hideTooltip}>
         <colgroup>
           <col style="width: 2rem" />
           <col style="width: 2rem" />
@@ -280,7 +350,9 @@
                     section.columns.length === 0 && 'matrix-group-head-empty',
                   )}
                   colspan={Math.max(section.columns.length, 1)}
-                  ondragover={(event) => allowColumnDrop(event)}
+                  data-drag-over={dragOverGroupId === section.groupId ? 'true' : null}
+                  ondragover={(event) => allowGroupDrop(event, section.groupId)}
+                  ondragleave={() => clearGroupHover(section.groupId)}
                   ondrop={(event) => {
                     event.preventDefault()
                     if (section.groupId) dropTeacherOnGroup(section.groupId)
@@ -312,7 +384,9 @@
                   class={cn('matrix-empty-group-slot', groupSlotClasses(slot))}
                   role="columnheader"
                   title="Перетащите преподавателя в группу"
-                  ondragover={(event) => allowColumnDrop(event)}
+                  data-drag-over={dragOverGroupId === slot.groupId ? 'true' : null}
+                  ondragover={(event) => allowGroupDrop(event, slot.groupId)}
+                  ondragleave={() => clearGroupHover(slot.groupId)}
                   ondrop={(event) => {
                     event.preventDefault()
                     if (slot.groupId) dropTeacherOnGroup(slot.groupId)
@@ -331,12 +405,15 @@
                   isDim && 'th-teacher-dim',
                   groupSlotClasses(slot),
                   draggedTeacher === teacher && 'matrix-col-dragging',
+                  dragOverTeacher === teacher && 'matrix-drag-over-col',
+                  recentlyDropped === teacher && 'matrix-just-dropped',
                 )}
                 title={teacher}
                 draggable="true"
                 aria-grabbed={draggedTeacher === teacher}
                 ondragstart={(event) => startColumnDrag(event, teacher)}
                 ondragover={(event) => allowColumnDrop(event, teacher)}
+                ondragleave={() => clearColumnHover(teacher)}
                 ondrop={(event) => dropColumn(event, teacher)}
                 ondragend={clearColumnDrag}
               >

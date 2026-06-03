@@ -17,6 +17,9 @@
     --accent: 38 92% 50%;
     --accent-foreground: 24 90% 12%;
     --destructive: 0 84% 60%;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-snap: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .dark {
@@ -39,10 +42,75 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     letter-spacing: 0;
+    transition: background-color 220ms var(--ease), color 220ms var(--ease);
+  }
+
+  /* Smooth color transitions on common elements without touching DnD matrix */
+  button,
+  a,
+  [role='button'],
+  [role='tab'],
+  input,
+  select,
+  textarea {
+    transition:
+      color 160ms var(--ease),
+      background-color 160ms var(--ease),
+      border-color 160ms var(--ease),
+      box-shadow 200ms var(--ease),
+      opacity 160ms var(--ease);
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.28);
+    color: hsl(var(--foreground));
+  }
+
+  /* Unified focus ring */
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary) / 0.6);
+    outline-offset: 2px;
+  }
+
+  /* Custom thin scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.25);
+    border-radius: 8px;
+    border: 2px solid hsl(var(--background));
+    transition: background 160ms var(--ease);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.45);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
@@ -56,6 +124,12 @@
 
   .app-header {
     @apply sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl;
+    box-shadow: 0 1px 0 hsl(var(--border) / 0.5), 0 6px 16px -10px hsl(var(--foreground) / 0.08);
+    transition: box-shadow 240ms var(--ease), background-color 220ms var(--ease);
+  }
+
+  .app-header.is-scrolled {
+    box-shadow: 0 1px 0 hsl(var(--border) / 0.6), 0 10px 24px -12px hsl(var(--foreground) / 0.16);
   }
 
   .header-inner {
@@ -71,11 +145,27 @@
   }
 
   .brand-mark {
-    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm;
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-primary-foreground shadow-sm;
+    background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.78));
+    transition: transform 240ms var(--ease-spring), box-shadow 240ms var(--ease);
+  }
+  .brand-mark:hover {
+    transform: rotate(-6deg) scale(1.05);
+    box-shadow: 0 8px 20px hsl(var(--primary) / 0.32);
+  }
+  .brand-mark:active {
+    transform: rotate(0deg) scale(0.94);
   }
 
   .brand-mark-compact {
     @apply h-9 w-9;
+  }
+
+  .theme-swap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    animation: theme-swap 360ms var(--ease);
   }
 
   .section-eyebrow {
@@ -92,15 +182,51 @@
   }
 
   .app-tab {
-    @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30;
+    @apply relative inline-flex min-h-9 items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30;
+  }
+
+  .app-tab::after {
+    content: '';
+    position: absolute;
+    left: 14%;
+    right: 14%;
+    bottom: 4px;
+    height: 2px;
+    border-radius: 2px;
+    background: hsl(var(--primary));
+    transform: scaleX(0);
+    transform-origin: center;
+    opacity: 0;
+    transition: transform 280ms var(--ease-spring), opacity 200ms var(--ease);
+  }
+
+  .app-tab:hover {
+    transform: translateY(-1px);
+  }
+  .app-tab:active {
+    transform: translateY(0) scale(0.97);
   }
 
   .app-tab-active {
     @apply bg-card text-foreground shadow-sm ring-1 ring-border;
   }
+  .app-tab-active::after {
+    transform: scaleX(1);
+    opacity: 1;
+  }
 
   .app-tab-idle {
     @apply text-muted-foreground hover:bg-card/70 hover:text-foreground;
+  }
+
+  .app-tab-icon {
+    transition: transform 200ms var(--ease-spring), color 200ms var(--ease);
+  }
+  .app-tab:hover .app-tab-icon {
+    transform: scale(1.12) rotate(-3deg);
+  }
+  .app-tab-active .app-tab-icon {
+    color: hsl(var(--primary));
   }
 
   .header-meta {
@@ -138,6 +264,10 @@
 
   .filter-field {
     @apply min-w-0 flex-[1_1_8.5rem] md:flex-none;
+    transition: transform 200ms var(--ease);
+  }
+  .filter-field:focus-within {
+    transform: translateY(-1px);
   }
 
   .filter-field-search {
@@ -147,10 +277,20 @@
   .filter-label {
     @apply mb-1 block text-xs font-semibold text-muted-foreground;
     letter-spacing: 0;
+    transition: color 160ms var(--ease);
+  }
+  .filter-field:focus-within .filter-label {
+    color: hsl(var(--primary));
   }
 
   .filter-select {
     @apply h-9 w-full rounded-md border border-border bg-background px-2.5 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20;
+  }
+  .filter-select:hover {
+    border-color: hsl(var(--muted-foreground) / 0.5);
+  }
+  .filter-select:active {
+    transform: scale(0.99);
   }
 
   .filter-search-wrap {
@@ -160,6 +300,14 @@
   .filter-search {
     @apply relative z-10 h-9 rounded-md bg-transparent text-sm;
     padding-left: 2.5rem !important;
+  }
+
+  .filter-search-icon {
+    transition: transform 220ms var(--ease-spring), color 160ms var(--ease);
+  }
+  .filter-field:focus-within .filter-search-icon {
+    transform: scale(1.18) rotate(-8deg);
+    color: hsl(var(--primary));
   }
 
   .filter-search-ghost {
@@ -188,15 +336,36 @@
   .dense-table th {
     @apply sticky top-0 z-10 bg-muted text-xs font-bold uppercase text-muted-foreground;
     letter-spacing: 0;
+    backdrop-filter: blur(8px);
   }
 
   .dense-table tbody tr {
-    @apply transition hover:bg-muted/50;
+    transition: background-color 200ms var(--ease), box-shadow 200ms var(--ease);
+  }
+  .dense-table tbody tr:hover {
+    background-color: hsl(var(--muted) / 0.55);
+  }
+  .dense-table tbody tr.cancelled:hover {
+    background-color: hsl(var(--destructive) / 0.08);
+  }
+
+  .dense-table tbody tr td {
+    transition: color 200ms var(--ease);
   }
 
   .dense-table .day-header td {
     @apply bg-primary/10 text-sm font-bold uppercase text-primary;
     letter-spacing: 0;
+    position: relative;
+  }
+  .dense-table .day-header td::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.45), transparent);
   }
 
   .dense-table tr.day-header:hover td {
@@ -226,6 +395,58 @@
   }
   .tab-panel-hidden {
     display: none;
+  }
+
+  /* Tab view (used in App.svelte) */
+  .tab-view {
+    animation: tab-fade-in 180ms var(--ease) both;
+  }
+  @keyframes tab-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Loaded timestamp pill in header */
+  .loaded-at {
+    transition: color 200ms var(--ease), background-color 200ms var(--ease), border-color 200ms var(--ease);
+  }
+  .loaded-at:hover {
+    color: hsl(var(--primary));
+    border-color: hsl(var(--primary) / 0.5);
+  }
+
+  /* Refresh button icon spin when active */
+  .spin-once {
+    animation: refresh-once 700ms var(--ease) both;
+  }
+  @keyframes refresh-once {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Skeleton shimmer for loading placeholders */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: hsl(var(--muted));
+    border-radius: 6px;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--background) / 0.65),
+      transparent
+    );
+    transform: translateX(-100%);
+    animation: shimmer 1.4s linear infinite;
+  }
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
   }
 
   /* Filter sidebar transition */
@@ -403,6 +624,25 @@
     @apply opacity-45;
   }
 
+  /* Primitive DnD feedback: instant color/outline changes only.
+   * No transitions, transforms, shadows, or animations — keeps drag 1:1 with cursor. */
+  .matrix-drag-over-col {
+    background-color: hsl(var(--primary) / 0.22) !important;
+  }
+
+  .matrix-drag-over-group {
+    background-color: hsl(var(--primary) / 0.28) !important;
+  }
+
+  .matrix-just-dropped {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: -2px;
+  }
+
+  .matrix-group-head[data-drag-over="true"] {
+    background-color: hsl(var(--primary) / 0.28) !important;
+  }
+
   .matrix-user-group-member {
     background-image: linear-gradient(
       hsl(var(--matrix-group-color, var(--primary)) / 0.06),
@@ -518,10 +758,13 @@
 
   .slot-busy {
     @apply cursor-help overflow-hidden text-[10px] leading-tight;
+    transition:
+      transform 200ms var(--ease-spring),
+      box-shadow 200ms var(--ease);
   }
-
   .slot-busy:hover {
     @apply ring-2 ring-inset ring-primary/60 z-10;
+    transform: scale(1.04);
   }
 
   .slot-busy .slot-content {
@@ -585,10 +828,12 @@
     opacity: 1;
     max-height: calc(100vh - 1rem);
     overflow-y: auto;
+    animation: tool-in 140ms var(--ease) both;
   }
 
   .view-toolbar {
     @apply flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2;
+    animation: fade-in-up 360ms var(--ease) both;
   }
 
   .view-title {
@@ -601,10 +846,23 @@
 
   .stat-pill {
     @apply inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1;
+    transition:
+      transform 200ms var(--ease-spring),
+      border-color 200ms var(--ease),
+      box-shadow 220ms var(--ease);
+  }
+  .stat-pill:hover {
+    transform: translateY(-2px);
+    border-color: hsl(var(--primary) / 0.45);
+    box-shadow: 0 6px 16px -8px hsl(var(--primary) / 0.3);
   }
 
   .stat-value {
     @apply text-lg font-bold tabular-nums;
+    transition: color 200ms var(--ease);
+  }
+  .stat-pill:hover .stat-value {
+    color: hsl(var(--primary));
   }
 
   .stat-label {
@@ -619,10 +877,23 @@
   .analytics-summary {
     @apply sticky z-20 flex flex-wrap items-center gap-2 rounded-xl border border-border/80 bg-gradient-to-b from-card to-card/80 px-4 py-2.5 shadow-md backdrop-blur;
     top: var(--header-h, 0px);
+    animation: fade-in-down 360ms var(--ease) both;
   }
 
   .summary-metric {
     @apply inline-flex h-9 items-center gap-2 rounded-lg border border-border/60 bg-background/80 px-3 text-xs text-muted-foreground shadow-sm;
+    transition: transform 200ms var(--ease-spring), border-color 200ms var(--ease), box-shadow 200ms var(--ease);
+  }
+  .summary-metric:hover {
+    transform: translateY(-2px);
+    border-color: hsl(var(--primary) / 0.45);
+    box-shadow: 0 6px 18px -8px hsl(var(--primary) / 0.35);
+  }
+  .summary-metric small {
+    transition: color 200ms var(--ease);
+  }
+  .summary-metric:hover small {
+    color: hsl(var(--primary));
   }
 
   .summary-metric span {
@@ -635,6 +906,7 @@
 
   .plan-course {
     @apply space-y-2;
+    animation: fade-in-up 420ms var(--ease) both;
   }
 
   .plan-course-title {
@@ -644,6 +916,7 @@
 
   .plan-table-wrap {
     @apply overflow-x-clip rounded-xl border border-border/70 bg-card shadow-sm;
+    animation: fade-in 360ms var(--ease) both;
   }
 
   .plan-table {
@@ -665,7 +938,10 @@
   }
 
   .plan-table tbody td {
-    @apply border-b border-border/40 px-2.5 py-1.5 align-middle transition-colors;
+    @apply border-b border-border/40 px-2.5 py-1.5 align-middle;
+    transition:
+      background-color 240ms var(--ease),
+      color 200ms var(--ease);
   }
 
   .plan-table tbody tr:last-child td {
@@ -679,6 +955,10 @@
   .plan-row-subject > td:first-child::before {
     content: '';
     @apply absolute left-0 top-0 h-full w-1 bg-primary;
+    transition: width 240ms var(--ease);
+  }
+  .plan-row-subject:hover > td:first-child::before {
+    width: 4px;
   }
 
   .plan-row-subject:hover > td {
@@ -749,6 +1029,12 @@
   .plan-toggle {
     @apply inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground;
   }
+  .plan-toggle > svg {
+    transition: transform 240ms var(--ease-spring);
+  }
+  .plan-toggle:hover > svg {
+    transform: scale(1.2);
+  }
 
   .plan-type-chip {
     @apply inline-flex shrink-0 items-center rounded-md border border-border/70 bg-muted/50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground;
@@ -813,7 +1099,19 @@
   }
 
   .plan-input-group {
-    @apply inline-flex h-7 items-center gap-0.5 rounded-md border border-border bg-background px-0.5 transition-colors;
+    @apply inline-flex h-7 items-center gap-0.5 rounded-md border border-border bg-background px-0.5;
+    transition:
+      border-color 220ms var(--ease),
+      background-color 220ms var(--ease),
+      box-shadow 220ms var(--ease),
+      transform 200ms var(--ease-spring);
+  }
+  .plan-input-group:hover {
+    border-color: hsl(var(--muted-foreground) / 0.55);
+  }
+  .plan-input-group:focus-within {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px -4px hsl(var(--foreground) / 0.1);
   }
 
   .plan-input-group-compact {
@@ -822,18 +1120,18 @@
 
   .plan-input-group[data-state="changed"] {
     @apply border-amber-500/70 bg-amber-50 dark:bg-amber-950/30;
+    animation: wiggle 380ms ease-in-out;
   }
-
   .plan-input-group[data-state="saving"] {
     @apply border-sky-500/70 bg-sky-50 dark:bg-sky-950/30;
   }
-
   .plan-input-group[data-state="saved"] {
     @apply border-emerald-500/70 bg-emerald-50 dark:bg-emerald-950/30;
+    animation: value-pop 360ms var(--ease-spring);
   }
-
   .plan-input-group[data-state="error"] {
     @apply border-red-500/70 bg-red-50 dark:bg-red-950/30;
+    animation: error-shake 320ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
   }
 
   .plan-input {
@@ -854,6 +1152,10 @@
 
   .plan-input-status-saved {
     @apply text-emerald-700 dark:text-emerald-300;
+  }
+
+  .plan-input-status-saved > svg {
+    animation: check-pop 360ms var(--ease-spring);
   }
 
   .plan-input-status-error {
@@ -915,12 +1217,18 @@
   }
 
   .plan-progress-bar {
-    @apply h-full transition-all;
+    @apply h-full;
+    transition: width 600ms var(--ease), background-color 300ms var(--ease);
     box-shadow: 0 0 8px rgb(0 0 0 / 0.05);
+    animation: progress-fill 700ms var(--ease) both;
   }
 
   .plan-progress-label {
     @apply w-9 text-right text-xs font-semibold tabular-nums text-muted-foreground;
+    transition: color 200ms var(--ease);
+  }
+  .plan-progress:hover .plan-progress-label {
+    color: hsl(var(--primary));
   }
 
   .plan-row-subject .plan-progress-track {

@@ -66,7 +66,7 @@
 <div class="space-y-3">
   <div class="view-toolbar">
     <div class="flex min-w-[12rem] flex-1 items-center gap-2">
-      <div class="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+      <div class="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary transition-transform duration-300 hover:rotate-[-6deg] hover:scale-110">
         <CalendarRange class="h-4 w-4" />
       </div>
       <div>
@@ -75,9 +75,11 @@
       </div>
     </div>
     <div class="flex flex-wrap gap-2">
-      {#each statItems as stat (stat.label)}
-        <div class="stat-pill">
-          <span class={cn('stat-value', toneClass(stat.tone))}>{stat.value}</span>
+      {#each statItems as stat, index (stat.label)}
+        <div class="stat-pill animate-fade-in-up" style={`animation-delay: ${index * 50}ms`}>
+          {#key stat.value}
+            <span class={cn('stat-value', toneClass(stat.tone))}>{stat.value}</span>
+          {/key}
           <span class="stat-label">{stat.label}</span>
         </div>
       {/each}

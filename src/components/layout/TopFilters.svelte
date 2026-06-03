@@ -140,7 +140,7 @@
   <label class="filter-field filter-field-search">
     <span class="filter-label">Поиск</span>
     <div class="filter-search-wrap">
-      <Search class="pointer-events-none absolute left-3 top-2.5 z-30 h-4 w-4 text-muted-foreground" />
+      <Search class="filter-search-icon pointer-events-none absolute left-3 top-2.5 z-30 h-4 w-4 text-muted-foreground" />
       <Input
         class={searchClass}
         placeholder="Предмет, ФИО, ауд."

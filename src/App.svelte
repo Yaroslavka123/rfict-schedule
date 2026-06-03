@@ -225,7 +225,7 @@
   {/snippet}
 
   {#if $scheduleStore.loading && !schedule}
-    <Card contentClass="flex flex-col items-center justify-center gap-3 py-16 text-center">
+    <Card contentClass="flex animate-fade-in-up flex-col items-center justify-center gap-3 py-16 text-center" style="animation-delay: 0ms">
       <Loader2 class="h-6 w-6 animate-spin text-primary" />
       <div>
         <div class="text-sm font-semibold">Загружаю расписание</div>
@@ -233,8 +233,8 @@
       </div>
     </Card>
   {:else if !$scheduleStore.loading && $scheduleStore.error && !schedule}
-    <Card contentClass="flex flex-col items-center gap-3 py-16 text-center">
-      <AlertCircle class="h-10 w-10 text-destructive" />
+    <Card contentClass="flex animate-fade-in-up flex-col items-center gap-3 py-16 text-center" style="animation-delay: 0ms">
+      <AlertCircle class="h-10 w-10 text-destructive animate-error-shake" />
       <div>
         <h2 class="text-lg font-semibold">Не удалось загрузить расписание</h2>
         <p class="mt-1 text-sm text-muted-foreground">{formatScheduleError($scheduleStore.error)}</p>
@@ -245,7 +245,7 @@
     </Card>
   {:else if schedule}
     {#if activeTab === 'rooms'}
-    <div class="h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
+    <div class="tab-view h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
       <RoomsView
         roomData={$scheduleStore.index.roomOccupancyByWeek[filters.week] || null}
         groupFilter={filters.group}
@@ -255,7 +255,7 @@
     </div>
     {:else if activeTab === 'teachers'}
 
-    <div class="h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
+    <div class="tab-view h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
       <TeachersView
         teacherData={$scheduleStore.index.teacherOccupancyByWeek[filters.week] || null}
         groupFilter={filters.group}
@@ -265,7 +265,7 @@
     </div>
     {:else if activeTab === 'analytics'}
 
-    <div>
+    <div class="tab-view">
       <AnalyticsView
         course={filters.course}
         groupFilter={filters.group}
@@ -280,7 +280,7 @@
     </div>
     {:else if activeTab === 'schedule'}
 
-    <div>
+    <div class="tab-view">
       <ScheduleView
         groups={schedule.groups}
         lessons={filteredWeekLessons}

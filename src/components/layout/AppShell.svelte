@@ -12,6 +12,7 @@
     RefreshCw,
     Sun,
   } from '@lucide/svelte'
+  import { onMount } from 'svelte'
   import type { Snippet } from 'svelte'
 
   import Button from '@/components/ui/Button.svelte'
@@ -64,10 +65,32 @@
     children,
   }: AppShellProps = $props()
 
+  let scrolled = $state(false)
+  let themeKey = $state(0)
+  let refreshKey = $state(0)
+
+  onMount(() => {
+    const onScroll = () => {
+      scrolled = window.scrollY > 4
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  })
+
+  function handleThemeToggle() {
+    themeKey++
+    onToggleTheme()
+  }
+
+  function handleRefresh() {
+    refreshKey++
+    onRefresh()
+  }
 </script>
 
 <div class="app-shell" style="--header-h: 6.5rem;">
-  <header class="app-header">
+  <header class={cn('app-header', scrolled && 'is-scrolled')}>
     <div class="header-inner">
       <div class="header-top compact-header">
         <div class="brand-mark brand-mark-compact">
@@ -86,7 +109,7 @@
               onclick={() => onTabChange(tab.id)}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
-              <Icon class={cn('h-4 w-4', activeTab === tab.id && 'text-primary')} />
+              <Icon class="app-tab-icon h-4 w-4" />
               {tab.label}
             </button>
           {/each}
@@ -94,33 +117,39 @@
 
         <div class="header-actions">
           {#if loadedAt > 0}
-            <span class="hidden rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground lg:inline-flex">
+            <span class="loaded-at hidden rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground lg:inline-flex">
               {formatUpdatedAt(new Date(loadedAt).toISOString())}
             </span>
           {/if}
           <Button
             variant="secondary"
             class="h-9 px-3"
-            onclick={onRefresh}
+            onclick={handleRefresh}
             disabled={refreshing}
             aria-label="Обновить"
             title="Обновить данные"
           >
-            <RefreshCw class={cn('h-4 w-4', refreshing && 'animate-spin')} />
+            {#key refreshKey}
+              <RefreshCw class={cn('h-4 w-4', refreshing && 'animate-spin', !refreshing && 'spin-once')} />
+            {/key}
             <span class="hidden sm:inline">Обновить</span>
           </Button>
           <Button
             variant="secondary"
             class="h-9 px-3"
-            onclick={onToggleTheme}
+            onclick={handleThemeToggle}
             aria-label="Переключить тему"
             title="Сменить тему"
           >
-            {#if theme === 'dark'}
-              <Sun class="h-4 w-4" />
-            {:else}
-              <Moon class="h-4 w-4" />
-            {/if}
+            {#key themeKey}
+              <span class="theme-swap">
+                {#if theme === 'dark'}
+                  <Sun class="h-4 w-4" />
+                {:else}
+                  <Moon class="h-4 w-4" />
+                {/if}
+              </span>
+            {/key}
             <span class="hidden sm:inline">Тема</span>
           </Button>
         </div>

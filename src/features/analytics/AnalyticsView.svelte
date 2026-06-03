@@ -439,19 +439,27 @@
 <div class="analytics-page">
   <div class="analytics-summary">
     <div class="summary-metric">
-      <span>{summary.planned || '—'}</span>
+      {#key summary.planned}
+        <span class="inline-block animate-value-pop">{summary.planned || '—'}</span>
+      {/key}
       <small>план</small>
     </div>
     <div class="summary-metric">
-      <span>{summary.scheduled}</span>
+      {#key summary.scheduled}
+        <span class="inline-block animate-value-pop">{summary.scheduled}</span>
+      {/key}
       <small>расп.</small>
     </div>
     <div class="summary-metric">
-      <span>{summary.done}</span>
+      {#key summary.done}
+        <span class="inline-block animate-value-pop">{summary.done}</span>
+      {/key}
       <small>пров.</small>
     </div>
     <div class="summary-metric">
-      <span>{completion !== null ? `${completion}%` : '—'}</span>
+      {#key completion}
+        <span class="inline-block animate-value-pop">{completion !== null ? `${completion}%` : '—'}</span>
+      {/key}
       <small>итог</small>
     </div>
     <div class="ml-auto flex items-center gap-1.5">
@@ -462,7 +470,7 @@
         Свернуть
       </Button>
       <Button variant="secondary" class="h-8 px-3 text-xs" onclick={exportCsv}>
-        <Download class="h-3.5 w-3.5" />
+        <Download class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-y-px" />
         CSV
       </Button>
     </div>
@@ -474,8 +482,8 @@
       <div class="mt-1 text-sm text-muted-foreground">Измените курс, группу, тип занятия или поиск.</div>
     </Card>
   {:else}
-    {#each visibleRows as courseRow (courseRow.course)}
-      <section class="plan-course">
+    {#each visibleRows as courseRow, courseIndex (courseRow.course)}
+      <section class="plan-course" style={`animation-delay: ${courseIndex * 60}ms`}>
         {#if course === 'all'}
           <div class="plan-course-title">{courseRow.course} курс</div>
         {/if}
@@ -589,7 +597,11 @@
                         ></div>
                       </div>
                       <span class="plan-progress-label">
-                        {subjectPercent === null ? '—' : `${subjectPercent}%`}
+                        {#key subjectPercent}
+                          <span class="inline-block animate-value-pop">
+                            {subjectPercent === null ? '—' : `${subjectPercent}%`}
+                          </span>
+                        {/key}
                       </span>
                     </div>
                   </td>
@@ -621,15 +633,16 @@
                           </button>
                         {/if}
                       </td>
-                      <td class="plan-col-subject">
-                        {#if group.department}
-                          <div class="plan-group-dept">{group.department}</div>
-                        {/if}
+                      <td class="plan-col-subject plan-col-group-cell">
+                        <div class="plan-group-line">
+                          <span class="plan-group-name">{group.groupName}</span>
+                          {#if group.department}
+                            <span class="plan-group-dept-inline">{group.department}</span>
+                          {/if}
+                        </div>
                       </td>
-                      <td class="plan-col-type plan-col-group-empty">—</td>
-                      <td class="plan-col-group">
-                        <div class="plan-group-name">{group.groupName}</div>
-                      </td>
+                      <td class="plan-col-type plan-col-group-empty"></td>
+                      <td class="plan-col-group plan-col-group-empty"></td>
                       <td class="plan-col-plan">
                         <div class="plan-input-group" data-state={inputState(groupKeyId, groupChanged, !!savingRows[groupKeyId])}>
                           <Input
@@ -688,7 +701,11 @@
                             ></div>
                           </div>
                           <span class="plan-progress-label">
-                            {groupPercent === null ? '—' : `${groupPercent}%`}
+                            {#key groupPercent}
+                              <span class="inline-block animate-value-pop">
+                                {groupPercent === null ? '—' : `${groupPercent}%`}
+                              </span>
+                            {/key}
                           </span>
                         </div>
                       </td>
@@ -784,7 +801,11 @@
                                   ></div>
                                 </div>
                                 <span class="plan-progress-label">
-                                  {sgPercent === null ? '—' : `${sgPercent}%`}
+                                  {#key sgPercent}
+                                    <span class="inline-block animate-value-pop">
+                                      {sgPercent === null ? '—' : `${sgPercent}%`}
+                                    </span>
+                                  {/key}
                                 </span>
                               </div>
                             </td>
@@ -868,7 +889,11 @@
                                   ></div>
                                 </div>
                                 <span class="plan-progress-label">
-                                  {tPercent === null ? '—' : `${tPercent}%`}
+                                  {#key tPercent}
+                                    <span class="inline-block animate-value-pop">
+                                      {tPercent === null ? '—' : `${tPercent}%`}
+                                    </span>
+                                  {/key}
                                 </span>
                               </div>
                             </td>
