@@ -611,232 +611,232 @@
     @apply text-xs text-muted-foreground;
   }
 
-  /* Plan-fact: nested course → subject → group → subgroup cards */
+  /* Plan-fact: clean, table-like layout */
   .analytics-page {
-    @apply space-y-2;
+    @apply space-y-3;
   }
 
   .analytics-summary {
-    @apply flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2;
+    @apply sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-sm;
   }
 
   .summary-metric {
-    @apply inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs text-muted-foreground;
+    @apply inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs text-muted-foreground;
   }
 
   .summary-metric span {
-    @apply text-sm font-bold tabular-nums text-foreground;
+    @apply text-base font-bold tabular-nums text-foreground;
   }
 
   .summary-metric small {
-    @apply text-xs;
+    @apply text-xs uppercase tracking-wide text-muted-foreground;
   }
 
   .plan-course {
-    @apply space-y-2;
+    @apply space-y-1.5;
   }
 
   .plan-course-title {
-    @apply px-1 text-sm font-bold text-primary;
-  }
-
-  .plan-group {
-    @apply overflow-hidden rounded-lg border border-border bg-card;
-  }
-
-  .plan-group + .plan-group {
-    @apply mt-2;
-  }
-
-  .plan-group-head {
-    @apply flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/45 px-3 py-2;
-  }
-
-  .plan-group-name {
-    @apply text-sm font-bold text-foreground;
-  }
-
-  .plan-muted {
-    @apply text-xs text-muted-foreground;
-  }
-
-  .plan-row-metrics {
-    @apply flex flex-wrap items-center gap-2 text-xs text-muted-foreground;
-  }
-
-  .plan-row-metrics span {
-    @apply rounded-md border border-border bg-background px-2 py-1 tabular-nums;
-  }
-
-  .plan-subgroup {
-    @apply border-b border-border/70 last:border-b-0;
-  }
-
-  .plan-subgroup-head {
-    @apply flex items-center justify-between gap-2 px-3 py-1.5 text-xs font-semibold text-muted-foreground;
+    @apply px-1 text-sm font-bold uppercase text-primary;
+    letter-spacing: 0.04em;
   }
 
   .plan-table-wrap {
-    @apply overflow-x-auto;
+    @apply overflow-x-auto rounded-lg border border-border bg-card shadow-card;
   }
 
   .plan-table {
-    @apply w-full min-w-[46rem] border-collapse text-sm;
+    @apply w-full min-w-[52rem] border-collapse text-sm;
   }
 
-  .plan-table th {
-    @apply border-y border-border bg-muted/45 px-3 py-2 text-left text-xs font-bold uppercase text-muted-foreground;
-    letter-spacing: 0;
+  .plan-table thead th {
+    @apply sticky top-0 z-10 border-b-2 border-border bg-muted/70 px-3 py-2.5 text-left text-[11px] font-bold uppercase text-muted-foreground;
+    letter-spacing: 0.04em;
   }
 
-  .plan-table td {
-    @apply border-b border-border/70 px-3 py-2 align-middle;
+  .plan-table thead th.plan-col-num {
+    @apply text-center;
+  }
+
+  .plan-table thead th.plan-col-progress {
+    @apply text-left;
+  }
+
+  .plan-table tbody td {
+    @apply border-b border-border/50 px-3 py-2 align-middle;
   }
 
   .plan-table tbody tr:last-child td {
     @apply border-b-0;
   }
 
-  .plan-subject {
-    @apply max-w-[28rem] truncate font-semibold;
+  .plan-row-subject > td {
+    @apply bg-primary/5 py-3;
   }
 
-  .plan-number {
-    @apply text-center font-semibold tabular-nums;
+  .plan-row-subject:hover > td {
+    @apply bg-primary/10;
   }
 
-  .plan-input-wrap {
-    @apply flex items-center gap-1;
+  .plan-row-group > td {
+    @apply bg-muted/30;
+  }
+
+  .plan-row-group:hover > td {
+    @apply bg-muted/50;
+  }
+
+  .plan-row-subgroup > td {
+    @apply bg-card;
+  }
+
+  .plan-row-subgroup:hover > td {
+    @apply bg-muted/30;
+  }
+
+  .plan-row-subgroup-first > td {
+    @apply border-t border-border;
+  }
+
+  .plan-col-subject {
+    width: 32%;
+    min-width: 12rem;
+  }
+
+  .plan-col-group {
+    width: 22%;
+    min-width: 10rem;
+  }
+
+  .plan-col-plan {
+    width: 9rem;
+  }
+
+  .plan-col-num {
+    width: 4.5rem;
+  }
+
+  .plan-col-progress {
+    width: 11rem;
+    min-width: 9rem;
+  }
+
+  .plan-subject-name {
+    @apply truncate text-sm font-bold text-foreground;
+  }
+
+  .plan-subject-types {
+    @apply mt-1 flex flex-wrap items-center gap-1 text-[10px];
+  }
+
+  .plan-subject-types-sep {
+    @apply text-muted-foreground/60;
+  }
+
+  .plan-subject-type-chip {
+    @apply inline-flex items-center rounded border border-border/60 bg-background px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground;
+  }
+
+  .plan-group-name {
+    @apply truncate text-xs font-bold text-foreground;
+  }
+
+  .plan-group-dept {
+    @apply text-[10px] uppercase text-muted-foreground;
+    letter-spacing: 0.04em;
+  }
+
+  .plan-col-group-empty {
+    @apply text-xs text-muted-foreground/60;
+  }
+
+  .plan-subgroup-cell {
+    @apply flex items-center gap-1.5 pl-3 text-xs text-muted-foreground;
+  }
+
+  .plan-subgroup-cell::before {
+    content: '↳';
+    @apply text-muted-foreground/40;
+  }
+
+  .plan-row-subgroup:not(.plan-row-subgroup-first) .plan-subgroup-cell {
+    @apply text-muted-foreground/80;
+  }
+
+  .plan-subgroup-label {
+    @apply font-semibold text-foreground;
+  }
+
+  .plan-subgroup-parity {
+    @apply rounded border border-border bg-background px-1 text-[10px] font-bold uppercase text-muted-foreground;
+  }
+
+  .plan-subgroup-resolved {
+    @apply text-[10px] text-muted-foreground/70;
+  }
+
+  .plan-input-group {
+    @apply inline-flex h-8 items-center gap-1 rounded-md border border-border bg-background p-0.5;
   }
 
   .plan-input {
-    @apply h-8 w-20 px-2 text-center tabular-nums;
+    @apply h-7 w-16 border-0 bg-transparent px-2 text-center text-sm font-semibold tabular-nums shadow-none focus:ring-0;
   }
 
+  .plan-input-save {
+    @apply h-7 w-7 p-0;
+  }
+
+  .plan-col-plan-readonly {
+    @apply text-center text-sm font-semibold tabular-nums text-muted-foreground;
+  }
+
+  .plan-num {
+    @apply text-center text-sm font-bold tabular-nums;
+  }
+
+  .plan-num-done {
+    @apply text-foreground;
+  }
+
+  .plan-num-remain {
+    @apply text-muted-foreground;
+  }
+
+  .plan-cell-good {
+    @apply text-emerald-600;
+  }
+  .plan-cell-over {
+    @apply text-amber-600;
+  }
+  .plan-cell-under {
+    @apply text-red-500;
+  }
+  .plan-cell-progress {
+    @apply text-sky-600;
+  }
+  .plan-cell-neutral {
+    @apply text-muted-foreground;
+  }
+
+  .dark .plan-cell-good { @apply text-emerald-400; }
+  .dark .plan-cell-over { @apply text-amber-400; }
+  .dark .plan-cell-under { @apply text-red-400; }
+  .dark .plan-cell-progress { @apply text-sky-400; }
+
   .plan-progress {
-    @apply flex min-w-24 items-center gap-2;
+    @apply flex min-w-28 items-center gap-2;
   }
 
   .plan-progress-track {
-    @apply h-1.5 flex-1 overflow-hidden rounded-full bg-muted;
+    @apply h-2 flex-1 overflow-hidden rounded-full bg-muted;
   }
 
   .plan-progress-bar {
     @apply h-full transition-all;
   }
 
-  .plan-progress span {
-    @apply w-8 text-right text-xs tabular-nums text-muted-foreground;
-  }
-
-  .plan-fact-section {
-    @apply rounded-lg border border-border bg-card overflow-hidden shadow-card;
-  }
-  .plan-fact-section-header {
-    @apply flex flex-wrap items-center justify-between gap-3 px-3 py-2 text-sm font-semibold bg-muted/50;
-  }
-  .plan-fact-subject-header {
-    @apply flex items-center justify-between gap-3 px-3 py-2 text-[13px] font-semibold;
-  }
-  .plan-fact-subject-row + .plan-fact-subject-row {
-    @apply border-t border-border;
-  }
-  .plan-fact-group-row {
-    @apply grid items-center gap-3 px-3 py-2 text-xs;
-    grid-template-columns: 1fr 6rem 5rem 5rem 6rem;
-  }
-  .plan-fact-group-row + .plan-fact-group-row { @apply border-t border-border/50; }
-  .plan-fact-subgroup-row {
-    @apply grid items-center gap-3 pl-8 pr-3 py-1 text-xs text-muted-foreground;
-    grid-template-columns: 1fr 6rem 5rem 5rem 6rem;
-  }
-
-  .plan-subject-card {
-    @apply overflow-hidden rounded-lg border border-border bg-card shadow-card;
-  }
-
-  .plan-subject-card + .plan-subject-card {
-    @apply mt-2;
-  }
-
-  .plan-subject-head {
-    @apply flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/45 px-3 py-2;
-  }
-
-  .plan-subject-main {
-    @apply min-w-0 flex-1;
-  }
-
-  .plan-subject-title {
-    @apply max-w-[48rem] truncate text-sm font-bold text-foreground;
-  }
-
-  .plan-subject-meta {
-    @apply mt-0.5 truncate text-xs text-muted-foreground;
-  }
-
-  .plan-subject-actions {
-    @apply flex flex-wrap items-center justify-end gap-2;
-  }
-
-  .plan-scope-control {
-    @apply inline-flex h-9 items-center gap-1 rounded-md border border-border bg-background px-1.5 text-xs text-muted-foreground;
-  }
-
-  .plan-scope-control span {
-    @apply px-1 font-semibold;
-  }
-
-  .plan-fact-metrics {
-    @apply flex flex-wrap items-center justify-end gap-1.5 text-xs text-muted-foreground;
-  }
-
-  .plan-fact-metrics span,
-  .plan-row-value {
-    @apply inline-flex h-8 items-center rounded-md border border-border bg-background px-2 font-semibold tabular-nums text-muted-foreground;
-  }
-
-  .plan-fact-groups {
-    @apply divide-y divide-border/70;
-  }
-
-  .plan-fact-group-row {
-    @apply bg-card;
-    display: block;
-  }
-
-  .plan-fact-group-head {
-    @apply flex flex-wrap items-center justify-between gap-2 bg-muted/20 px-3 py-2;
-  }
-
-  .plan-fact-subgroups {
-    @apply divide-y divide-border/50;
-  }
-
-  .plan-fact-subgroup-row {
-    @apply grid items-center gap-2 px-3 py-2 text-xs text-muted-foreground;
-    grid-template-columns: minmax(9rem, 1fr) auto auto auto auto minmax(7rem, 10rem);
-  }
-
-  .plan-fact-label {
-    @apply flex min-w-0 items-center gap-2 font-semibold text-foreground;
-  }
-
-  .plan-fact-label span {
-    @apply truncate;
-  }
-
-  .plan-fact-label small {
-    @apply rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground;
-  }
-
-  @media (max-width: 980px) {
-    .plan-fact-subgroup-row {
-      grid-template-columns: 1fr;
-    }
-
-    .plan-fact-subgroup-row > * {
-      @apply justify-self-start;
-    }
+  .plan-progress-label {
+    @apply w-9 text-right text-xs font-semibold tabular-nums text-muted-foreground;
   }
 }

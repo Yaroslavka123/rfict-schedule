@@ -103,59 +103,70 @@
     )
   }
 
-  function scopedRowKey(courseNumber: number, subject: string, groupId?: string, subgroup?: string | null) {
-    return `${courseNumber}:${planKey(subject, null, groupId, subgroup)}`
+  function subjectKey(courseNumber: number, subject: string) {
+    return `${courseNumber}:${planKey(subject)}`
+  }
+
+  function groupKey(courseNumber: number, subject: string, groupId: string) {
+    return `${courseNumber}:${planKey(subject, null, groupId)}`
   }
 
   function currentPlan(courseNumber: number) {
     return plans[courseNumber] || flatPlan
   }
 
-  function ownPlanValue(courseNumber: number, subject: string, groupId?: string, subgroup?: string | null) {
-    return currentPlan(courseNumber)[planKey(subject, null, groupId, subgroup)]
+  function subjectPlanValue(courseNumber: number, subject: string) {
+    return currentPlan(courseNumber)[planKey(subject)]
   }
 
-  function resolvedPlanValue(courseNumber: number, subject: string, groupId?: string, subgroup?: string | null) {
-    if (groupId && subgroup) {
-      const subgroupPlan = ownPlanValue(courseNumber, subject, groupId, subgroup)
-      if (subgroupPlan !== undefined) return subgroupPlan
-    }
-    if (groupId) {
-      const groupPlan = ownPlanValue(courseNumber, subject, groupId)
-      if (groupPlan !== undefined) return groupPlan
-    }
-    return ownPlanValue(courseNumber, subject)
+  function groupPlanValue(courseNumber: number, subject: string, groupId: string) {
+    return currentPlan(courseNumber)[planKey(subject, null, groupId)]
   }
 
-  function inputValue(courseNumber: number, subject: string, groupId?: string, subgroup?: string | null) {
-    const key = scopedRowKey(courseNumber, subject, groupId, subgroup)
-    const saved = ownPlanValue(courseNumber, subject, groupId, subgroup)
-    const resolved = resolvedPlanValue(courseNumber, subject, groupId, subgroup)
+  function inputValue(key: string, saved: number | undefined, resolved: number | undefined) {
     return planInputs[key] ?? (saved !== undefined ? String(saved) : resolved !== undefined ? String(resolved) : '')
   }
 
-  function setPlanInput(courseNumber: number, subject: string, value: string, groupId?: string, subgroup?: string | null) {
-    planInputs = { ...planInputs, [scopedRowKey(courseNumber, subject, groupId, subgroup)]: value }
+  function setInput(key: string, value: string) {
+    planInputs = { ...planInputs, [key]: value }
   }
 
-  function hasPlanChange(courseNumber: number, subject: string, groupId?: string, subgroup?: string | null) {
-    const resolved = resolvedPlanValue(courseNumber, subject, groupId, subgroup)
+  function hasChange(key: string, resolved: number | undefined) {
     const baseline = resolved !== undefined ? String(resolved) : ''
-    return inputValue(courseNumber, subject, groupId, subgroup).trim() !== baseline
+    return (planInputs[key] ?? '').trim() !== baseline
   }
 
-  async function savePlan(courseNumber: number, subject: string, groupId?: string, subgroup?: string | null) {
-    const key = scopedRowKey(courseNumber, subject, groupId, subgroup)
-    const parsed = parseInt(inputValue(courseNumber, subject, groupId, subgroup), 10)
+  async function saveSubjectPlan(courseNumber: number, subject: string) {
+    const key = subjectKey(courseNumber, subject)
+    const parsed = parseInt(planInputs[key] ?? '', 10)
     if (Number.isNaN(parsed) || parsed < 0) return
-
-    const entry: CoursePlanEntry = { course: courseNumber, subject, planned_pairs: parsed }
-    if (groupId) entry.group = groupId
-    if (subgroup) entry.subgroup = subgroup
 
     savingRows = { ...savingRows, [key]: true }
     try {
-      await onPlanChange(entry)
+      await onPlanChange({ course: courseNumber, subject, planned_pairs: parsed })
+      const nextInputs = { ...planInputs }
+      delete nextInputs[key]
+      planInputs = nextInputs
+    } catch (error) {
+      alert(`Не удалось сохранить план для "${subject}": ${(error as Error).message}`)
+    } finally {
+      savingRows = { ...savingRows, [key]: false }
+    }
+  }
+
+  async function saveGroupPlan(courseNumber: number, subject: string, groupId: string) {
+    const key = groupKey(courseNumber, subject, groupId)
+    const parsed = parseInt(planInputs[key] ?? '', 10)
+    if (Number.isNaN(parsed) || parsed < 0) return
+
+    savingRows = { ...savingRows, [key]: true }
+    try {
+      await onPlanChange({
+        course: courseNumber,
+        subject,
+        planned_pairs: parsed,
+        group: groupId,
+      })
       const nextInputs = { ...planInputs }
       delete nextInputs[key]
       planInputs = nextInputs
@@ -167,7 +178,7 @@
   }
 
   function exportCsv() {
-    const header = ['Курс', 'Предмет', 'Типы', 'Группа', 'Подгруппа', 'План', 'В расписании', 'Проведено', 'Осталось']
+    const header = ['Курс', 'Предмет', 'Типы', 'Группа', 'Подгруппа', 'План', 'В расписании', 'Проведено', 'Осталось', '%']
     const rows: (string | number)[][] = []
 
     visibleRows.forEach((courseRow) => {
@@ -184,6 +195,7 @@
               subgroup.cell.scheduled,
               subgroup.cell.done,
               remaining(subgroup.cell.planned, subgroup.cell.done) ?? '',
+              progressPercent(subgroup.cell.planned, subgroup.cell.done) ?? '',
             ])
           })
         })
@@ -223,6 +235,22 @@
         return 'bg-sky-500'
       default:
         return 'bg-muted-foreground/35'
+    }
+  }
+
+  function statusTone(cell: { planned: number | null; scheduled: number; done: number }) {
+    const color = statusColor(cell)
+    switch (color) {
+      case 'green':
+        return 'plan-cell-good'
+      case 'orange':
+        return 'plan-cell-over'
+      case 'red':
+        return 'plan-cell-under'
+      case 'blue':
+        return 'plan-cell-progress'
+      default:
+        return 'plan-cell-neutral'
     }
   }
 
@@ -273,167 +301,210 @@
     </Card>
   {:else}
     {#each visibleRows as courseRow (courseRow.course)}
-      <div class="plan-course">
+      <section class="plan-course">
         {#if course === 'all'}
           <div class="plan-course-title">{courseRow.course} курс</div>
         {/if}
 
-        {#each courseRow.subjects as subject (`${courseRow.course}-${subject.subject}`)}
-          {@const subjectChanged = hasPlanChange(courseRow.course, subject.subject)}
-          {@const subjectSaveKey = scopedRowKey(courseRow.course, subject.subject)}
-          {@const subjectPercent = progressPercent(subject.totalPlanned || null, subject.totalDone)}
-          <section class="plan-subject-card">
-            <div class="plan-subject-head">
-              <div class="plan-subject-main">
-                <div class="plan-subject-title" title={subject.subject}>{subject.subject}</div>
-                <div class="plan-subject-meta">{typeLabels(subject.types)}</div>
-              </div>
-
-              <div class="plan-subject-actions">
-                <div class="plan-scope-control" title="План предмета по умолчанию для курса">
-                  <span>курс</span>
-                  <Input
-                    class="plan-input"
-                    type="number"
-                    min={0}
-                    value={inputValue(courseRow.course, subject.subject)}
-                    placeholder="—"
-                    oninput={(event) => setPlanInput(courseRow.course, subject.subject, event.currentTarget.value)}
-                    onkeydown={(event) => {
-                      if (event.key === 'Enter' && subjectChanged) void savePlan(courseRow.course, subject.subject)
-                    }}
-                  />
-                  <Button
-                    variant={subjectChanged ? 'primary' : 'ghost'}
-                    class="h-8 w-8 p-0"
-                    onclick={() => void savePlan(courseRow.course, subject.subject)}
-                    disabled={!subjectChanged || savingRows[subjectSaveKey]}
-                    title="Сохранить план курса"
-                    aria-label="Сохранить план курса"
-                  >
-                    <Save class="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-
-                <div class="plan-fact-metrics">
-                  <span>план {subject.totalPlanned || '—'}</span>
-                  <span>расп. {subject.totalScheduled}</span>
-                  <span>пров. {subject.totalDone}</span>
-                  <span>{subjectPercent === null ? '—' : `${subjectPercent}%`}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="plan-fact-groups">
-              {#each subject.groups as group (`${courseRow.course}-${subject.subject}-${group.groupId}`)}
-                {@const groupChanged = hasPlanChange(courseRow.course, subject.subject, group.groupId)}
-                {@const groupSaveKey = scopedRowKey(courseRow.course, subject.subject, group.groupId)}
-                <div class="plan-fact-group-row">
-                  <div class="plan-fact-group-head">
-                    <div>
-                      <div class="plan-group-name">{group.groupName}</div>
-                      {#if group.department}
-                        <div class="plan-muted">{group.department}</div>
-                      {/if}
+        <div class="plan-table-wrap">
+          <table class="plan-table">
+            <thead>
+              <tr>
+                <th class="plan-col-subject">Предмет</th>
+                <th class="plan-col-group">Группа / подгруппа</th>
+                <th class="plan-col-plan">План</th>
+                <th class="plan-col-num">Расп.</th>
+                <th class="plan-col-num">Пров.</th>
+                <th class="plan-col-num">Ост.</th>
+                <th class="plan-col-progress">Прогресс</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each courseRow.subjects as subject (`${courseRow.course}-${subject.subject}`)}
+                {@const subjectSaved = subjectPlanValue(courseRow.course, subject.subject)}
+                {@const subjectKeyId = subjectKey(courseRow.course, subject.subject)}
+                {@const subjectChanged = hasChange(subjectKeyId, subjectSaved)}
+                {@const subjectPercent = progressPercent(subject.totalPlanned || null, subject.totalDone)}
+                <tr class="plan-row plan-row-subject">
+                  <td class="plan-col-subject">
+                    <div class="plan-subject-name" title={subject.subject}>{subject.subject}</div>
+                    <div class="plan-subject-types">
+                      {#each subject.types as type, i (type)}
+                        {#if i > 0}<span class="plan-subject-types-sep">·</span>{/if}
+                        <span class="plan-subject-type-chip">{getLessonTypeLabel(type)}</span>
+                      {/each}
                     </div>
-
-                    <div class="plan-scope-control" title="Переопределить план для группы">
-                      <span>группа</span>
+                  </td>
+                  <td class="plan-col-group plan-col-group-empty">—</td>
+                  <td class="plan-col-plan">
+                    <div class="plan-input-group">
                       <Input
                         class="plan-input"
                         type="number"
                         min={0}
-                        value={inputValue(courseRow.course, subject.subject, group.groupId)}
+                        value={inputValue(subjectKeyId, subjectSaved, subjectSaved)}
                         placeholder="—"
-                        oninput={(event) => setPlanInput(courseRow.course, subject.subject, event.currentTarget.value, group.groupId)}
+                        oninput={(event) => setInput(subjectKeyId, event.currentTarget.value)}
                         onkeydown={(event) => {
-                          if (event.key === 'Enter' && groupChanged) void savePlan(courseRow.course, subject.subject, group.groupId)
+                          if (event.key === 'Enter' && subjectChanged) {
+                            void saveSubjectPlan(courseRow.course, subject.subject)
+                          }
                         }}
                       />
                       <Button
-                        variant={groupChanged ? 'primary' : 'ghost'}
-                        class="h-8 w-8 p-0"
-                        onclick={() => void savePlan(courseRow.course, subject.subject, group.groupId)}
-                        disabled={!groupChanged || savingRows[groupSaveKey]}
-                        title="Сохранить план группы"
-                        aria-label="Сохранить план группы"
+                        variant={subjectChanged ? 'primary' : 'ghost'}
+                        class="plan-input-save"
+                        onclick={() => void saveSubjectPlan(courseRow.course, subject.subject)}
+                        disabled={!subjectChanged || savingRows[subjectKeyId]}
+                        title="Сохранить план предмета (по умолчанию для всех групп)"
+                        aria-label="Сохранить план предмета"
                       >
                         <Save class="h-3.5 w-3.5" />
                       </Button>
                     </div>
-
-                    <div class="plan-row-metrics">
-                      <span>план {group.totalPlanned || '—'}</span>
-                      <span>расп. {group.totalScheduled}</span>
-                      <span>пров. {group.totalDone}</span>
+                  </td>
+                  <td class={cn('plan-col-num plan-num', statusTone({ planned: subject.totalPlanned || null, scheduled: subject.totalScheduled, done: subject.totalDone }))}>
+                    {subject.totalScheduled}
+                  </td>
+                  <td class="plan-col-num plan-num plan-num-done">{subject.totalDone}</td>
+                  <td class="plan-col-num plan-num plan-num-remain">
+                    {remaining(subject.totalPlanned || null, subject.totalDone) ?? '—'}
+                  </td>
+                  <td class="plan-col-progress">
+                    <div class="plan-progress">
+                      <div class="plan-progress-track">
+                        <div
+                          class={cn('plan-progress-bar', statusClass(statusColor({ planned: subject.totalPlanned || null, scheduled: subject.totalScheduled, done: subject.totalDone })))}
+                          style={`width: ${subjectPercent === null ? 0 : Math.min(subjectPercent, 100)}%`}
+                        ></div>
+                      </div>
+                      <span class="plan-progress-label">
+                        {subjectPercent === null ? '—' : `${subjectPercent}%`}
+                      </span>
                     </div>
-                  </div>
+                  </td>
+                </tr>
 
-                  <div class="plan-fact-subgroups">
-                    {#each group.subgroups as subgroup (`${group.groupId}-${subgroup.subgroup || 'all'}`)}
-                      {@const subgroupChanged = subgroup.subgroup ? hasPlanChange(courseRow.course, subject.subject, group.groupId, subgroup.subgroup) : false}
-                      {@const subgroupSaveKey = subgroup.subgroup ? scopedRowKey(courseRow.course, subject.subject, group.groupId, subgroup.subgroup) : ''}
-                      {@const percent = progressPercent(subgroup.cell.planned, subgroup.cell.done)}
-                      <div class="plan-fact-subgroup-row">
-                        <div class="plan-fact-label">
-                          <span>{subgroupLabel(subgroup.subgroup)}</span>
+                {#each subject.groups as group (`${courseRow.course}-${subject.subject}-${group.groupId}`)}
+                  {@const groupSaved = groupPlanValue(courseRow.course, subject.subject, group.groupId)}
+                  {@const groupKeyId = groupKey(courseRow.course, subject.subject, group.groupId)}
+                  {@const groupChanged = hasChange(groupKeyId, groupSaved)}
+                  {@const groupPercent = progressPercent(group.totalPlanned || null, group.totalDone)}
+                  {@const firstSubgroup = group.subgroups[0]}
+                  <tr class="plan-row plan-row-group">
+                    <td class="plan-col-subject">
+                      {#if group.department}
+                        <div class="plan-group-dept">{group.department}</div>
+                      {/if}
+                    </td>
+                    <td class="plan-col-group">
+                      <div class="plan-group-name">{group.groupName}</div>
+                    </td>
+                    <td class="plan-col-plan">
+                      <div class="plan-input-group">
+                        <Input
+                          class="plan-input"
+                          type="number"
+                          min={0}
+                          value={inputValue(groupKeyId, groupSaved, groupSaved)}
+                          placeholder="—"
+                          oninput={(event) => setInput(groupKeyId, event.currentTarget.value)}
+                          onkeydown={(event) => {
+                            if (event.key === 'Enter' && groupChanged) {
+                              void saveGroupPlan(courseRow.course, subject.subject, group.groupId)
+                            }
+                          }}
+                        />
+                        <Button
+                          variant={groupChanged ? 'primary' : 'ghost'}
+                          class="plan-input-save"
+                          onclick={() => void saveGroupPlan(courseRow.course, subject.subject, group.groupId)}
+                          disabled={!groupChanged || savingRows[groupKeyId]}
+                          title="Сохранить план для группы (переопределяет план предмета)"
+                          aria-label="Сохранить план группы"
+                        >
+                          <Save class="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                    <td class={cn('plan-col-num plan-num', statusTone({ planned: group.totalPlanned || null, scheduled: group.totalScheduled, done: group.totalDone }))}>
+                      {group.totalScheduled}
+                    </td>
+                    <td class="plan-col-num plan-num plan-num-done">{group.totalDone}</td>
+                    <td class="plan-col-num plan-num plan-num-remain">
+                      {remaining(group.totalPlanned || null, group.totalDone) ?? '—'}
+                    </td>
+                    <td class="plan-col-progress">
+                      <div class="plan-progress">
+                        <div class="plan-progress-track">
+                          <div
+                            class={cn('plan-progress-bar', statusClass(statusColor({ planned: group.totalPlanned || null, scheduled: group.totalScheduled, done: group.totalDone })))}
+                            style={`width: ${groupPercent === null ? 0 : Math.min(groupPercent, 100)}%`}
+                          ></div>
+                        </div>
+                        <span class="plan-progress-label">
+                          {groupPercent === null ? '—' : `${groupPercent}%`}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {#each group.subgroups as subgroup, subgroupIndex (subgroup.subgroup || 'all')}
+                    {@const sgPercent = progressPercent(subgroup.cell.planned, subgroup.cell.done)}
+                    <tr class="plan-row plan-row-subgroup" class:plan-row-subgroup-first={subgroupIndex === 0}>
+                      <td class="plan-col-subject"></td>
+                      <td class="plan-col-group">
+                        <div class="plan-subgroup-cell">
+                          <span class="plan-subgroup-label">
+                            {subgroup.subgroup ? `${subgroup.subgroup} пг` : 'вся группа'}
+                          </span>
                           {#if parityLabel(subgroup.parity)}
-                            <small>{parityLabel(subgroup.parity)}</small>
+                            <span class="plan-subgroup-parity">{parityLabel(subgroup.parity)}</span>
+                          {/if}
+                          {#if !subgroup.subgroup}
+                            <span class="plan-subgroup-resolved">
+                              {#if subgroup.cell.planned === firstSubgroup?.cell.planned && groupSaved === undefined}
+                                (план предмета)
+                              {:else if subgroup.cell.planned === (groupSaved ?? subjectSaved ?? undefined) && (groupSaved !== undefined || subjectSaved !== undefined)}
+                                (план {groupSaved !== undefined ? 'группы' : 'предмета'})
+                              {:else if subgroup.cell.planned !== undefined}
+                                (план подгруппы)
+                              {/if}
+                            </span>
                           {/if}
                         </div>
-
-                        {#if subgroup.subgroup}
-                          <div class="plan-scope-control" title="Переопределить план для подгруппы">
-                            <span>пг</span>
-                            <Input
-                              class="plan-input"
-                              type="number"
-                              min={0}
-                              value={inputValue(courseRow.course, subject.subject, group.groupId, subgroup.subgroup)}
-                              placeholder="—"
-                              oninput={(event) => setPlanInput(courseRow.course, subject.subject, event.currentTarget.value, group.groupId, subgroup.subgroup)}
-                              onkeydown={(event) => {
-                                if (event.key === 'Enter' && subgroupChanged) {
-                                  void savePlan(courseRow.course, subject.subject, group.groupId, subgroup.subgroup)
-                                }
-                              }}
-                            />
-                            <Button
-                              variant={subgroupChanged ? 'primary' : 'ghost'}
-                              class="h-8 w-8 p-0"
-                              onclick={() => void savePlan(courseRow.course, subject.subject, group.groupId, subgroup.subgroup)}
-                              disabled={!subgroupChanged || savingRows[subgroupSaveKey]}
-                              title="Сохранить план подгруппы"
-                              aria-label="Сохранить план подгруппы"
-                            >
-                              <Save class="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        {:else}
-                          <div class="plan-row-value">план {subgroup.cell.planned ?? '—'}</div>
-                        {/if}
-
-                        <div class="plan-number">расп. {subgroup.cell.scheduled}</div>
-                        <div class="plan-number">пров. {subgroup.cell.done}</div>
-                        <div class="plan-number">ост. {remaining(subgroup.cell.planned, subgroup.cell.done) ?? '—'}</div>
+                      </td>
+                      <td class="plan-col-plan plan-col-plan-readonly">
+                        {subgroup.cell.planned ?? '—'}
+                      </td>
+                      <td class={cn('plan-col-num plan-num', statusTone(subgroup.cell))}>
+                        {subgroup.cell.scheduled}
+                      </td>
+                      <td class="plan-col-num plan-num plan-num-done">{subgroup.cell.done}</td>
+                      <td class="plan-col-num plan-num plan-num-remain">
+                        {remaining(subgroup.cell.planned, subgroup.cell.done) ?? '—'}
+                      </td>
+                      <td class="plan-col-progress">
                         <div class="plan-progress">
                           <div class="plan-progress-track">
                             <div
                               class={cn('plan-progress-bar', statusClass(statusColor(subgroup.cell)))}
-                              style={`width: ${percent === null ? 0 : Math.min(percent, 100)}%`}
+                              style={`width: ${sgPercent === null ? 0 : Math.min(sgPercent, 100)}%`}
                             ></div>
                           </div>
-                          <span>{percent === null ? '—' : `${percent}%`}</span>
+                          <span class="plan-progress-label">
+                            {sgPercent === null ? '—' : `${sgPercent}%`}
+                          </span>
                         </div>
-                      </div>
-                    {/each}
-                  </div>
-                </div>
+                      </td>
+                    </tr>
+                  {/each}
+                {/each}
               {/each}
-            </div>
-          </section>
-        {/each}
-      </div>
+            </tbody>
+          </table>
+        </div>
+      </section>
     {/each}
   {/if}
 </div>
