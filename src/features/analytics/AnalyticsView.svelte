@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ChevronDown, ChevronRight, Download, Save } from '@lucide/svelte'
+  import { Check, ChevronDown, ChevronRight, Download, Loader2, Save, X } from '@lucide/svelte'
 
   import { planKey } from '@/api/scheduleClient'
   import Button from '@/components/ui/Button.svelte'
@@ -52,6 +52,8 @@
   let today = $state(new Date())
   let planInputs = $state<Record<string, string>>({})
   let savingRows = $state<Record<string, boolean>>({})
+  let saveStatus = $state<Record<string, 'saved' | 'error'>>({})
+  const savedTimers = new Map<string, ReturnType<typeof setTimeout>>()
   let expandedSubjects = $state<Set<string>>(new Set())
   let expandedGroups = $state<Set<string>>(new Set())
 
@@ -201,6 +203,16 @@
 
   function setInput(key: string, value: string) {
     planInputs = { ...planInputs, [key]: value }
+    if (saveStatus[key] === 'saved') {
+      const next = { ...saveStatus }
+      delete next[key]
+      saveStatus = next
+      const timer = savedTimers.get(key)
+      if (timer) {
+        clearTimeout(timer)
+        savedTimers.delete(key)
+      }
+    }
   }
 
   function hasChange(key: string, saved: number | undefined, resolved: number | null = null) {
@@ -210,17 +222,41 @@
     return current !== String(effectiveValue ?? '')
   }
 
+  function inputState(key: string, changed: boolean, saving: boolean): 'idle' | 'changed' | 'saving' | 'saved' | 'error' {
+    if (saving) return 'saving'
+    if (saveStatus[key] === 'saved') return 'saved'
+    if (saveStatus[key] === 'error') return 'error'
+    if (changed) return 'changed'
+    return 'idle'
+  }
+
   async function persistEntry(
     key: string,
     entry: CoursePlanEntry,
   ) {
+    const existingTimer = savedTimers.get(key)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
+      savedTimers.delete(key)
+    }
     savingRows = { ...savingRows, [key]: true }
     try {
       await onPlanChange(entry)
       const nextInputs = { ...planInputs }
       delete nextInputs[key]
       planInputs = nextInputs
+      saveStatus = { ...saveStatus, [key]: 'saved' }
+      const timer = setTimeout(() => {
+        const next = { ...saveStatus }
+        if (next[key] === 'saved') {
+          delete next[key]
+          saveStatus = next
+        }
+        savedTimers.delete(key)
+      }, 2000)
+      savedTimers.set(key, timer)
     } catch (error) {
+      saveStatus = { ...saveStatus, [key]: 'error' }
       alert(`Не удалось сохранить план: ${(error as Error).message}`)
     } finally {
       savingRows = { ...savingRows, [key]: false }
@@ -496,7 +532,7 @@
                     <td class="plan-col-group plan-col-group-empty">—</td>
                   {/if}
                   <td class="plan-col-plan">
-                    <div class="plan-input-group">
+                    <div class="plan-input-group" data-state={inputState(subjectKeyId, subjectChanged, !!savingRows[subjectKeyId])}>
                       <Input
                         class="plan-input"
                         type="number"
@@ -510,16 +546,31 @@
                           }
                         }}
                       />
-                      <Button
-                        variant={subjectChanged ? 'primary' : 'ghost'}
-                        class="plan-input-save"
-                        onclick={() => void saveSubjectPlan(courseRow.course, subject.subject)}
-                        disabled={!subjectChanged || savingRows[subjectKeyId]}
-                        title="Общий план предмета (по умолчанию для всех групп)"
-                        aria-label="Сохранить план предмета"
-                      >
-                        <Save class="h-3.5 w-3.5" />
-                      </Button>
+                      {#if savingRows[subjectKeyId]}
+                        <span class="plan-input-status-icon" title="Сохранение...">
+                          <Loader2 class="h-3.5 w-3.5 animate-spin" />
+                        </span>
+                      {:else if subjectChanged}
+                        <Button
+                          variant="primary"
+                          class="plan-input-save"
+                          onclick={() => void saveSubjectPlan(courseRow.course, subject.subject)}
+                          title="Сохранить план предмета"
+                          aria-label="Сохранить план предмета"
+                        >
+                          <Save class="h-3.5 w-3.5" />
+                        </Button>
+                      {:else if saveStatus[subjectKeyId] === 'saved'}
+                        <span class="plan-input-status plan-input-status-saved" title="Сохранено">
+                          <Check class="h-3.5 w-3.5" />
+                          Сохранено
+                        </span>
+                      {:else if saveStatus[subjectKeyId] === 'error'}
+                        <span class="plan-input-status plan-input-status-error" title="Ошибка сохранения">
+                          <X class="h-3.5 w-3.5" />
+                          Ошибка
+                        </span>
+                      {/if}
                     </div>
                   </td>
                   <td class={cn('plan-col-num plan-num', statusTone({ planned: subject.totalPlanned || null, scheduled: subject.totalScheduled, done: subject.totalDone }))}>
@@ -580,7 +631,7 @@
                         <div class="plan-group-name">{group.groupName}</div>
                       </td>
                       <td class="plan-col-plan">
-                        <div class="plan-input-group">
+                        <div class="plan-input-group" data-state={inputState(groupKeyId, groupChanged, !!savingRows[groupKeyId])}>
                           <Input
                             class="plan-input"
                             type="number"
@@ -594,16 +645,31 @@
                               }
                             }}
                           />
-                          <Button
-                            variant={groupChanged ? 'primary' : 'ghost'}
-                            class="plan-input-save"
-                            onclick={() => void saveGroupPlan(courseRow.course, subject.subject, group.groupId)}
-                            disabled={!groupChanged || savingRows[groupKeyId]}
-                            title="План для группы (переопределяет план предмета)"
-                            aria-label="Сохранить план группы"
-                          >
-                            <Save class="h-3.5 w-3.5" />
-                          </Button>
+                          {#if savingRows[groupKeyId]}
+                            <span class="plan-input-status-icon" title="Сохранение...">
+                              <Loader2 class="h-3.5 w-3.5 animate-spin" />
+                            </span>
+                          {:else if groupChanged}
+                            <Button
+                              variant="primary"
+                              class="plan-input-save"
+                              onclick={() => void saveGroupPlan(courseRow.course, subject.subject, group.groupId)}
+                              title="План для группы (переопределяет план предмета)"
+                              aria-label="Сохранить план группы"
+                            >
+                              <Save class="h-3.5 w-3.5" />
+                            </Button>
+                          {:else if saveStatus[groupKeyId] === 'saved'}
+                            <span class="plan-input-status plan-input-status-saved" title="Сохранено">
+                              <Check class="h-3.5 w-3.5" />
+                              Сохранено
+                            </span>
+                          {:else if saveStatus[groupKeyId] === 'error'}
+                            <span class="plan-input-status plan-input-status-error" title="Ошибка сохранения">
+                              <X class="h-3.5 w-3.5" />
+                              Ошибка
+                            </span>
+                          {/if}
                         </div>
                       </td>
                       <td class={cn('plan-col-num plan-num', statusTone({ planned: group.totalPlanned || null, scheduled: group.totalScheduled, done: group.totalDone }))}>
@@ -654,7 +720,7 @@
                                     <div class="plan-type-input-pair">
                                       <span class="plan-type-chip">{getLessonTypeLabel(typeRow.type)}</span>
                                       {#if typeRow.type !== 'unknown'}
-                                        <div class="plan-input-group plan-input-group-compact">
+                                        <div class="plan-input-group plan-input-group-compact" data-state={inputState(typeKeyId, typeChanged, !!savingRows[typeKeyId])}>
                                           <Input
                                             class="plan-input"
                                             type="number"
@@ -669,16 +735,29 @@
                                               }
                                             }}
                                           />
-                                          <Button
-                                            variant={typeChanged ? 'primary' : 'ghost'}
-                                            class="plan-input-save"
-                                            onclick={() => void saveGroupTypePlan(courseRow.course, subject.subject, group.groupId, typeRow.type)}
-                                            disabled={!typeChanged || savingRows[typeKeyId]}
-                                            title="План группы для этого типа"
-                                            aria-label="Сохранить план типа для группы"
-                                          >
-                                            <Save class="h-3 w-3" />
-                                          </Button>
+                                          {#if savingRows[typeKeyId]}
+                                            <span class="plan-input-status-icon plan-input-status-icon-compact" title="Сохранение...">
+                                              <Loader2 class="h-3 w-3 animate-spin" />
+                                            </span>
+                                          {:else if typeChanged}
+                                            <Button
+                                              variant="primary"
+                                              class="plan-input-save"
+                                              onclick={() => void saveGroupTypePlan(courseRow.course, subject.subject, group.groupId, typeRow.type)}
+                                              title="Сохранить план типа для группы"
+                                              aria-label="Сохранить план типа для группы"
+                                            >
+                                              <Save class="h-3 w-3" />
+                                            </Button>
+                                          {:else if saveStatus[typeKeyId] === 'saved'}
+                                            <span class="plan-input-status plan-input-status-saved plan-input-status-compact" title="Сохранено">
+                                              <Check class="h-3 w-3" />
+                                            </span>
+                                          {:else if saveStatus[typeKeyId] === 'error'}
+                                            <span class="plan-input-status plan-input-status-error plan-input-status-compact" title="Ошибка сохранения">
+                                              <X class="h-3 w-3" />
+                                            </span>
+                                          {/if}
                                         </div>
                                       {/if}
                                     </div>
@@ -727,7 +806,7 @@
                             <td class="plan-col-group plan-col-group-empty">—</td>
                             <td class="plan-col-plan">
                               {#if typeRow.type !== 'unknown'}
-                                <div class="plan-input-group">
+                                <div class="plan-input-group" data-state={inputState(typeKeyId, typeChanged, !!savingRows[typeKeyId])}>
                                   <Input
                                     class="plan-input"
                                     type="number"
@@ -741,16 +820,31 @@
                                       }
                                     }}
                                   />
-                                  <Button
-                                    variant={typeChanged ? 'primary' : 'ghost'}
-                                    class="plan-input-save"
-                                    onclick={() => void saveGroupTypePlan(courseRow.course, subject.subject, group.groupId, typeRow.type)}
-                                    disabled={!typeChanged || savingRows[typeKeyId]}
-                                    title="План группы для этого типа"
-                                    aria-label="Сохранить план типа для группы"
-                                  >
-                                    <Save class="h-3.5 w-3.5" />
-                                  </Button>
+                                  {#if savingRows[typeKeyId]}
+                                    <span class="plan-input-status-icon" title="Сохранение...">
+                                      <Loader2 class="h-3.5 w-3.5 animate-spin" />
+                                    </span>
+                                  {:else if typeChanged}
+                                    <Button
+                                      variant="primary"
+                                      class="plan-input-save"
+                                      onclick={() => void saveGroupTypePlan(courseRow.course, subject.subject, group.groupId, typeRow.type)}
+                                      title="Сохранить план типа для группы"
+                                      aria-label="Сохранить план типа для группы"
+                                    >
+                                      <Save class="h-3.5 w-3.5" />
+                                    </Button>
+                                  {:else if saveStatus[typeKeyId] === 'saved'}
+                                    <span class="plan-input-status plan-input-status-saved" title="Сохранено">
+                                      <Check class="h-3.5 w-3.5" />
+                                      Сохранено
+                                    </span>
+                                  {:else if saveStatus[typeKeyId] === 'error'}
+                                    <span class="plan-input-status plan-input-status-error" title="Ошибка сохранения">
+                                      <X class="h-3.5 w-3.5" />
+                                      Ошибка
+                                    </span>
+                                  {/if}
                                 </div>
                               {:else}
                                 <span class="plan-col-plan-readonly" title={planSourceLabel(typeRow.plannedSource)}>
