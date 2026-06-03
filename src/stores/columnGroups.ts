@@ -17,12 +17,6 @@ const STORAGE_KEYS: Record<ColumnGroupScope, string> = {
   teachers: 'rfict-teacher-groups',
 }
 
-const defaultRooms: ColumnGroup[] = [
-  { id: 'lectures', name: 'Поточные', items: ['115', '117', '119'], collapsed: false, isBuiltIn: true },
-  { id: 'computers', name: 'Комп. классы', items: ['К1', 'К2', 'К3'], collapsed: false, isBuiltIn: true },
-  { id: 'regular', name: 'Кабинеты', items: ['101', '102', '103', '104', '105', '106'], collapsed: false, isBuiltIn: true },
-]
-
 function readGroups(scope: ColumnGroupScope, fallback: ColumnGroup[]) {
   if (typeof localStorage === 'undefined') return fallback
   try {
@@ -37,7 +31,7 @@ function readGroups(scope: ColumnGroupScope, fallback: ColumnGroup[]) {
 
 function initialState(): ColumnGroupsState {
   return {
-    rooms: readGroups('rooms', defaultRooms),
+    rooms: readGroups('rooms', []),
     teachers: readGroups('teachers', []),
   }
 }
@@ -56,16 +50,20 @@ function updateScope(scope: ColumnGroupScope, mapper: (groups: ColumnGroup[]) =>
   store.update((state) => ({ ...state, [scope]: mapper(state[scope]) }))
 }
 
+function nextGroupName(groups: ColumnGroup[]) {
+  return `Группа ${groups.length + 1}`
+}
+
 export const columnGroupsStore = {
   subscribe: store.subscribe,
-  addGroup(scope: ColumnGroupScope, name: string) {
+  addGroup(scope: ColumnGroupScope) {
     updateScope(scope, (groups) => [
       ...groups,
-      { id: `${scope}-${Date.now()}`, name, items: [], collapsed: false, isBuiltIn: false },
+      { id: `${scope}-${Date.now()}`, name: nextGroupName(groups), items: [], collapsed: false, isBuiltIn: false },
     ])
   },
   removeGroup(scope: ColumnGroupScope, id: string) {
-    updateScope(scope, (groups) => groups.filter((group) => group.id !== id || group.isBuiltIn))
+    updateScope(scope, (groups) => groups.filter((group) => group.id !== id))
   },
   renameGroup(scope: ColumnGroupScope, id: string, name: string) {
     updateScope(scope, (groups) => groups.map((group) => (group.id === id ? { ...group, name } : group)))
@@ -77,6 +75,14 @@ export const columnGroupsStore = {
           ? { ...group, items: [...group.items, item] }
           : group,
       ),
+    )
+  },
+  assignItem(scope: ColumnGroupScope, groupId: string, item: string) {
+    updateScope(scope, (groups) =>
+      groups.map((group) => {
+        const items = group.items.filter((current) => current !== item)
+        return group.id === groupId ? { ...group, items: [...items, item] } : { ...group, items }
+      }),
     )
   },
   removeItem(scope: ColumnGroupScope, groupId: string, item: string) {
@@ -100,4 +106,26 @@ export const columnGroupsStore = {
       groups.map((group) => (group.id === id ? { ...group, collapsed: !group.collapsed } : group)),
     )
   },
+}
+
+export function columnGroupNameByItem(groups: ColumnGroup[], columns: string[]) {
+  const available = new Set(columns)
+  const result: Record<string, string> = {}
+  groups.forEach((group) => {
+    group.items.forEach((item) => {
+      if (available.has(item)) result[item] = group.name
+    })
+  })
+  return result
+}
+
+export function columnGroupStartByItem(columns: string[], groupNameByItem: Record<string, string>) {
+  const result: Record<string, boolean> = {}
+  let previous = ''
+  columns.forEach((column) => {
+    const current = groupNameByItem[column] || ''
+    result[column] = Boolean(current && current !== previous)
+    previous = current
+  })
+  return result
 }

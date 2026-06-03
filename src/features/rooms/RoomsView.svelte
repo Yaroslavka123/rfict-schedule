@@ -1,7 +1,14 @@
 <script lang="ts">
+  import ColumnGroupsBar from '@/components/ColumnGroupsBar.svelte'
   import Card from '@/components/ui/Card.svelte'
   import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
   import { cn, normalizeText } from '@/lib/utils'
+  import {
+    columnGroupNameByItem,
+    columnGroupStartByItem,
+    columnGroupsStore,
+  } from '@/stores/columnGroups'
+  import { applyColumnOrder, columnOrderStore } from '@/stores/columnOrder'
   import type { RoomCell, RoomCategory, RoomOccupancyIndex, RoomSlotEntry } from '@/stores/scheduleStore'
   import type { LessonType } from '@/types/schedule'
 
@@ -27,12 +34,18 @@
   let { roomData, groupFilter, search, lessonTypes }: RoomsViewProps = $props()
   let tooltip = $state<{ x: number; y: number; entries: RoomSlotEntry[] } | null>(null)
   let tooltipKey = $state<string | null>(null)
+  let draggedRoom = $state<string | null>(null)
+  let dragTargetRoom = $state<string | null>(null)
+  let dragSide = $state<'before' | 'after'>('before')
 
   let normalizedSearch = $derived(normalizeText(search))
   let filteredRoomData = $derived(filterRoomData(roomData, groupFilter, normalizedSearch, lessonTypes))
-  let orderedRooms = $derived(filteredRoomData?.orderedRooms || [])
+  let orderedRooms = $derived(applyColumnOrder(filteredRoomData?.orderedRooms || [], $columnOrderStore.rooms))
   let categoryByRoom = $derived(filteredRoomData?.categoryByRoom || {})
-  let categoryStart = $derived(filteredRoomData?.categoryStart || {})
+  let categoryStart = $derived(categoryStartForOrder(orderedRooms, categoryByRoom))
+  let roomGroups = $derived($columnGroupsStore.rooms)
+  let groupNameByRoom = $derived(columnGroupNameByItem(roomGroups, orderedRooms))
+  let groupStartByRoom = $derived(columnGroupStartByItem(orderedRooms, groupNameByRoom))
   let occupancy = $derived(filteredRoomData?.occupancy || {})
   let tooltipEntriesByKey = $derived(buildTooltipEntriesByKey(orderedRooms, occupancy))
   let tooltipMerged = $derived(tooltip ? mergeTooltipEntries(tooltip.entries) : [])
@@ -107,6 +120,17 @@
     const seen = new Set<RoomCategory>()
     rooms.forEach((room) => {
       const category = source.categoryByRoom[room]
+      result[room] = !seen.has(category)
+      seen.add(category)
+    })
+    return result
+  }
+
+  function categoryStartForOrder(rooms: string[], categories: Record<string, RoomCategory>) {
+    const result: Record<string, boolean> = {}
+    const seen = new Set<RoomCategory>()
+    rooms.forEach((room) => {
+      const category = categories[room]
       result[room] = !seen.has(category)
       seen.add(category)
     })
@@ -194,6 +218,46 @@
     if (!subject) return 'Занято'
     return subject.length > 14 ? `${subject.slice(0, 13)}...` : subject
   }
+
+  function clearColumnDrag() {
+    draggedRoom = null
+    dragTargetRoom = null
+    dragSide = 'before'
+  }
+
+  function startColumnDrag(event: DragEvent, room: string) {
+    hideTooltip()
+    draggedRoom = room
+    event.dataTransfer?.setData('text/plain', room)
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+  }
+
+  function updateDropTarget(event: DragEvent, room: string) {
+    if (!draggedRoom || draggedRoom === room) return
+    event.preventDefault()
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+    dragTargetRoom = room
+    dragSide = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  }
+
+  function dropColumn(event: DragEvent, room: string) {
+    event.preventDefault()
+    const source = draggedRoom || event.dataTransfer?.getData('text/plain')
+    if (source && source !== room) {
+      columnOrderStore.move('rooms', orderedRooms, source, room, dragSide)
+    }
+    clearColumnDrag()
+  }
+
+  function dropRoomOnGroup(groupId: string) {
+    if (!draggedRoom) return
+    const group = roomGroups.find((item) => item.id === groupId)
+    const target = group?.items.filter((item) => item !== draggedRoom && orderedRooms.includes(item)).at(-1)
+    columnGroupsStore.assignItem('rooms', groupId, draggedRoom)
+    if (target) columnOrderStore.move('rooms', orderedRooms, draggedRoom, target, 'after')
+    clearColumnDrag()
+  }
 </script>
 
 {#if orderedRooms.length === 0}
@@ -203,6 +267,13 @@
   </Card>
 {:else}
   <div class="rooms-page">
+    <ColumnGroupsBar
+      scope="rooms"
+      groups={roomGroups}
+      draggedColumn={draggedRoom}
+      onDropColumn={dropRoomOnGroup}
+    />
+
     <div class="room-matrix-wrap">
       <table class="room-matrix" onpointerover={handleTableHover} onmouseleave={hideTooltip}>
         <colgroup>
@@ -219,7 +290,28 @@
             {#each orderedRooms as room (room)}
               {@const category = categoryByRoom[room]}
               {@const start = categoryStart[room]}
-              <th class={cn('th-room', `th-cat-${category}`, `cat-bg-${category}`, start && 'room-cat-start')} title={room}>
+              <th
+                class={cn(
+                  'th-room matrix-draggable-header',
+                  `th-cat-${category}`,
+                  `cat-bg-${category}`,
+                  start && 'room-cat-start',
+                  groupStartByRoom[room] && 'matrix-user-group-start',
+                  draggedRoom === room && 'matrix-col-dragging',
+                  dragTargetRoom === room && dragSide === 'before' && 'matrix-drop-before',
+                  dragTargetRoom === room && dragSide === 'after' && 'matrix-drop-after',
+                )}
+                title={room}
+                draggable="true"
+                aria-grabbed={draggedRoom === room}
+                ondragstart={(event) => startColumnDrag(event, room)}
+                ondragover={(event) => updateDropTarget(event, room)}
+                ondrop={(event) => dropColumn(event, room)}
+                ondragend={clearColumnDrag}
+              >
+                {#if groupStartByRoom[room]}
+                  <span class="matrix-column-group-label">{groupNameByRoom[room]}</span>
+                {/if}
                 {room}
               </th>
             {/each}
@@ -238,7 +330,7 @@
                   {@const category = categoryByRoom[room]}
                   {@const start = categoryStart[room]}
                   {#if !cell}
-                    <td class={cn('slot-cell slot-free', `cat-bg-${category}`, start && 'room-cat-start')}></td>
+                    <td class={cn('slot-cell slot-free', `cat-bg-${category}`, start && 'room-cat-start', groupStartByRoom[room] && 'matrix-user-group-start')}></td>
                   {:else}
                     {@const typeClass = cell.allCancelled
                       ? 'slot-cancelled'
@@ -246,7 +338,7 @@
                         ? 'slot-type-multi'
                         : `slot-type-${cell.types[0] || 'unknown'}`}
                     <td
-                      class={cn('slot-cell slot-busy', typeClass, start && 'room-cat-start')}
+                      class={cn('slot-cell slot-busy', typeClass, start && 'room-cat-start', groupStartByRoom[room] && 'matrix-user-group-start')}
                       data-slot-key={slotKey(room, day, pair)}
                     >
                       <div class="slot-content">

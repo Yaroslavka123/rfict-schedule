@@ -231,6 +231,26 @@
     height: 100%;
   }
 
+  .matrix-groups-bar {
+    @apply flex min-h-8 flex-wrap items-center gap-1.5;
+  }
+
+  .matrix-group-chip {
+    @apply inline-flex h-8 max-w-48 items-center gap-1 rounded-md border border-border bg-card px-2 text-xs font-semibold text-muted-foreground transition;
+  }
+
+  .matrix-group-chip-drop {
+    @apply border-primary bg-primary/10 text-primary;
+  }
+
+  .matrix-group-chip-name {
+    @apply truncate;
+  }
+
+  .matrix-group-delete {
+    @apply inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30;
+  }
+
   /* Room matrix
    * Viewport-filling table that stretches to 100% width/height. table-layout: fixed
    * makes columns share the available width evenly, and rows share the leftover
@@ -285,6 +305,48 @@
   .room-matrix .th-room {
     @apply px-1 text-[10px] leading-none align-middle;
     min-width: 3.25rem;
+  }
+
+  .matrix-draggable-header {
+    @apply cursor-grab select-none;
+    position: relative;
+  }
+
+  .matrix-draggable-header:active {
+    @apply cursor-grabbing;
+  }
+
+  .matrix-col-dragging {
+    @apply opacity-45;
+  }
+
+  .matrix-column-group-label {
+    @apply mb-0.5 block truncate text-[9px] font-bold text-primary;
+  }
+
+  .matrix-user-group-start {
+    @apply border-l-2 border-l-primary;
+  }
+
+  .matrix-drop-before::before,
+  .matrix-drop-after::after {
+    content: "";
+    position: absolute;
+    top: 0.25rem;
+    bottom: 0.25rem;
+    z-index: 1;
+    width: 3px;
+    border-radius: 999px;
+    background: hsl(var(--primary));
+    box-shadow: 0 0 0 2px hsl(var(--background) / 0.75);
+  }
+
+  .matrix-drop-before::before {
+    left: -2px;
+  }
+
+  .matrix-drop-after::after {
+    right: -2px;
   }
 
   .room-matrix .th-cat-lecture-hall { @apply text-amber-500; }
