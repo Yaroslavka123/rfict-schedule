@@ -141,7 +141,7 @@
   }
 
   .filter-field-search {
-    @apply flex-[3_1_18rem];
+    @apply flex-[1_1_18rem] md:max-w-[30rem];
   }
 
   .filter-label {
@@ -154,7 +154,8 @@
   }
 
   .filter-search {
-    @apply h-9 rounded-md bg-background pl-10 text-sm;
+    @apply h-9 rounded-md bg-background text-sm;
+    padding-left: 2.5rem !important;
   }
 
   .inline-link {
