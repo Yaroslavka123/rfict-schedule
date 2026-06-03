@@ -6,7 +6,6 @@ import {
   loadCourseBundle,
   planKey,
   saveCoursePlanEntry,
-  SUPPORTED_COURSES,
   type AllCoursesBundle,
   type CourseDataBundle,
 } from '@/api/scheduleClient'
@@ -499,27 +498,16 @@ function createScheduleStore() {
   const store = writable<ScheduleState>(initialState)
   let currentCourse: CourseSelection = 'all'
   let inflight: AbortController | null = null
-  let eventSources: EventSource[] = []
-  let eventSourceKey = ''
+  let eventSource: EventSource | null = null
   let eventRefreshTimer: ReturnType<typeof setTimeout> | null = null
 
-  function eventCourses(course: CourseSelection) {
-    return course === 'all' ? SUPPORTED_COURSES : [course]
-  }
-
-  function scheduleEventsUrl(course: number) {
-    return `${API_BASE_URL}/api/v1/schedule/events?course=${course}`
-  }
-
-  function closeScheduleEvents() {
-    eventSources.forEach((source) => source.close())
-    eventSources = []
-    eventSourceKey = ''
+  function scheduleEventsUrl() {
+    return `${API_BASE_URL}/api/v1/sse/schedule`
   }
 
   function parseScheduleEvent(event: MessageEvent) {
     try {
-      return JSON.parse(event.data || '{}') as { type?: string; course?: number; week_number?: number }
+      return JSON.parse(event.data || '{}') as { type?: string; chunk?: { course?: number; week_number?: number } }
     } catch {
       return null
     }
@@ -536,29 +524,26 @@ function createScheduleStore() {
   function handleScheduleEvent(event: MessageEvent) {
     const payload = parseScheduleEvent(event)
     if (!payload || (payload.type && payload.type !== 'schedule_updated')) return
-    if (payload.course !== undefined && currentCourse !== 'all' && payload.course !== currentCourse) return
+    const eventCourse = payload.chunk?.course
+    if (eventCourse !== undefined && currentCourse !== 'all' && eventCourse !== currentCourse) return
     queueEventRefresh()
   }
 
-  function connectScheduleEvents(course: CourseSelection) {
+  function connectScheduleEvents() {
     if (typeof EventSource === 'undefined') return
-    const courses = eventCourses(course)
-    const nextKey = courses.join(',')
-    if (eventSourceKey === nextKey) return
+    if (eventSource) return
 
-    closeScheduleEvents()
-    eventSourceKey = nextKey
-    eventSources = courses.map((courseNumber) => {
-      const source = new EventSource(scheduleEventsUrl(courseNumber))
-      source.addEventListener('schedule_updated', handleScheduleEvent)
-      source.addEventListener('message', handleScheduleEvent)
-      return source
-    })
+    eventSource = new EventSource(scheduleEventsUrl())
+    eventSource.addEventListener('schedule_updated', handleScheduleEvent)
+    eventSource.addEventListener('message', handleScheduleEvent)
+    eventSource.onerror = () => {
+      console.warn('SSE connection error, browser will retry automatically')
+    }
   }
 
   async function fetch(course: CourseSelection, force = false) {
     currentCourse = course
-    connectScheduleEvents(course)
+    connectScheduleEvents()
     const cached = readCache(course)
     const isFresh = cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS
 
