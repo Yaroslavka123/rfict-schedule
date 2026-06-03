@@ -9,14 +9,21 @@
   import RoomsView from '@/features/rooms/RoomsView.svelte'
   import ScheduleView from '@/features/schedule/ScheduleView.svelte'
   import TeachersView from '@/features/teachers/TeachersView.svelte'
-  import { ACTIVE_COURSE } from '@/lib/constants'
   import { applyLessonFilters } from '@/lib/schedule'
+  import { normalizeText } from '@/lib/utils'
   import { scheduleStore } from '@/stores/scheduleStore'
   import { themeStore, toggleTheme } from '@/stores/themeStore'
-  import type { CourseSelection, FiltersState, WeekSchedule } from '@/types/schedule'
+  import type {
+    CourseSelection,
+    FiltersState,
+    ScheduleGroup,
+    ScheduleGroupWithCourse,
+    ScheduleLesson,
+    WeekSchedule,
+  } from '@/types/schedule'
 
   const defaultFilters: FiltersState = {
-    course: ACTIVE_COURSE,
+    course: 'all',
     week: 1,
     group: 'all',
     subgroup: 'all',
@@ -26,7 +33,7 @@
   const SEARCH_DEBOUNCE_MS = 200
   const FETCH_DEBOUNCE_MS = 100
 
-  let activeTab = $state<AppTab>('schedule')
+  let activeTab = $state<AppTab>('rooms')
   let filters = $state<FiltersState>({ ...defaultFilters })
   let debouncedSearch = $state('')
   let autoWeekCourse = $state<CourseSelection | null>(null)
@@ -35,6 +42,16 @@
   let selectedWeeks = $derived($scheduleStore.index.weeksByNumber[filters.week] || [])
   let week = $derived(selectedWeeks[0] || null)
   let selectedWeekLessons = $derived($scheduleStore.index.lessonsByWeek[filters.week] || [])
+  let searchSuggestion = $derived(
+    buildSearchSuggestion(
+      activeTab,
+      filters.search,
+      schedule?.groups || [],
+      selectedWeekLessons,
+      $scheduleStore.index.roomOccupancyByWeek[filters.week]?.orderedRooms || [],
+      $scheduleStore.index.teacherOccupancyByWeek[filters.week]?.orderedTeachers || [],
+    ),
+  )
   let lessonFilters = $derived({
     course: filters.course,
     week: filters.week,
@@ -127,6 +144,55 @@
     return ranges.at(-1)?.week ?? null
   }
 
+  function cleanSearchCandidate(value: string | null | undefined) {
+    return String(value || '')
+      .replace(/\b(доц\.?|доцент|проф\.?|профессор|ст\.?\s*преп\.?|старший\s+преподаватель|преподаватель|ассистент)\b/gi, '')
+      .replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, '')
+      .replace(/\s+/g, ' ')
+  }
+
+  function firstSearchSuggestion(query: string, candidates: (string | null | undefined)[]) {
+    const normalizedQuery = normalizeText(query)
+    if (!normalizedQuery) return ''
+
+    const seen = new Set<string>()
+    for (const raw of candidates) {
+      const candidate = cleanSearchCandidate(raw)
+      const normalizedCandidate = normalizeText(candidate)
+      if (!candidate || seen.has(normalizedCandidate)) continue
+      seen.add(normalizedCandidate)
+      if (normalizedCandidate !== normalizedQuery && normalizedCandidate.startsWith(normalizedQuery)) {
+        return candidate
+      }
+    }
+    return ''
+  }
+
+  function buildSearchSuggestion(
+    tab: AppTab,
+    query: string,
+    groups: (ScheduleGroup | ScheduleGroupWithCourse)[],
+    lessons: ScheduleLesson[],
+    rooms: string[],
+    teachers: string[],
+  ) {
+    if (!query.trim()) return ''
+    if (tab === 'teachers') return firstSearchSuggestion(query, teachers)
+    if (tab === 'rooms') return firstSearchSuggestion(query, rooms)
+    if (tab === 'analytics') {
+      return firstSearchSuggestion(query, [
+        ...lessons.map((lesson) => lesson.subject),
+        ...groups.map((group) => group.name),
+      ])
+    }
+    return firstSearchSuggestion(query, [
+      ...lessons.map((lesson) => lesson.subject),
+      ...lessons.map((lesson) => lesson.teacher),
+      ...lessons.map((lesson) => lesson.room),
+      ...groups.map((group) => group.name),
+    ])
+  }
+
   function formatScheduleError(error: string | null) {
     if (!error) return 'Проверьте соединение и попробуйте еще раз.'
     if (error === 'Failed to fetch') {
@@ -152,6 +218,7 @@
         groups={schedule.groups}
         weeks={schedule.weeks}
         {activeTab}
+        {searchSuggestion}
         onFiltersChange={setFilters}
       />
     {/if}

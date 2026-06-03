@@ -5,6 +5,7 @@
   import Input from '@/components/ui/Input.svelte'
   import type { AppTab } from '@/components/layout/AppShell.svelte'
   import { COURSES, LESSON_TYPE_LABELS } from '@/lib/constants'
+  import { normalizeText } from '@/lib/utils'
   import type {
     CourseSelection,
     FiltersState,
@@ -19,6 +20,7 @@
     groups: (ScheduleGroup | ScheduleGroupWithCourse)[]
     weeks: WeekSchedule[]
     activeTab: AppTab
+    searchSuggestion?: string
     onFiltersChange: (filters: FiltersState) => void
   }
 
@@ -28,7 +30,7 @@
     ([type]) => type !== 'unknown',
   ) as [LessonType, string][]
 
-  let { filters, groups, weeks, activeTab, onFiltersChange }: TopFiltersProps = $props()
+  let { filters, groups, weeks, activeTab, searchSuggestion = '', onFiltersChange }: TopFiltersProps = $props()
 
   let showWeek = $derived(activeTab !== 'analytics')
   let showGroup = $derived(activeTab !== 'analytics' || groups.length > 0)
@@ -44,6 +46,7 @@
     Array.from(new Set(weeks.map((week) => week.week_number))).sort((a, b) => a - b),
   )
   let selectedType = $derived(filters.lessonTypes[0] || 'all')
+  let searchCompletion = $derived(completionFor(filters.search, searchSuggestion))
   let hasActiveFilters = $derived(
     filters.group !== 'all' || filters.subgroup !== 'all' || filters.lessonTypes.length > 0 || Boolean(filters.search),
   )
@@ -67,6 +70,23 @@
 
   function groupKey(group: ScheduleGroup | ScheduleGroupWithCourse) {
     return `${(group as ScheduleGroupWithCourse).course ?? 'course'}-${group.id}`
+  }
+
+  function completionFor(query: string, suggestion: string) {
+    if (!query.trim() || !suggestion) return ''
+    const normalizedQuery = normalizeText(query)
+    const normalizedSuggestion = normalizeText(suggestion)
+    if (!normalizedQuery || normalizedSuggestion === normalizedQuery || !normalizedSuggestion.startsWith(normalizedQuery)) {
+      return ''
+    }
+    return suggestion.slice(query.length)
+  }
+
+  function acceptSearchSuggestion(event: KeyboardEvent) {
+    if (!searchCompletion || !searchSuggestion) return
+    if (event.key !== 'Tab' && event.key !== 'ArrowRight') return
+    event.preventDefault()
+    update({ search: searchSuggestion })
   }
 </script>
 
@@ -119,14 +139,20 @@
 
   <label class="filter-field filter-field-search">
     <span class="filter-label">Поиск</span>
-    <div class="relative">
-      <Search class="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+    <div class="filter-search-wrap">
+      <Search class="pointer-events-none absolute left-3 top-2.5 z-30 h-4 w-4 text-muted-foreground" />
       <Input
         class={searchClass}
         placeholder="Предмет, ФИО, ауд."
         value={filters.search}
         oninput={(event) => update({ search: event.currentTarget.value })}
+        onkeydown={acceptSearchSuggestion}
       />
+      {#if searchCompletion}
+        <div class="filter-search-ghost" aria-hidden="true">
+          <span class="filter-search-ghost-prefix">{filters.search}</span>{searchCompletion}
+        </div>
+      {/if}
     </div>
   </label>
 

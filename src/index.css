@@ -153,9 +153,22 @@
     @apply h-9 w-full rounded-md border border-border bg-background px-2.5 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20;
   }
 
+  .filter-search-wrap {
+    @apply relative;
+  }
+
   .filter-search {
-    @apply h-9 rounded-md bg-background text-sm;
+    @apply relative z-10 h-9 rounded-md bg-transparent text-sm;
     padding-left: 2.5rem !important;
+  }
+
+  .filter-search-ghost {
+    @apply pointer-events-none absolute inset-0 z-20 flex h-9 items-center overflow-hidden whitespace-pre rounded-md px-3 text-sm text-muted-foreground/55;
+    padding-left: 2.5rem !important;
+  }
+
+  .filter-search-ghost-prefix {
+    @apply text-transparent;
   }
 
   .inline-link {
@@ -286,12 +299,12 @@
     min-width: 2rem;
   }
 
-  .matrix-group-tone-0 { --matrix-group-color: 176 68% 33%; }
-  .matrix-group-tone-1 { --matrix-group-color: 38 88% 43%; }
-  .matrix-group-tone-2 { --matrix-group-color: 210 78% 45%; }
-  .matrix-group-tone-3 { --matrix-group-color: 274 58% 50%; }
-  .matrix-group-tone-4 { --matrix-group-color: 344 70% 48%; }
-  .matrix-group-tone-5 { --matrix-group-color: 142 56% 36%; }
+  .matrix-group-tone-0 { --matrix-group-color: 176 72% 32%; }
+  .matrix-group-tone-1 { --matrix-group-color: 28 88% 45%; }
+  .matrix-group-tone-2 { --matrix-group-color: 214 78% 46%; }
+  .matrix-group-tone-3 { --matrix-group-color: 276 60% 50%; }
+  .matrix-group-tone-4 { --matrix-group-color: 338 70% 48%; }
+  .matrix-group-tone-5 { --matrix-group-color: 112 48% 36%; }
 
   .room-matrix thead .matrix-group-row th,
   .teachers-matrix thead .matrix-group-row th {
@@ -313,11 +326,11 @@
   .room-matrix thead .matrix-group-head,
   .teachers-matrix thead .matrix-group-head {
     @apply h-8 text-center align-middle;
-    background-color: hsl(var(--matrix-group-color, var(--primary)) / 0.12);
-    border-top: 2px solid hsl(var(--matrix-group-color, var(--primary)) / 0.74) !important;
-    border-right: 2px solid hsl(var(--matrix-group-color, var(--primary)) / 0.58) !important;
-    border-left: 2px solid hsl(var(--matrix-group-color, var(--primary)) / 0.58) !important;
-    border-bottom-color: hsl(var(--matrix-group-color, var(--primary)) / 0.22) !important;
+    background-color: hsl(var(--matrix-group-color, var(--primary)) / 0.16);
+    border-top: 2px solid hsl(var(--matrix-group-color, var(--primary)) / 0.82) !important;
+    border-right: 2px solid hsl(var(--matrix-group-color, var(--primary)) / 0.66) !important;
+    border-left: 2px solid hsl(var(--matrix-group-color, var(--primary)) / 0.66) !important;
+    border-bottom-color: hsl(var(--matrix-group-color, var(--primary)) / 0.32) !important;
     color: hsl(var(--matrix-group-color, var(--primary)));
   }
 
@@ -351,13 +364,13 @@
   .room-matrix thead .matrix-empty-group-slot,
   .teachers-matrix thead .matrix-empty-group-slot {
     @apply h-8 cursor-copy px-1 text-[10px] font-semibold;
-    background-color: hsl(var(--matrix-group-color, var(--primary)) / 0.05);
+    background-color: hsl(var(--matrix-group-color, var(--primary)) / 0.07);
     color: hsl(var(--matrix-group-color, var(--primary)) / 0.72);
   }
 
   .matrix-empty-group-body {
     @apply cursor-copy;
-    background-color: hsl(var(--matrix-group-color, var(--primary)) / 0.035);
+    background-color: hsl(var(--matrix-group-color, var(--primary)) / 0.05);
     background-image: repeating-linear-gradient(
       135deg,
       hsl(var(--matrix-group-color, var(--primary)) / 0.055) 0,
@@ -392,13 +405,13 @@
 
   .matrix-user-group-member {
     background-image: linear-gradient(
-      hsl(var(--matrix-group-color, var(--primary)) / 0.045),
-      hsl(var(--matrix-group-color, var(--primary)) / 0.045)
+      hsl(var(--matrix-group-color, var(--primary)) / 0.06),
+      hsl(var(--matrix-group-color, var(--primary)) / 0.06)
     );
   }
 
   .matrix-user-group-member:not(.matrix-group-end) {
-    border-right-color: hsl(var(--matrix-group-color, var(--primary)) / 0.08) !important;
+    border-right-color: hsl(var(--matrix-group-color, var(--primary)) / 0.10) !important;
   }
 
   .matrix-group-start {

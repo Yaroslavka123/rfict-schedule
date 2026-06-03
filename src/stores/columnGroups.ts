@@ -161,6 +161,20 @@ export function buildColumnSections(columns: string[], groups: ColumnGroup[]): C
   const renderedGroups = new Set<string>()
   const sections: ColumnSection[] = []
 
+  groups.forEach((group) => {
+    const hasVisibleColumns = columns.some((column) => groupIdByItem[column] === group.id)
+    if (hasVisibleColumns) return
+    renderedGroups.add(group.id)
+    sections.push({
+      id: group.id,
+      type: 'group',
+      name: group.name,
+      groupId: group.id,
+      tone: groupToneById.get(group.id),
+      columns: [],
+    })
+  })
+
   columns.forEach((column) => {
     const groupId = groupIdByItem[column]
     if (!groupId) {
@@ -182,19 +196,6 @@ export function buildColumnSections(columns: string[], groups: ColumnGroup[]): C
       tone: groupToneById.get(group.id),
       columns: columns.filter((item) => groupIdByItem[item] === group.id),
     })
-  })
-
-  groups.forEach((group) => {
-    if (!renderedGroups.has(group.id)) {
-      sections.push({
-        id: group.id,
-        type: 'group',
-        name: group.name,
-        groupId: group.id,
-        tone: groupToneById.get(group.id),
-        columns: [],
-      })
-    }
   })
 
   return sections
