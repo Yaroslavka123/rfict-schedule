@@ -1,10 +1,12 @@
 import { get, writable } from 'svelte/store'
 
 import {
+  API_BASE_URL,
   loadAllCoursesBundle,
   loadCourseBundle,
   planKey,
   saveCoursePlanEntry,
+  SUPPORTED_COURSES,
   type AllCoursesBundle,
   type CourseDataBundle,
 } from '@/api/scheduleClient'
@@ -32,6 +34,7 @@ import type {
 const CACHE_VERSION = 'v3'
 const CACHE_TTL_MS = 15 * 60_000
 const CACHE_WRITE_DELAY_MS = 300
+const SSE_REFRESH_DEBOUNCE_MS = 500
 
 interface CachedCourse {
   v: typeof CACHE_VERSION
@@ -496,9 +499,66 @@ function createScheduleStore() {
   const store = writable<ScheduleState>(initialState)
   let currentCourse: CourseSelection = 'all'
   let inflight: AbortController | null = null
+  let eventSources: EventSource[] = []
+  let eventSourceKey = ''
+  let eventRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
+  function eventCourses(course: CourseSelection) {
+    return course === 'all' ? SUPPORTED_COURSES : [course]
+  }
+
+  function scheduleEventsUrl(course: number) {
+    return `${API_BASE_URL}/api/v1/schedule/events?course=${course}`
+  }
+
+  function closeScheduleEvents() {
+    eventSources.forEach((source) => source.close())
+    eventSources = []
+    eventSourceKey = ''
+  }
+
+  function parseScheduleEvent(event: MessageEvent) {
+    try {
+      return JSON.parse(event.data || '{}') as { type?: string; course?: number; week_number?: number }
+    } catch {
+      return null
+    }
+  }
+
+  function queueEventRefresh() {
+    if (eventRefreshTimer) clearTimeout(eventRefreshTimer)
+    eventRefreshTimer = setTimeout(() => {
+      eventRefreshTimer = null
+      void fetch(currentCourse, true)
+    }, SSE_REFRESH_DEBOUNCE_MS)
+  }
+
+  function handleScheduleEvent(event: MessageEvent) {
+    const payload = parseScheduleEvent(event)
+    if (!payload || (payload.type && payload.type !== 'schedule_updated')) return
+    if (payload.course !== undefined && currentCourse !== 'all' && payload.course !== currentCourse) return
+    queueEventRefresh()
+  }
+
+  function connectScheduleEvents(course: CourseSelection) {
+    if (typeof EventSource === 'undefined') return
+    const courses = eventCourses(course)
+    const nextKey = courses.join(',')
+    if (eventSourceKey === nextKey) return
+
+    closeScheduleEvents()
+    eventSourceKey = nextKey
+    eventSources = courses.map((courseNumber) => {
+      const source = new EventSource(scheduleEventsUrl(courseNumber))
+      source.addEventListener('schedule_updated', handleScheduleEvent)
+      source.addEventListener('message', handleScheduleEvent)
+      return source
+    })
+  }
 
   async function fetch(course: CourseSelection, force = false) {
     currentCourse = course
+    connectScheduleEvents(course)
     const cached = readCache(course)
     const isFresh = cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS
 
