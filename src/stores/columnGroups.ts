@@ -10,6 +10,21 @@ export interface ColumnGroup {
   isBuiltIn: boolean
 }
 
+export interface ColumnSection {
+  id: string
+  type: 'group' | 'column'
+  name: string
+  groupId?: string
+  columns: string[]
+}
+
+export interface ColumnSlot {
+  id: string
+  type: 'group-empty' | 'column'
+  column?: string
+  groupId?: string
+}
+
 type ColumnGroupsState = Record<ColumnGroupScope, ColumnGroup[]>
 
 const STORAGE_KEYS: Record<ColumnGroupScope, string> = {
@@ -54,12 +69,23 @@ function nextGroupName(groups: ColumnGroup[]) {
   return `Группа ${groups.length + 1}`
 }
 
+function cleanGroupName(name: string, fallback: string) {
+  const trimmed = name.trim()
+  return trimmed || fallback
+}
+
 export const columnGroupsStore = {
   subscribe: store.subscribe,
-  addGroup(scope: ColumnGroupScope) {
+  addGroup(scope: ColumnGroupScope, name = '') {
     updateScope(scope, (groups) => [
       ...groups,
-      { id: `${scope}-${Date.now()}`, name: nextGroupName(groups), items: [], collapsed: false, isBuiltIn: false },
+      {
+        id: `${scope}-${Date.now()}`,
+        name: cleanGroupName(name, nextGroupName(groups)),
+        items: [],
+        collapsed: false,
+        isBuiltIn: false,
+      },
     ])
   },
   removeGroup(scope: ColumnGroupScope, id: string) {
@@ -85,6 +111,11 @@ export const columnGroupsStore = {
       }),
     )
   },
+  unassignItem(scope: ColumnGroupScope, item: string) {
+    updateScope(scope, (groups) =>
+      groups.map((group) => ({ ...group, items: group.items.filter((current) => current !== item) })),
+    )
+  },
   removeItem(scope: ColumnGroupScope, groupId: string, item: string) {
     updateScope(scope, (groups) =>
       groups.map((group) =>
@@ -108,24 +139,70 @@ export const columnGroupsStore = {
   },
 }
 
-export function columnGroupNameByItem(groups: ColumnGroup[], columns: string[]) {
+export function columnGroupIdByItem(groups: ColumnGroup[], columns: string[]) {
   const available = new Set(columns)
   const result: Record<string, string> = {}
   groups.forEach((group) => {
     group.items.forEach((item) => {
-      if (available.has(item)) result[item] = group.name
+      if (available.has(item)) result[item] = group.id
     })
   })
   return result
 }
 
-export function columnGroupStartByItem(columns: string[], groupNameByItem: Record<string, string>) {
-  const result: Record<string, boolean> = {}
-  let previous = ''
+export function buildColumnSections(columns: string[], groups: ColumnGroup[]): ColumnSection[] {
+  const groupIdByItem = columnGroupIdByItem(groups, columns)
+  const groupById = new Map(groups.map((group) => [group.id, group]))
+  const renderedGroups = new Set<string>()
+  const sections: ColumnSection[] = []
+
   columns.forEach((column) => {
-    const current = groupNameByItem[column] || ''
-    result[column] = Boolean(current && current !== previous)
-    previous = current
+    const groupId = groupIdByItem[column]
+    if (!groupId) {
+      sections.push({ id: `column:${column}`, type: 'column', name: '', columns: [column] })
+      return
+    }
+
+    if (renderedGroups.has(groupId)) return
+
+    const group = groupById.get(groupId)
+    if (!group) return
+
+    renderedGroups.add(groupId)
+    sections.push({
+      id: group.id,
+      type: 'group',
+      name: group.name,
+      groupId: group.id,
+      columns: columns.filter((item) => groupIdByItem[item] === group.id),
+    })
   })
-  return result
+
+  groups.forEach((group) => {
+    if (!renderedGroups.has(group.id)) {
+      sections.push({ id: group.id, type: 'group', name: group.name, groupId: group.id, columns: [] })
+    }
+  })
+
+  return sections
+}
+
+export function buildColumnSlots(sections: ColumnSection[]): ColumnSlot[] {
+  return sections.flatMap((section) => {
+    if (section.type === 'column') {
+      const column = section.columns[0]
+      return column ? [{ id: `column:${column}`, type: 'column' as const, column }] : []
+    }
+
+    if (section.columns.length === 0) {
+      return [{ id: `group-empty:${section.groupId}`, type: 'group-empty' as const, groupId: section.groupId }]
+    }
+
+    return section.columns.map((column) => ({
+      id: `group:${section.groupId}:${column}`,
+      type: 'column' as const,
+      column,
+      groupId: section.groupId,
+    }))
+  })
 }

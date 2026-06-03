@@ -56,12 +56,23 @@ function moveColumn(columns: string[], source: string, target: string, side: Dro
   return next
 }
 
+function moveColumnToEnd(columns: string[], source: string) {
+  if (!columns.includes(source)) return columns
+  return [...columns.filter((column) => column !== source), source]
+}
+
 export const columnOrderStore = {
   subscribe: store.subscribe,
   move(scope: ColumnOrderScope, columns: string[], source: string, target: string, side: DropSide) {
     store.update((state) => ({
       ...state,
       [scope]: moveColumn(columns, source, target, side),
+    }))
+  },
+  moveToEnd(scope: ColumnOrderScope, columns: string[], source: string) {
+    store.update((state) => ({
+      ...state,
+      [scope]: moveColumnToEnd(columns, source),
     }))
   },
 }

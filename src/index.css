@@ -231,24 +231,8 @@
     height: 100%;
   }
 
-  .matrix-groups-bar {
+  .matrix-groups-toolbar {
     @apply flex min-h-8 flex-wrap items-center gap-1.5;
-  }
-
-  .matrix-group-chip {
-    @apply inline-flex h-8 max-w-48 items-center gap-1 rounded-md border border-border bg-card px-2 text-xs font-semibold text-muted-foreground transition;
-  }
-
-  .matrix-group-chip-drop {
-    @apply border-primary bg-primary/10 text-primary;
-  }
-
-  .matrix-group-chip-name {
-    @apply truncate;
-  }
-
-  .matrix-group-delete {
-    @apply inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30;
   }
 
   /* Room matrix
@@ -302,6 +286,74 @@
     min-width: 2rem;
   }
 
+  .room-matrix thead .matrix-group-row th,
+  .teachers-matrix thead .matrix-group-row th {
+    @apply sticky top-0 z-40 border-b-2 border-b-primary/35 bg-card py-1 text-xs;
+  }
+
+  .room-matrix thead .matrix-column-row th,
+  .teachers-matrix thead .matrix-column-row th {
+    top: 2rem;
+  }
+
+  .room-matrix thead .matrix-group-corner,
+  .teachers-matrix thead .matrix-group-corner {
+    @apply sticky left-0 z-50 text-[10px] uppercase text-muted-foreground;
+    width: 4rem;
+    min-width: 4rem;
+  }
+
+  .room-matrix thead .matrix-group-head,
+  .teachers-matrix thead .matrix-group-head {
+    @apply h-8 bg-primary/10 text-center align-middle text-primary;
+  }
+
+  .room-matrix thead .matrix-group-head-empty,
+  .teachers-matrix thead .matrix-group-head-empty {
+    @apply bg-primary/5 text-primary/85;
+    background-image: repeating-linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.08) 0,
+      hsl(var(--primary) / 0.08) 6px,
+      transparent 6px,
+      transparent 12px
+    );
+  }
+
+  .matrix-group-head-name {
+    @apply inline-block max-w-[8rem] truncate align-middle font-bold;
+  }
+
+  .matrix-group-head-delete {
+    @apply ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded align-middle text-primary/70 transition hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30;
+  }
+
+  .room-matrix thead .matrix-group-ungrouped,
+  .teachers-matrix thead .matrix-group-ungrouped {
+    @apply bg-muted/80;
+  }
+
+  .room-matrix thead .matrix-empty-group-slot,
+  .teachers-matrix thead .matrix-empty-group-slot {
+    @apply h-8 cursor-copy bg-primary/5 px-1 text-[10px] font-semibold text-primary/70;
+  }
+
+  .matrix-empty-group-body {
+    @apply cursor-copy bg-primary/5;
+    background-image: repeating-linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.05) 0,
+      hsl(var(--primary) / 0.05) 6px,
+      transparent 6px,
+      transparent 12px
+    );
+  }
+
+  .matrix-drag-image {
+    @apply pointer-events-none fixed left-0 top-0 z-50 rounded border border-primary/30 bg-card px-2 py-1 text-xs font-semibold text-primary shadow-lg;
+    transform: translate(-9999px, -9999px);
+  }
+
   .room-matrix .th-room {
     @apply px-1 text-[10px] leading-none align-middle;
     min-width: 3.25rem;
@@ -320,33 +372,8 @@
     @apply opacity-45;
   }
 
-  .matrix-column-group-label {
-    @apply mb-0.5 block truncate text-[9px] font-bold text-primary;
-  }
-
-  .matrix-user-group-start {
-    @apply border-l-2 border-l-primary;
-  }
-
-  .matrix-drop-before::before,
-  .matrix-drop-after::after {
-    content: "";
-    position: absolute;
-    top: 0.25rem;
-    bottom: 0.25rem;
-    z-index: 1;
-    width: 3px;
-    border-radius: 999px;
-    background: hsl(var(--primary));
-    box-shadow: 0 0 0 2px hsl(var(--background) / 0.75);
-  }
-
-  .matrix-drop-before::before {
-    left: -2px;
-  }
-
-  .matrix-drop-after::after {
-    right: -2px;
+  .matrix-user-group-member {
+    box-shadow: inset 2px 0 0 hsl(var(--primary) / 0.65);
   }
 
   .room-matrix .th-cat-lecture-hall { @apply text-amber-500; }
@@ -371,10 +398,6 @@
   .room-matrix tr.day-separator > td,
   .teachers-matrix tr.day-separator > td {
     @apply border-t-2 border-t-primary/40;
-  }
-
-  .room-matrix .room-cat-start {
-    @apply border-l-2 border-l-primary/40;
   }
 
   /* Subtle banding per category so lecture halls / computer labs / regular rooms
