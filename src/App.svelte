@@ -191,6 +191,7 @@
     <div class="h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
       <TeachersView
         teacherData={$scheduleStore.index.teacherOccupancyByWeek[filters.week] || null}
+        groupFilter={filters.group}
         search={debouncedSearch}
         lessonTypes={filters.lessonTypes}
       />

@@ -16,18 +16,19 @@
 
   interface TeachersViewProps {
     teacherData: TeacherOccupancyIndex | null
+    groupFilter: string
     search: string
     lessonTypes: LessonType[]
   }
 
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
-  let { teacherData, search, lessonTypes }: TeachersViewProps = $props()
+  let { teacherData, groupFilter, search, lessonTypes }: TeachersViewProps = $props()
   let tooltip = $state<{ x: number; y: number; entries: TeacherSlotEntry[]; teacher: string } | null>(null)
   let tooltipKey = $state<string | null>(null)
   let draggedTeacher = $state<string | null>(null)
 
-  let filteredTeacherData = $derived(filterTeacherData(teacherData, lessonTypes))
+  let filteredTeacherData = $derived(filterTeacherData(teacherData, groupFilter, lessonTypes))
   let orderedTeachers = $derived(applyColumnOrder(filteredTeacherData?.orderedTeachers || [], $columnOrderStore.teachers))
   let teacherGroups = $derived($columnGroupsStore.teachers)
   let columnSections = $derived(buildColumnSections(orderedTeachers, teacherGroups))
@@ -35,7 +36,7 @@
   let occupancy = $derived(filteredTeacherData?.occupancy || {})
   let tooltipEntriesByKey = $derived(buildTooltipEntriesByKeyFromSlots(columnSlots, occupancy))
   let normalizedSearch = $derived(normalizeText(search.trim()))
-  let teacherMatch = $derived(buildTeacherMatch(teacherData, normalizedSearch))
+  let teacherMatch = $derived(buildTeacherMatch(filteredTeacherData, normalizedSearch))
 
   function buildTeacherMatch(data: TeacherOccupancyIndex | null, query: string) {
     if (!query) return null
@@ -117,12 +118,19 @@
     }
   }
 
+  function entryMatches(entry: TeacherSlotEntry, activeGroup: string, types: LessonType[]) {
+    if (activeGroup !== 'all' && entry.groupId !== activeGroup) return false
+    if (types.length > 0 && !types.includes(entry.type)) return false
+    return true
+  }
+
   function filterTeacherData(
     source: TeacherOccupancyIndex | null,
+    activeGroup: string,
     activeTypes: LessonType[],
   ): TeacherOccupancyIndex | null {
     if (!source) return null
-    if (activeTypes.length === 0) return source
+    if (activeGroup === 'all' && activeTypes.length === 0) return source
 
     const occupancy: TeacherOccupancyIndex['occupancy'] = {}
     source.orderedTeachers.forEach((teacher) => {
@@ -130,7 +138,7 @@
         PAIRS.forEach((pair) => {
           const cell = source.occupancy[teacher]?.[day]?.[pair]
           if (!cell) return
-          const entries = cell.entries.filter((entry) => activeTypes.includes(entry.type))
+          const entries = cell.entries.filter((entry) => entryMatches(entry, activeGroup, activeTypes))
           if (entries.length === 0) return
           if (!occupancy[teacher]) occupancy[teacher] = {}
           if (!occupancy[teacher][day]) occupancy[teacher][day] = {}

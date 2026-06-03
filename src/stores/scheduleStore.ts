@@ -324,6 +324,13 @@ function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): S
   const teacherEntriesByWeek: Record<number, Record<string, Record<string, Record<number, TeacherSlotEntry[]>>>> = {}
   const { groupNameById, groupNameByCourseAndId, groupCourseById } = buildGroupMaps(schedule)
   const fallbackCourse = getScheduleCourse(schedule)
+  const allRooms = Array.from(
+    new Set(
+      schedule.lessons
+        .map((lesson) => normalizeRoom(lesson.room))
+        .filter((room) => room && room !== 'ДО'),
+    ),
+  ).sort(numericRoomSort)
 
   schedule.weeks.forEach((week) => {
     if (!weeksByNumber[week.week_number]) weeksByNumber[week.week_number] = []
@@ -410,9 +417,11 @@ function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): S
   })
 
   const roomOccupancyByWeek: Record<number, RoomOccupancyIndex> = {}
-  Object.entries(roomEntriesByWeek).forEach(([week, roomMap]) => {
+  Object.keys(weeksByNumber).forEach((week) => {
+    const weekNumber = Number(week)
+    const roomMap = roomEntriesByWeek[weekNumber] || {}
     const index: RoomOccupancyIndex = {
-      orderedRooms: Object.keys(roomMap),
+      orderedRooms: [...allRooms],
       categoryByRoom: {},
       categoryStart: {},
       occupancy: {},
@@ -427,7 +436,7 @@ function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): S
       })
     })
     finalizeRoomIndex(index)
-    roomOccupancyByWeek[Number(week)] = index
+    roomOccupancyByWeek[weekNumber] = index
   })
 
   const teacherOccupancyByWeek: Record<number, TeacherOccupancyIndex> = {}

@@ -11,7 +11,7 @@
     columnGroupsStore,
   } from '@/stores/columnGroups'
   import { applyColumnOrder, columnOrderStore } from '@/stores/columnOrder'
-  import type { RoomCell, RoomCategory, RoomOccupancyIndex, RoomSlotEntry } from '@/stores/scheduleStore'
+  import type { RoomCell, RoomOccupancyIndex, RoomSlotEntry } from '@/stores/scheduleStore'
   import type { LessonType } from '@/types/schedule'
 
   interface RoomsViewProps {
@@ -118,17 +118,6 @@
     }
   }
 
-  function filteredCategoryStart(source: RoomOccupancyIndex, rooms: string[]) {
-    const result: Record<string, boolean> = {}
-    const seen = new Set<RoomCategory>()
-    rooms.forEach((room) => {
-      const category = source.categoryByRoom[room]
-      result[room] = !seen.has(category)
-      seen.add(category)
-    })
-    return result
-  }
-
   function filterRoomData(
     source: RoomOccupancyIndex | null,
     activeGroup: string,
@@ -139,10 +128,8 @@
     if (activeGroup === 'all' && !query && types.length === 0) return source
 
     const occupancy: RoomOccupancyIndex['occupancy'] = {}
-    const orderedRooms: string[] = []
 
     source.orderedRooms.forEach((room) => {
-      let hasRoomEntries = false
       DAYS.forEach((day) => {
         PAIRS.forEach((pair) => {
           const cell = source.occupancy[room]?.[day]?.[pair]
@@ -152,16 +139,14 @@
           if (!occupancy[room]) occupancy[room] = {}
           if (!occupancy[room][day]) occupancy[room][day] = {}
           occupancy[room][day][pair] = summarizeRoomEntries(entries)
-          hasRoomEntries = true
         })
       })
-      if (hasRoomEntries) orderedRooms.push(room)
     })
 
     return {
-      orderedRooms,
+      orderedRooms: source.orderedRooms,
       categoryByRoom: source.categoryByRoom,
-      categoryStart: filteredCategoryStart(source, orderedRooms),
+      categoryStart: source.categoryStart,
       occupancy,
     }
   }
