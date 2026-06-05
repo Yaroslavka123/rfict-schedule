@@ -10,7 +10,7 @@
   import ScheduleView from '@/features/schedule/ScheduleView.svelte'
   import TeachersView from '@/features/teachers/TeachersView.svelte'
   import { applyLessonFilters } from '@/lib/schedule'
-  import { normalizeText } from '@/lib/utils'
+  import { buildSearchKey, cleanSearchCandidate, normalizeSearchQuery } from '@/lib/utils'
   import { scheduleStore } from '@/stores/scheduleStore'
   import { themeStore, toggleTheme } from '@/stores/themeStore'
   import type {
@@ -30,10 +30,11 @@
     lessonTypes: [],
     search: '',
   }
-  const SEARCH_DEBOUNCE_MS = 200
+  const SEARCH_DEBOUNCE_MS = 120
   const FETCH_DEBOUNCE_MS = 100
 
   let activeTab = $state<AppTab>('rooms')
+  let renderedTab = $state<AppTab>('rooms')
   let filters = $state<FiltersState>({ ...defaultFilters })
   let debouncedSearch = $state('')
   let autoWeekCourse = $state<CourseSelection | null>(null)
@@ -61,7 +62,9 @@
     search: debouncedSearch,
   })
   let filteredWeekLessons = $derived(
-    schedule ? applyLessonFilters(selectedWeekLessons, schedule.groups, lessonFilters, debouncedSearch) : [],
+    schedule && renderedTab === 'schedule'
+      ? applyLessonFilters(selectedWeekLessons, schedule.groups, lessonFilters, debouncedSearch)
+      : [],
   )
 
   $effect(() => {
@@ -75,17 +78,30 @@
   $effect(() => {
     const search = filters.search
     let cancelled = false
+    let cancelDeferred: (() => void) | null = null
     const timeout = setTimeout(() => {
-      requestAnimationFrame(() => {
-        if (cancelled) return
-        setTimeout(() => {
-          if (!cancelled) debouncedSearch = search
-        }, 0)
+      cancelDeferred = scheduleDeferred(() => {
+        if (!cancelled) debouncedSearch = search
       })
     }, SEARCH_DEBOUNCE_MS)
     return () => {
       cancelled = true
       clearTimeout(timeout)
+      cancelDeferred?.()
+    }
+  })
+
+  $effect(() => {
+    const tab = activeTab
+    let cancelled = false
+    const frame = requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (!cancelled) renderedTab = tab
+      }, 0)
+    })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
     }
   })
 
@@ -110,6 +126,21 @@
       autoWeekCourse = null
     }
     filters = next
+  }
+
+  type IdleWindow = Window & {
+    requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+    cancelIdleCallback?: (id: number) => void
+  }
+
+  function scheduleDeferred(callback: () => void) {
+    const win = window as IdleWindow
+    if (typeof win.requestIdleCallback === 'function') {
+      const id = win.requestIdleCallback(callback, { timeout: 180 })
+      return () => win.cancelIdleCallback?.(id)
+    }
+    const frame = requestAnimationFrame(callback)
+    return () => cancelAnimationFrame(frame)
   }
 
   function dayStamp(value: string | null | undefined) {
@@ -144,24 +175,23 @@
     return ranges.at(-1)?.week ?? null
   }
 
-  function cleanSearchCandidate(value: string | null | undefined) {
-    return String(value || '')
-      .replace(/\b(доц\.?|доцент|проф\.?|профессор|ст\.?\s*преп\.?|старший\s+преподаватель|преподаватель|ассистент)\b/gi, '')
-      .replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, '')
-      .replace(/\s+/g, ' ')
-  }
-
   function firstSearchSuggestion(query: string, candidates: (string | null | undefined)[]) {
-    const normalizedQuery = normalizeText(query)
+    const normalizedQuery = normalizeSearchQuery(query)
+    const compactQuery = normalizedQuery.replace(/\s+/g, '')
     if (!normalizedQuery) return ''
 
     const seen = new Set<string>()
     for (const raw of candidates) {
-      const candidate = cleanSearchCandidate(raw)
-      const normalizedCandidate = normalizeText(candidate)
-      if (!candidate || seen.has(normalizedCandidate)) continue
-      seen.add(normalizedCandidate)
-      if (normalizedCandidate !== normalizedQuery && normalizedCandidate.startsWith(normalizedQuery)) {
+      const candidate = cleanSearchCandidate(raw) || String(raw || '').trim()
+      const normalizedCandidate = normalizeSearchQuery(candidate)
+      const compactCandidate = normalizedCandidate.replace(/\s+/g, '')
+      const candidateKey = buildSearchKey(`${raw || ''} ${candidate}`)
+      if (!candidate || seen.has(candidateKey)) continue
+      seen.add(candidateKey)
+      if (
+        normalizedCandidate !== normalizedQuery &&
+        (normalizedCandidate.startsWith(normalizedQuery) || compactCandidate.startsWith(compactQuery))
+      ) {
         return candidate
       }
     }
@@ -244,7 +274,7 @@
       </Button>
     </Card>
   {:else if schedule}
-    {#if activeTab === 'rooms'}
+    {#if renderedTab === 'rooms'}
     <div class="tab-view h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
       <RoomsView
         roomData={$scheduleStore.index.roomOccupancyByWeek[filters.week] || null}
@@ -253,7 +283,7 @@
         lessonTypes={filters.lessonTypes}
       />
     </div>
-    {:else if activeTab === 'teachers'}
+    {:else if renderedTab === 'teachers'}
 
     <div class="tab-view h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
       <TeachersView
@@ -263,7 +293,7 @@
         lessonTypes={filters.lessonTypes}
       />
     </div>
-    {:else if activeTab === 'analytics'}
+    {:else if renderedTab === 'analytics'}
 
     <div class="tab-view">
       <AnalyticsView
@@ -278,7 +308,7 @@
         onPlanChange={scheduleStore.updatePlan}
       />
     </div>
-    {:else if activeTab === 'schedule'}
+    {:else if renderedTab === 'schedule'}
 
     <div class="tab-view">
       <ScheduleView

@@ -51,6 +51,7 @@
     @apply bg-background text-foreground antialiased;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     letter-spacing: 0;
+    text-rendering: optimizeLegibility;
     transition: background-color 220ms var(--ease), color 220ms var(--ease);
   }
 
@@ -183,6 +184,12 @@
 
   .app-tab {
     @apply relative inline-flex min-h-9 items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30;
+    transition:
+      color 160ms var(--ease),
+      background-color 160ms var(--ease),
+      box-shadow 180ms var(--ease),
+      transform 180ms var(--ease-spring);
+    will-change: transform;
   }
 
   .app-tab::after {
@@ -285,9 +292,12 @@
 
   .filter-select {
     @apply h-9 w-full rounded-md border border-border bg-background px-2.5 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20;
+    box-shadow: 0 1px 0 hsl(var(--foreground) / 0.02);
+    will-change: transform, box-shadow;
   }
   .filter-select:hover {
     border-color: hsl(var(--muted-foreground) / 0.5);
+    box-shadow: 0 7px 18px -14px hsl(var(--foreground) / 0.35);
   }
   .filter-select:active {
     transform: scale(0.99);
@@ -295,11 +305,26 @@
 
   .filter-search-wrap {
     @apply relative;
+    isolation: isolate;
   }
 
   .filter-search {
     @apply relative z-10 h-9 rounded-md bg-transparent text-sm;
     padding-left: 2.5rem !important;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    letter-spacing: 0;
+    caret-color: hsl(var(--primary));
+    transition:
+      border-color 160ms var(--ease),
+      box-shadow 180ms var(--ease),
+      transform 180ms var(--ease);
+    will-change: box-shadow;
+  }
+  .filter-search:focus {
+    transform: translateY(-1px);
   }
 
   .filter-search-icon {
@@ -311,8 +336,14 @@
   }
 
   .filter-search-ghost {
-    @apply pointer-events-none absolute inset-0 z-20 flex h-9 items-center overflow-hidden whitespace-pre rounded-md px-3 text-sm text-muted-foreground/55;
+    @apply pointer-events-none absolute inset-0 z-0 flex h-9 items-center overflow-hidden whitespace-pre rounded-md px-3 text-sm text-muted-foreground/55;
     padding-left: 2.5rem !important;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    letter-spacing: 0;
+    animation: search-ghost-in 120ms var(--ease) both;
   }
 
   .filter-search-ghost-prefix {
@@ -400,10 +431,15 @@
   /* Tab view (used in App.svelte) */
   .tab-view {
     animation: tab-fade-in 180ms var(--ease) both;
+    will-change: opacity;
   }
   @keyframes tab-fade-in {
     from { opacity: 0; }
     to { opacity: 1; }
+  }
+  @keyframes search-ghost-in {
+    from { opacity: 0; transform: translate3d(3px, 0, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
   }
 
   /* Loaded timestamp pill in header */
@@ -481,6 +517,8 @@
     min-height: 0;
     overflow: auto;
     display: flex;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
 
   .room-matrix,
@@ -614,6 +652,12 @@
   .matrix-draggable-header {
     @apply cursor-grab select-none;
     position: relative;
+    transition:
+      background-color 120ms var(--ease),
+      color 120ms var(--ease),
+      opacity 120ms var(--ease),
+      box-shadow 140ms var(--ease),
+      outline-color 140ms var(--ease);
   }
 
   .matrix-draggable-header:active {
@@ -624,10 +668,9 @@
     @apply opacity-45;
   }
 
-  /* Primitive DnD feedback: instant color/outline changes only.
-   * No transitions, transforms, shadows, or animations — keeps drag 1:1 with cursor. */
   .matrix-drag-over-col {
     background-color: hsl(var(--primary) / 0.22) !important;
+    box-shadow: inset 3px 0 0 hsl(var(--primary)), inset -3px 0 0 hsl(var(--primary) / 0.45);
   }
 
   .matrix-drag-over-group {
@@ -637,10 +680,12 @@
   .matrix-just-dropped {
     outline: 2px solid hsl(var(--primary));
     outline-offset: -2px;
+    animation: drop-confirm 260ms var(--ease-spring) both;
   }
 
   .matrix-group-head[data-drag-over="true"] {
     background-color: hsl(var(--primary) / 0.28) !important;
+    box-shadow: inset 0 0 0 2px hsl(var(--primary) / 0.5);
   }
 
   .matrix-user-group-member {
@@ -759,12 +804,14 @@
   .slot-busy {
     @apply cursor-help overflow-hidden text-[10px] leading-tight;
     transition:
-      transform 200ms var(--ease-spring),
-      box-shadow 200ms var(--ease);
+      background-color 160ms var(--ease),
+      transform 180ms var(--ease-spring),
+      box-shadow 180ms var(--ease);
+    will-change: transform;
   }
   .slot-busy:hover {
     @apply ring-2 ring-inset ring-primary/60 z-10;
-    transform: scale(1.04);
+    transform: translateZ(0) scale(1.025);
   }
 
   .slot-busy .slot-content {
@@ -823,12 +870,26 @@
   .slot-cancelled .slot-meta { color: #fff !important; }
 
   .slot-tooltip {
+    left: 0;
+    top: 0;
     background-color: hsl(var(--popover));
     backdrop-filter: none;
     opacity: 1;
     max-height: calc(100vh - 1rem);
     overflow-y: auto;
-    animation: tool-in 140ms var(--ease) both;
+    will-change: transform, opacity;
+    animation: tooltip-fade-in 110ms var(--ease) both;
+  }
+
+  @keyframes tooltip-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes drop-confirm {
+    0% { box-shadow: inset 0 0 0 0 hsl(var(--primary) / 0.0); }
+    45% { box-shadow: inset 0 0 0 3px hsl(var(--primary) / 0.55); }
+    100% { box-shadow: inset 0 0 0 0 hsl(var(--primary) / 0.0); }
   }
 
   .view-toolbar {

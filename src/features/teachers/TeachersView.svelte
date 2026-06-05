@@ -4,7 +4,7 @@
   import Card from '@/components/ui/Card.svelte'
   import Button from '@/components/ui/Button.svelte'
   import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
-  import { cn, normalizeText } from '@/lib/utils'
+  import { cn, normalizeSearchQuery } from '@/lib/utils'
   import {
     buildColumnSections,
     buildColumnSlots,
@@ -30,6 +30,8 @@
   let dragOverTeacher = $state<string | null>(null)
   let dragOverGroupId = $state<string | null>(null)
   let recentlyDropped = $state<string | null>(null)
+  let pendingTooltip = $state<{ x: number; y: number; key: string; entries: TeacherSlotEntry[]; teacher: string } | null>(null)
+  let tooltipFrame: number | null = null
   let dropFlashTimer: ReturnType<typeof setTimeout> | null = null
 
   let filteredTeacherData = $derived(filterTeacherData(teacherData, groupFilter, lessonTypes))
@@ -39,7 +41,7 @@
   let columnSlots = $derived(buildColumnSlots(columnSections))
   let occupancy = $derived(filteredTeacherData?.occupancy || {})
   let tooltipEntriesByKey = $derived(buildTooltipEntriesByKeyFromSlots(columnSlots, occupancy))
-  let normalizedSearch = $derived(normalizeText(search.trim()))
+  let normalizedSearch = $derived(normalizeSearchQuery(search.trim()))
   let teacherMatch = $derived(buildTeacherMatch(filteredTeacherData, normalizedSearch))
 
   function buildTeacherMatch(data: TeacherOccupancyIndex | null, query: string) {
@@ -47,14 +49,7 @@
     if (!data) return new Set<string>()
     const matches = new Set<string>()
     data.orderedTeachers.forEach((teacher) => {
-      if (normalizeText(teacher).includes(query)) {
-        matches.add(teacher)
-        return
-      }
-      const hasEntryMatch = DAYS.some((day) =>
-        PAIRS.some((pair) => data.occupancy[teacher]?.[day]?.[pair]?.entries.some((entry) => entry.searchKey.includes(query))),
-      )
-      if (hasEntryMatch) matches.add(teacher)
+      if ((data.searchKeyByTeacher[teacher] || '').includes(query)) matches.add(teacher)
     })
     return matches
   }
@@ -81,32 +76,38 @@
     return map
   }
 
-  function computeTooltipPos(event: MouseEvent): { x: number; y: number } {
+  function computeTooltipPos(clientX: number, clientY: number): { x: number; y: number } {
     const TIP_W = 320
-    const TIP_H = 240
-    const PAD = 8
-    const OFFSET = 14
-    let x = event.clientX + OFFSET
-    let y = event.clientY + OFFSET
-    if (x + TIP_W > window.innerWidth - PAD) {
-      x = event.clientX - TIP_W - OFFSET
-    }
-    if (y + TIP_H > window.innerHeight - PAD) {
-      y = event.clientY - TIP_H - OFFSET
-    }
+    const TIP_H = 180
+    const PAD = 10
+    const OFFSET = 12
+    const maxX = Math.max(PAD, window.innerWidth - TIP_W - PAD)
+    const maxY = Math.max(PAD, window.innerHeight - TIP_H - PAD)
     return {
-      x: Math.max(PAD, x),
-      y: Math.max(PAD, y),
+      x: Math.max(PAD, Math.min(clientX + OFFSET, maxX)),
+      y: Math.max(PAD, Math.min(clientY + OFFSET, maxY)),
     }
   }
 
-  function showTooltip(event: MouseEvent, entries: TeacherSlotEntry[], teacher: string, key: string) {
-    tooltipKey = key
-    const { x, y } = computeTooltipPos(event)
-    tooltip = { x, y, entries, teacher }
+  function flushTooltip() {
+    tooltipFrame = null
+    if (!pendingTooltip) return
+    const { x, y } = computeTooltipPos(pendingTooltip.x, pendingTooltip.y)
+    tooltipKey = pendingTooltip.key
+    tooltip = { x, y, entries: pendingTooltip.entries, teacher: pendingTooltip.teacher }
+    pendingTooltip = null
+  }
+
+  function queueTooltip(event: MouseEvent, entries: TeacherSlotEntry[], teacher: string, key: string) {
+    pendingTooltip = { x: event.clientX, y: event.clientY, entries, teacher, key }
+    if (tooltipFrame !== null) return
+    tooltipFrame = requestAnimationFrame(flushTooltip)
   }
 
   function hideTooltip() {
+    if (tooltipFrame !== null) cancelAnimationFrame(tooltipFrame)
+    tooltipFrame = null
+    pendingTooltip = null
     tooltipKey = null
     tooltip = null
   }
@@ -127,13 +128,11 @@
       return
     }
     if (key === tooltipKey && tooltip) {
-      const { x, y } = computeTooltipPos(event)
-      tooltip.x = x
-      tooltip.y = y
+      queueTooltip(event, tooltip.entries, tooltip.teacher, key)
       return
     }
     const data = tooltipEntriesByKey.get(key)
-    if (data) showTooltip(event, data.entries, data.teacher, key)
+    if (data) queueTooltip(event, data.entries, data.teacher, key)
     else hideTooltip()
   }
 
@@ -178,6 +177,7 @@
     return {
       orderedTeachers: source.orderedTeachers,
       occupancy,
+      searchKeyByTeacher: source.searchKeyByTeacher,
     }
   }
 
@@ -481,7 +481,7 @@
     {#if tooltip}
       <div
         class="slot-tooltip pointer-events-none fixed z-50 max-w-xs rounded-lg border border-border px-3 py-2 text-xs shadow-xl"
-        style={`left: ${tooltip.x}px; top: ${tooltip.y}px`}
+        style={`left: 0; top: 0; transform: translate3d(${tooltip.x}px, ${tooltip.y}px, 0)`}
       >
         <div class="mb-1 font-bold text-primary">{tooltip.teacher || '—'}</div>
         {#each tooltip.entries as entry, idx (idx)}

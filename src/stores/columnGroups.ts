@@ -35,6 +35,8 @@ const STORAGE_KEYS: Record<ColumnGroupScope, string> = {
   rooms: 'rfict-room-groups',
   teachers: 'rfict-teacher-groups',
 }
+const WRITE_DELAY_MS = 120
+const writeTimers = new Map<ColumnGroupScope, ReturnType<typeof setTimeout>>()
 
 function readGroups(scope: ColumnGroupScope, fallback: ColumnGroup[]) {
   if (typeof localStorage === 'undefined') return fallback
@@ -60,7 +62,18 @@ const store = writable<ColumnGroupsState>(initialState())
 if (typeof localStorage !== 'undefined') {
   store.subscribe((state) => {
     ;(['rooms', 'teachers'] as const).forEach((scope) => {
-      localStorage.setItem(STORAGE_KEYS[scope], JSON.stringify(state[scope]))
+      const previous = writeTimers.get(scope)
+      if (previous) clearTimeout(previous)
+      writeTimers.set(
+        scope,
+        setTimeout(() => {
+          try {
+            localStorage.setItem(STORAGE_KEYS[scope], JSON.stringify(state[scope]))
+          } finally {
+            writeTimers.delete(scope)
+          }
+        }, WRITE_DELAY_MS),
+      )
     })
   })
 }

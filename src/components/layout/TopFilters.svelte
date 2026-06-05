@@ -5,7 +5,7 @@
   import Input from '@/components/ui/Input.svelte'
   import type { AppTab } from '@/components/layout/AppShell.svelte'
   import { COURSES, LESSON_TYPE_LABELS } from '@/lib/constants'
-  import { normalizeText } from '@/lib/utils'
+  import { normalizeSearchQuery } from '@/lib/utils'
   import type {
     CourseSelection,
     FiltersState,
@@ -74,12 +74,18 @@
 
   function completionFor(query: string, suggestion: string) {
     if (!query.trim() || !suggestion) return ''
-    const normalizedQuery = normalizeText(query)
-    const normalizedSuggestion = normalizeText(suggestion)
-    if (!normalizedQuery || normalizedSuggestion === normalizedQuery || !normalizedSuggestion.startsWith(normalizedQuery)) {
+    const normalizedQuery = normalizeSearchQuery(query)
+    const normalizedSuggestion = normalizeSearchQuery(suggestion)
+    const compactQuery = normalizedQuery.replace(/\s+/g, '')
+    const compactSuggestion = normalizedSuggestion.replace(/\s+/g, '')
+    if (
+      !normalizedQuery ||
+      normalizedSuggestion === normalizedQuery ||
+      (!normalizedSuggestion.startsWith(normalizedQuery) && !compactSuggestion.startsWith(compactQuery))
+    ) {
       return ''
     }
-    return suggestion.slice(query.length)
+    return suggestion.slice(query.trimEnd().length)
   }
 
   function acceptSearchSuggestion(event: KeyboardEvent) {

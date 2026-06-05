@@ -1,5 +1,5 @@
 import { DAY_ORDER, LECTURE_HALLS, LESSON_TYPE_LABELS, PAIRS } from '@/lib/constants'
-import { normalizeForTeacherSearch, normalizeText } from '@/lib/utils'
+import { buildSearchKey, normalizeForTeacherSearch, normalizeSearchQuery } from '@/lib/utils'
 import { planKey } from '@/api/scheduleClient'
 import type {
   AnalyticsCell,
@@ -55,7 +55,8 @@ export function applyLessonFilters(
   filters: FiltersState,
   search: string,
 ) {
-  const query = normalizeText(search)
+  const query = normalizeSearchQuery(search)
+  const groupNameById = new Map(groups.map((group) => [group.id, group.name]))
   return lessons.filter((lesson) => {
     if (!isLessonActiveForWeek(lesson)) return false
     if (filters.group !== 'all' && lesson.group !== filters.group) return false
@@ -64,7 +65,7 @@ export function applyLessonFilters(
     }
     if (filters.lessonTypes.length > 0 && !filters.lessonTypes.includes(lesson.type)) return false
     if (!query) return true
-    const haystack = [
+    const haystack = buildSearchKey([
       lesson.day,
       lesson.date,
       lesson.time,
@@ -77,10 +78,8 @@ export function applyLessonFilters(
       lesson.period_start,
       lesson.period_end,
       lesson.comment,
-      getGroupNameById(groups, lesson.group),
-    ]
-      .map(normalizeText)
-      .join(' ')
+      groupNameById.get(lesson.group) || `Группа ${lesson.group}`,
+    ].join(' '))
     return haystack.includes(query)
   })
 }
@@ -694,7 +693,7 @@ export function buildPlanFactHierarchy({
   const groupsById = new Map<string, ScheduleGroupWithCourse>()
   groups.forEach((g) => groupsById.set(g.id, g as ScheduleGroupWithCourse))
 
-  const query = search ? normalizeText(search) : ''
+  const query = search ? normalizeSearchQuery(search) : ''
 
   return courses
     .map<PlanFactCourse>((course) => {
@@ -722,11 +721,11 @@ export function buildPlanFactHierarchy({
           ).sort((a, b) => getLessonTypeLabel(a).localeCompare(getLessonTypeLabel(b), 'ru'))
 
           if (query) {
-            const subjectHaystack = normalizeText(`${subject} ${types.map(getLessonTypeLabel).join(' ')} ${course} курс`)
+            const subjectHaystack = buildSearchKey(`${subject} ${types.map(getLessonTypeLabel).join(' ')} ${course} курс`)
             const hasSubjectMatch = subjectHaystack.includes(query)
             const hasNestedMatch = subjectLessons.some((lesson) => {
               const group = courseGroups.find((item) => item.id === lesson.group)
-              return normalizeText(`${group?.name || ''} ${lesson.subgroup || ''}`).includes(query)
+              return buildSearchKey(`${group?.name || ''} ${lesson.subgroup || ''}`).includes(query)
             })
             if (!hasSubjectMatch && !hasNestedMatch) return
           }

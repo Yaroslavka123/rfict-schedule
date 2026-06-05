@@ -17,7 +17,7 @@ import {
   normalizeRoom,
   normalizeTeacherName,
 } from '@/lib/schedule'
-import { normalizeText } from '@/lib/utils'
+import { buildSearchKey } from '@/lib/utils'
 import type {
   CoursePlanEntry,
   CoursePlanMap,
@@ -140,6 +140,7 @@ export interface TeacherCell {
 export interface TeacherOccupancyIndex {
   orderedTeachers: string[]
   occupancy: Record<string, Record<string, Record<number, TeacherCell>>>
+  searchKeyByTeacher: Record<string, string>
 }
 
 const initialState: ScheduleState = {
@@ -153,6 +154,7 @@ const initialState: ScheduleState = {
 }
 
 const memoryCache = new Map<string, CachedBundle>()
+const scheduleIndexCache = new WeakMap<CourseSchedule | MergedSchedule, ScheduleIndex>()
 const writeTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 function cacheKey(course: CourseSelection) {
@@ -305,6 +307,14 @@ function teacherCell(entries: TeacherSlotEntry[]): TeacherCell {
   }
 }
 
+function getCachedScheduleIndex(schedule: CourseSchedule | MergedSchedule): ScheduleIndex {
+  const cached = scheduleIndexCache.get(schedule)
+  if (cached) return cached
+  const index = buildScheduleIndex(schedule)
+  scheduleIndexCache.set(schedule, index)
+  return index
+}
+
 function finalizeRoomIndex(index: RoomOccupancyIndex) {
   index.orderedRooms = index.orderedRooms.sort(numericRoomSort)
   const seenCategories = new Set<RoomCategory>()
@@ -368,10 +378,11 @@ function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): S
       if (!roomEntriesByWeek[week][room]) roomEntriesByWeek[week][room] = {}
       if (!roomEntriesByWeek[week][room][lesson.day]) roomEntriesByWeek[week][room][lesson.day] = {}
 
+      const searchKey = buildSearchKey(
+        `${room} ${lesson.subject || ''} ${teacher} ${groupName} ${activeSubgroups} ${lesson.day || ''} ${lesson.date || ''} ${lesson.comment || ''}`,
+      )
+
       for (let pair = lesson.pair; pair < lesson.pair + duration; pair += 1) {
-        const searchKey = normalizeText(
-          `${room} ${lesson.subject || ''} ${teacher} ${groupName} ${activeSubgroups} ${lesson.day || ''} ${lesson.date || ''} ${lesson.comment || ''}`,
-        )
         if (!roomEntriesByWeek[week][room][lesson.day][pair]) roomEntriesByWeek[week][room][lesson.day][pair] = []
         roomEntriesByWeek[week][room][lesson.day][pair].push({
           subject: lesson.subject || '',
@@ -394,12 +405,12 @@ function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): S
       if (!teacherEntriesByWeek[week]) teacherEntriesByWeek[week] = {}
       if (!teacherEntriesByWeek[week][teacher]) teacherEntriesByWeek[week][teacher] = {}
       if (!teacherEntriesByWeek[week][teacher][lesson.day]) teacherEntriesByWeek[week][teacher][lesson.day] = {}
+      const normalizedRoom = room || ''
+      const searchKey = buildSearchKey(
+        `${teacher} ${lesson.subject || ''} ${groupName} ${activeSubgroups} ${normalizedRoom} ${lesson.day || ''} ${lesson.date || ''} ${lesson.comment || ''}`,
+      )
 
       for (let pair = lesson.pair; pair < lesson.pair + duration; pair += 1) {
-        const normalizedRoom = room || ''
-        const searchKey = normalizeText(
-          `${teacher} ${lesson.subject || ''} ${groupName} ${activeSubgroups} ${normalizedRoom} ${lesson.day || ''} ${lesson.date || ''} ${lesson.comment || ''}`,
-        )
         if (!teacherEntriesByWeek[week][teacher][lesson.day][pair]) teacherEntriesByWeek[week][teacher][lesson.day][pair] = []
         teacherEntriesByWeek[week][teacher][lesson.day][pair].push({
           subject: lesson.subject || '',
@@ -446,15 +457,19 @@ function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): S
     const index: TeacherOccupancyIndex = {
       orderedTeachers: Object.keys(teacherMap).sort((a, b) => a.localeCompare(b, 'ru')),
       occupancy: {},
+      searchKeyByTeacher: {},
     }
     Object.entries(teacherMap).forEach(([teacher, days]) => {
       index.occupancy[teacher] = {}
+      const teacherSearchParts = [teacher]
       Object.entries(days).forEach(([day, pairs]) => {
         index.occupancy[teacher][day] = {}
         Object.entries(pairs).forEach(([pair, entries]) => {
           index.occupancy[teacher][day][Number(pair)] = teacherCell(entries)
+          entries.forEach((entry) => teacherSearchParts.push(entry.searchKey))
         })
       })
+      index.searchKeyByTeacher[teacher] = buildSearchKey(teacherSearchParts.join(' '))
     })
     teacherOccupancyByWeek[Number(week)] = index
   })
@@ -474,7 +489,7 @@ function stateFromCache(cached: CachedBundle, loading: boolean): ScheduleState {
   if (cached.kind === 'single') {
     return {
       schedule: cached.schedule,
-      index: buildScheduleIndex(cached.schedule),
+      index: getCachedScheduleIndex(cached.schedule),
       plan: cached.plan,
       plans: { [cached.schedule.course]: cached.plan },
       loading,
@@ -485,7 +500,7 @@ function stateFromCache(cached: CachedBundle, loading: boolean): ScheduleState {
 
   return {
     schedule: cached.schedule,
-    index: buildScheduleIndex(cached.schedule),
+    index: getCachedScheduleIndex(cached.schedule),
     plan: combinePlans(cached.plans),
     plans: cached.plans,
     loading,
@@ -565,7 +580,7 @@ function createScheduleStore() {
         cacheAll(bundle)
         store.set({
           schedule: bundle.schedule,
-          index: buildScheduleIndex(bundle.schedule),
+          index: getCachedScheduleIndex(bundle.schedule),
           plan: combinePlans(bundle.plans),
           plans: bundle.plans,
           loading: false,
@@ -578,7 +593,7 @@ function createScheduleStore() {
         cacheCourse(course, bundle)
         store.set({
           schedule: bundle.schedule,
-          index: buildScheduleIndex(bundle.schedule),
+          index: getCachedScheduleIndex(bundle.schedule),
           plan: bundle.plan,
           plans: { [course]: bundle.plan },
           loading: false,
