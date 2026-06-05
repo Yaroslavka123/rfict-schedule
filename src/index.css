@@ -118,9 +118,16 @@
 @layer components {
   .app-shell {
     @apply min-h-screen bg-background text-foreground;
+    --header-h: 6.35rem;
     background:
       linear-gradient(180deg, hsl(var(--muted) / 0.55), transparent 18rem),
       hsl(var(--background));
+  }
+
+  @media (max-width: 767px) {
+    .app-shell {
+      --header-h: 16.15rem;
+    }
   }
 
   .app-header {
@@ -134,11 +141,11 @@
   }
 
   .header-inner {
-    @apply flex w-full flex-col gap-2 px-3 py-2 md:px-5;
+    @apply flex w-full flex-col gap-1.5 px-3 py-1.5 md:px-5;
   }
 
   .header-top {
-    @apply flex flex-wrap items-center gap-3;
+    @apply flex flex-wrap items-center gap-2;
   }
 
   .compact-header {
@@ -159,7 +166,7 @@
   }
 
   .brand-mark-compact {
-    @apply h-9 w-9;
+    @apply h-8 w-8;
   }
 
   .theme-swap {
@@ -175,15 +182,15 @@
   }
 
   .app-tabs {
-    @apply grid w-full grid-cols-2 gap-1 rounded-lg border border-border bg-muted/55 p-1 md:w-auto md:grid-cols-4;
+    @apply grid w-full grid-cols-2 gap-1 rounded-md border border-border bg-muted/55 p-1 md:w-auto md:grid-cols-4;
   }
 
   .compact-tabs {
-    @apply order-last w-full md:order-none md:flex md:w-auto md:min-w-[31rem];
+    @apply order-last w-full md:order-none md:flex md:w-auto md:min-w-[26rem];
   }
 
   .app-tab {
-    @apply relative inline-flex min-h-9 items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30;
+    @apply relative inline-flex min-h-8 items-center justify-center gap-1.5 rounded px-2.5 py-1 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30;
     transition:
       color 160ms var(--ease),
       background-color 160ms var(--ease),
@@ -241,7 +248,7 @@
   }
 
   .header-title {
-    @apply text-lg font-bold leading-tight;
+    @apply text-base font-bold leading-tight;
     letter-spacing: 0;
   }
 
@@ -250,7 +257,7 @@
   }
 
   .header-actions {
-    @apply ml-auto flex items-center gap-1.5;
+    @apply ml-auto flex items-center gap-1;
   }
 
   .header-controls {
@@ -266,12 +273,17 @@
   }
 
   .top-filters {
-    @apply flex min-w-0 flex-wrap items-end gap-2;
+    @apply flex min-w-0 flex-wrap items-center gap-1.5;
   }
 
   .filter-field {
-    @apply min-w-0 flex-[1_1_8.5rem] md:flex-none;
-    transition: transform 200ms var(--ease);
+    @apply min-w-0 flex-[1_1_8.25rem] md:flex-none;
+    transition:
+      flex-basis 220ms var(--ease),
+      width 220ms var(--ease),
+      opacity 180ms var(--ease),
+      transform 200ms var(--ease),
+      margin 220ms var(--ease);
   }
   .filter-field:focus-within {
     transform: translateY(-1px);
@@ -279,6 +291,27 @@
 
   .filter-field-search {
     @apply flex-[1_1_18rem] md:max-w-[30rem];
+  }
+
+  .filter-field-course { @apply md:w-[7rem]; }
+  .filter-field-group { @apply md:w-[10rem]; }
+  .filter-field-week { @apply md:w-[8rem]; }
+  .filter-field-type { @apply md:w-[9rem]; }
+
+  .filter-field-week[data-collapsed="true"] {
+    flex: 0 0 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    margin-left: -0.375rem;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transform: scaleX(0.96);
+  }
+
+  .filter-reset {
+    @apply shrink-0;
+    animation: filter-control-in 150ms var(--ease) both;
   }
 
   .filter-label {
@@ -295,6 +328,75 @@
     box-shadow: 0 1px 0 hsl(var(--foreground) / 0.02);
     will-change: transform, box-shadow;
   }
+
+  .filter-select-custom {
+    @apply relative h-8 w-full;
+    z-index: 35;
+  }
+
+  .filter-select-open {
+    z-index: 80;
+  }
+
+  .filter-select-trigger {
+    @apply inline-flex h-8 w-full items-center justify-between gap-2 rounded-md border border-border bg-background px-2.5 text-left text-sm font-semibold text-foreground outline-none;
+    box-shadow: 0 1px 0 hsl(var(--foreground) / 0.02);
+    transition:
+      border-color 150ms var(--ease),
+      background-color 150ms var(--ease),
+      box-shadow 180ms var(--ease),
+      transform 160ms var(--ease-spring);
+  }
+
+  .filter-select-trigger:hover {
+    border-color: hsl(var(--muted-foreground) / 0.48);
+    box-shadow: 0 8px 18px -14px hsl(var(--foreground) / 0.34);
+  }
+
+  .filter-select-trigger:active {
+    transform: scale(0.985);
+  }
+
+  .filter-select-open .filter-select-trigger {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.14);
+  }
+
+  .filter-select-value,
+  .filter-select-option-label {
+    @apply min-w-0 truncate;
+  }
+
+  .filter-select-chevron {
+    @apply shrink-0 text-muted-foreground;
+    transition: transform 180ms var(--ease-spring), color 160ms var(--ease);
+  }
+
+  .filter-select-open .filter-select-chevron {
+    color: hsl(var(--primary));
+    transform: rotate(180deg);
+  }
+
+  .filter-select-menu {
+    @apply absolute left-0 top-[calc(100%+0.35rem)] z-50 max-h-72 min-w-full overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-xl;
+    transform-origin: top center;
+    animation: filter-menu-in 150ms var(--ease) both;
+  }
+
+  .filter-select-option {
+    @apply flex h-8 w-full items-center justify-between gap-2 rounded px-2 text-left text-sm font-medium text-foreground;
+    transition: background-color 120ms var(--ease), color 120ms var(--ease), transform 120ms var(--ease);
+  }
+
+  .filter-select-option:hover {
+    background-color: hsl(var(--muted) / 0.78);
+    transform: translateX(2px);
+  }
+
+  .filter-select-option-active {
+    color: hsl(var(--primary));
+    background-color: hsl(var(--primary) / 0.10);
+  }
   .filter-select:hover {
     border-color: hsl(var(--muted-foreground) / 0.5);
     box-shadow: 0 7px 18px -14px hsl(var(--foreground) / 0.35);
@@ -309,8 +411,9 @@
   }
 
   .filter-search {
-    @apply relative z-10 h-9 rounded-md bg-transparent text-sm;
+    @apply relative z-10 h-8 rounded-md bg-transparent text-sm;
     padding-left: 2.5rem !important;
+    background-color: transparent !important;
     font-family: inherit;
     font-size: 0.875rem;
     font-weight: 500;
@@ -336,7 +439,7 @@
   }
 
   .filter-search-ghost {
-    @apply pointer-events-none absolute inset-0 z-0 flex h-9 items-center overflow-hidden whitespace-pre rounded-md px-3 text-sm text-muted-foreground/55;
+    @apply pointer-events-none absolute inset-0 z-20 flex h-8 items-center overflow-hidden whitespace-pre rounded-md px-3 text-sm text-muted-foreground/50;
     padding-left: 2.5rem !important;
     font-family: inherit;
     font-size: 0.875rem;
@@ -430,16 +533,38 @@
 
   /* Tab view (used in App.svelte) */
   .tab-view {
-    animation: tab-fade-in 180ms var(--ease) both;
-    will-change: opacity;
+    animation: tab-fade-in 180ms var(--ease);
   }
   @keyframes tab-fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from { opacity: 0; transform: translate3d(0, 5px, 0); }
+    to { opacity: 1; transform: none; }
   }
   @keyframes search-ghost-in {
     from { opacity: 0; transform: translate3d(3px, 0, 0); }
     to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  @keyframes filter-menu-in {
+    from { opacity: 0; transform: translate3d(0, -4px, 0) scale(0.985); }
+    to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  }
+  @keyframes filter-control-in {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  html.matrix-reorder::view-transition-old(root) {
+    animation: matrix-reorder-old 110ms var(--ease) both;
+  }
+  html.matrix-reorder::view-transition-new(root) {
+    animation: matrix-reorder-new 180ms var(--ease) both;
+  }
+  @keyframes matrix-reorder-old {
+    from { opacity: 1; }
+    to { opacity: 0.9; }
+  }
+  @keyframes matrix-reorder-new {
+    from { opacity: 0.74; }
+    to { opacity: 1; }
   }
 
   /* Loaded timestamp pill in header */
@@ -498,11 +623,24 @@
   .rooms-page,
   .teachers-page {
     @apply flex flex-col gap-2;
+    position: relative;
     height: 100%;
   }
 
   .matrix-groups-toolbar {
-    @apply flex min-h-8 flex-wrap items-center gap-1.5;
+    @apply absolute left-2 top-2 z-[65] flex min-h-0 items-center gap-1.5;
+    pointer-events: none;
+  }
+
+  .matrix-add-group-button {
+    @apply rounded-md text-xs shadow-md;
+    width: 1.75rem !important;
+    min-width: 1.75rem !important;
+    height: 1.75rem !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    pointer-events: auto;
+    backdrop-filter: blur(8px);
   }
 
   /* Room matrix
@@ -642,6 +780,12 @@
   .matrix-drag-image {
     @apply pointer-events-none fixed left-0 top-0 z-50 rounded border border-primary/30 bg-card px-2 py-1 text-xs font-semibold text-primary shadow-lg;
     transform: translate(-9999px, -9999px);
+    animation: drag-image-in 120ms var(--ease) both;
+  }
+
+  @keyframes drag-image-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   .room-matrix .th-room {
@@ -666,11 +810,39 @@
 
   .matrix-col-dragging {
     @apply opacity-45;
+    box-shadow: inset 0 0 0 2px hsl(var(--primary) / 0.55);
   }
 
   .matrix-drag-over-col {
-    background-color: hsl(var(--primary) / 0.22) !important;
-    box-shadow: inset 3px 0 0 hsl(var(--primary)), inset -3px 0 0 hsl(var(--primary) / 0.45);
+    background-color: hsl(var(--primary) / 0.14) !important;
+    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.35);
+  }
+
+  .matrix-drag-over-before::before,
+  .matrix-drag-over-after::before {
+    content: '';
+    position: absolute;
+    top: -0.35rem;
+    bottom: -999rem;
+    z-index: 6;
+    width: 3px;
+    border-radius: 999px;
+    background: hsl(var(--primary));
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.16), 0 0 14px hsl(var(--primary) / 0.35);
+    animation: drag-marker-in 130ms var(--ease) both;
+  }
+
+  .matrix-drag-over-before::before {
+    left: -2px;
+  }
+
+  .matrix-drag-over-after::before {
+    right: -2px;
+  }
+
+  @keyframes drag-marker-in {
+    from { opacity: 0; transform: scaleY(0.92); }
+    to { opacity: 1; transform: scaleY(1); }
   }
 
   .matrix-drag-over-group {
@@ -680,7 +852,7 @@
   .matrix-just-dropped {
     outline: 2px solid hsl(var(--primary));
     outline-offset: -2px;
-    animation: drop-confirm 260ms var(--ease-spring) both;
+    animation: drop-confirm 420ms var(--ease-spring) both;
   }
 
   .matrix-group-head[data-drag-over="true"] {

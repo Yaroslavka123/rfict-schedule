@@ -89,7 +89,7 @@
   }
 </script>
 
-<div class="app-shell" style="--header-h: 6.5rem;">
+<div class="app-shell">
   <header class={cn('app-header', scrolled && 'is-scrolled')}>
     <div class="header-inner">
       <div class="header-top compact-header">
@@ -132,7 +132,7 @@
             {#key refreshKey}
               <RefreshCw class={cn('h-4 w-4', refreshing && 'animate-spin', !refreshing && 'spin-once')} />
             {/key}
-            <span class="hidden sm:inline">Обновить</span>
+            <span class="sr-only">Обновить</span>
           </Button>
           <Button
             variant="secondary"
@@ -150,7 +150,7 @@
                 {/if}
               </span>
             {/key}
-            <span class="hidden sm:inline">Тема</span>
+            <span class="sr-only">Тема</span>
           </Button>
         </div>
       </div>

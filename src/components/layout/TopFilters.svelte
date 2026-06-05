@@ -2,6 +2,7 @@
   import { Search, X } from '@lucide/svelte'
 
   import Button from '@/components/ui/Button.svelte'
+  import FilterSelect, { type FilterSelectOption } from '@/components/ui/FilterSelect.svelte'
   import Input from '@/components/ui/Input.svelte'
   import type { AppTab } from '@/components/layout/AppShell.svelte'
   import { COURSES, LESSON_TYPE_LABELS } from '@/lib/constants'
@@ -24,7 +25,6 @@
     onFiltersChange: (filters: FiltersState) => void
   }
 
-  const selectClass = 'filter-select'
   const searchClass = 'filter-search'
   const lessonTypes = Object.entries(LESSON_TYPE_LABELS).filter(
     ([type]) => type !== 'unknown',
@@ -34,6 +34,10 @@
 
   let showWeek = $derived(activeTab !== 'analytics')
   let showGroup = $derived(activeTab !== 'analytics' || groups.length > 0)
+  let courseOptions = $derived<FilterSelectOption[]>([
+    { value: 'all', label: 'Все курсы' },
+    ...COURSES.map((course) => ({ value: String(course), label: `${course} курс` })),
+  ])
   let visibleGroups = $derived(
     filters.course === 'all'
       ? groups
@@ -42,10 +46,30 @@
           return withCourse.course === undefined || withCourse.course === filters.course
         }),
   )
+  let groupOptions = $derived<FilterSelectOption[]>([
+    { value: 'all', label: 'Все группы' },
+    ...visibleGroups.map((group) => {
+      const withCourse = group as ScheduleGroupWithCourse
+      const suffix =
+        filters.course === 'all' && withCourse.course
+          ? ` · ${withCourse.course} курс`
+          : group.department
+            ? ` · ${group.department}`
+            : ''
+      return { value: group.id, label: `${group.name}${suffix}` }
+    }),
+  ])
   let availableWeeks = $derived(
     Array.from(new Set(weeks.map((week) => week.week_number))).sort((a, b) => a - b),
   )
+  let weekOptions = $derived<FilterSelectOption[]>(
+    availableWeeks.map((weekNumber) => ({ value: String(weekNumber), label: `${weekNumber} неделя` })),
+  )
   let selectedType = $derived(filters.lessonTypes[0] || 'all')
+  let typeOptions = $derived<FilterSelectOption[]>([
+    { value: 'all', label: 'Все типы' },
+    ...lessonTypes.map(([type, label]) => ({ value: type, label })),
+  ])
   let searchCompletion = $derived(completionFor(filters.search, searchSuggestion))
   let hasActiveFilters = $derived(
     filters.group !== 'all' || filters.subgroup !== 'all' || filters.lessonTypes.length > 0 || Boolean(filters.search),
@@ -66,10 +90,6 @@
 
   function setType(raw: string) {
     update({ lessonTypes: raw === 'all' ? [] : [raw as LessonType] })
-  }
-
-  function groupKey(group: ScheduleGroup | ScheduleGroupWithCourse) {
-    return `${(group as ScheduleGroupWithCourse).course ?? 'course'}-${group.id}`
   }
 
   function completionFor(query: string, suggestion: string) {
@@ -97,56 +117,37 @@
 </script>
 
 <div class="top-filters">
-  <label class="filter-field">
-    <span class="filter-label">Курс</span>
-    <select class={selectClass} value={filters.course === 'all' ? 'all' : String(filters.course)} onchange={(event) => setCourse(event.currentTarget.value)} aria-label="Курс">
-      <option value="all">Все курсы</option>
-      {#each COURSES as course (course)}
-        <option value={String(course)}>{course} курс</option>
-      {/each}
-    </select>
-  </label>
+  <div class="filter-field filter-field-course">
+    <FilterSelect
+      value={filters.course === 'all' ? 'all' : String(filters.course)}
+      options={courseOptions}
+      ariaLabel="Курс"
+      onChange={setCourse}
+    />
+  </div>
 
   {#if showGroup}
-    <label class="filter-field">
-      <span class="filter-label">Группа</span>
-      <select class={selectClass} value={filters.group} onchange={(event) => setGroup(event.currentTarget.value)} aria-label="Группа">
-        <option value="all">Все группы</option>
-        {#each visibleGroups as group (groupKey(group))}
-          {@const withCourse = group as ScheduleGroupWithCourse}
-          <option value={group.id}>
-            {group.name}{#if filters.course === 'all' && withCourse.course} · {withCourse.course} курс{:else if group.department} · {group.department}{/if}
-          </option>
-        {/each}
-      </select>
-    </label>
+    <div class="filter-field filter-field-group">
+      <FilterSelect value={filters.group} options={groupOptions} ariaLabel="Группа" onChange={setGroup} />
+    </div>
   {/if}
 
-  {#if showWeek && availableWeeks.length > 0}
-    <label class="filter-field">
-      <span class="filter-label">Неделя</span>
-      <select class={selectClass} value={String(filters.week)} onchange={(event) => update({ week: Number(event.currentTarget.value) })} aria-label="Неделя">
-        {#each availableWeeks as weekNumber (weekNumber)}
-          <option value={String(weekNumber)}>{weekNumber} неделя</option>
-        {/each}
-      </select>
-    </label>
-  {/if}
+  <div class="filter-field filter-field-week" data-collapsed={!showWeek || availableWeeks.length === 0 ? 'true' : null}>
+    <FilterSelect
+      value={String(filters.week)}
+      options={weekOptions}
+      ariaLabel="Неделя"
+      onChange={(value) => update({ week: Number(value) })}
+    />
+  </div>
 
-  <label class="filter-field">
-    <span class="filter-label">Тип занятия</span>
-    <select class={selectClass} value={selectedType} onchange={(event) => setType(event.currentTarget.value)} aria-label="Тип занятия">
-      <option value="all">Все типы</option>
-      {#each lessonTypes as [type, label] (type)}
-        <option value={type}>{label}</option>
-      {/each}
-    </select>
-  </label>
+  <div class="filter-field filter-field-type">
+    <FilterSelect value={selectedType} options={typeOptions} ariaLabel="Тип занятия" onChange={setType} />
+  </div>
 
   <label class="filter-field filter-field-search">
-    <span class="filter-label">Поиск</span>
     <div class="filter-search-wrap">
-      <Search class="filter-search-icon pointer-events-none absolute left-3 top-2.5 z-30 h-4 w-4 text-muted-foreground" />
+      <Search class="filter-search-icon pointer-events-none absolute left-3 top-2 z-30 h-4 w-4 text-muted-foreground" />
       <Input
         class={searchClass}
         placeholder="Предмет, ФИО, ауд."
@@ -165,7 +166,7 @@
   {#if hasActiveFilters}
     <Button
       variant="ghost"
-      class="mt-auto h-9 w-9 p-0"
+      class="filter-reset h-9 w-9 p-0"
       onclick={() => update({ group: 'all', subgroup: 'all', lessonTypes: [], search: '' })}
       title="Сбросить фильтры"
       aria-label="Сбросить фильтры"

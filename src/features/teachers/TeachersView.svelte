@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Plus, Trash2 } from '@lucide/svelte'
+  import { flip } from 'svelte/animate'
 
   import Card from '@/components/ui/Card.svelte'
   import Button from '@/components/ui/Button.svelte'
@@ -28,6 +29,7 @@
   let tooltipKey = $state<string | null>(null)
   let draggedTeacher = $state<string | null>(null)
   let dragOverTeacher = $state<string | null>(null)
+  let dragOverSide = $state<'before' | 'after' | null>(null)
   let dragOverGroupId = $state<string | null>(null)
   let recentlyDropped = $state<string | null>(null)
   let pendingTooltip = $state<{ x: number; y: number; key: string; entries: TeacherSlotEntry[]; teacher: string } | null>(null)
@@ -202,6 +204,7 @@
   function clearColumnDrag() {
     draggedTeacher = null
     dragOverTeacher = null
+    dragOverSide = null
     dragOverGroupId = null
   }
 
@@ -211,7 +214,24 @@
     dropFlashTimer = setTimeout(() => {
       recentlyDropped = null
       dropFlashTimer = null
-    }, 220)
+    }, 420)
+  }
+
+  type ViewTransitionDocument = Document & {
+    startViewTransition?: (callback: () => void) => { finished: Promise<void> }
+  }
+
+  function runMatrixTransition(update: () => void) {
+    const doc = document as ViewTransitionDocument
+    if (!doc.startViewTransition) {
+      update()
+      return
+    }
+    document.documentElement.classList.add('matrix-reorder')
+    const transition = doc.startViewTransition(update)
+    void transition.finished.finally(() => {
+      document.documentElement.classList.remove('matrix-reorder')
+    })
   }
 
   function startColumnDrag(event: DragEvent, teacher: string) {
@@ -238,22 +258,30 @@
     if (!draggedTeacher) return
     if (teacher && draggedTeacher === teacher) {
       dragOverTeacher = null
+      dragOverSide = null
       dragOverGroupId = null
       return
     }
     event.preventDefault()
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
     if (teacher) {
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+      const side = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
       if (dragOverTeacher !== teacher) dragOverTeacher = teacher
+      if (dragOverSide !== side) dragOverSide = side
       if (dragOverGroupId !== null) dragOverGroupId = null
     } else {
       // hovering over a group zone (header or empty slot)
       if (dragOverTeacher !== null) dragOverTeacher = null
+      if (dragOverSide !== null) dragOverSide = null
     }
   }
 
   function clearColumnHover(teacher: string) {
-    if (dragOverTeacher === teacher) dragOverTeacher = null
+    if (dragOverTeacher === teacher) {
+      dragOverTeacher = null
+      dragOverSide = null
+    }
   }
 
   function allowGroupDrop(event: DragEvent, groupId: string | undefined) {
@@ -262,6 +290,7 @@
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
     if (dragOverGroupId !== groupId) dragOverGroupId = groupId
     if (dragOverTeacher !== null) dragOverTeacher = null
+    if (dragOverSide !== null) dragOverSide = null
   }
 
   function clearGroupHover(groupId: string | undefined) {
@@ -287,10 +316,12 @@
     if (source && source !== teacher) {
       const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
       const side = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
-      columnOrderStore.move('teachers', orderedTeachers, source, teacher, side)
-      const targetSlot = columnSlots.find((slot) => slot.column === teacher)
-      if (targetSlot?.groupId) columnGroupsStore.assignItem('teachers', targetSlot.groupId, source)
-      else columnGroupsStore.unassignItem('teachers', source)
+      runMatrixTransition(() => {
+        columnOrderStore.move('teachers', orderedTeachers, source, teacher, side)
+        const targetSlot = columnSlots.find((slot) => slot.column === teacher)
+        if (targetSlot?.groupId) columnGroupsStore.assignItem('teachers', targetSlot.groupId, source)
+        else columnGroupsStore.unassignItem('teachers', source)
+      })
       flashDropped(source)
     }
     clearColumnDrag()
@@ -301,9 +332,11 @@
     const source = draggedTeacher
     const group = teacherGroups.find((item) => item.id === groupId)
     const target = group?.items.filter((item) => item !== source && orderedTeachers.includes(item)).at(-1)
-    columnGroupsStore.assignItem('teachers', groupId, source)
-    if (target) columnOrderStore.move('teachers', orderedTeachers, source, target, 'after')
-    else columnOrderStore.moveToEnd('teachers', orderedTeachers, source)
+    runMatrixTransition(() => {
+      columnGroupsStore.assignItem('teachers', groupId, source)
+      if (target) columnOrderStore.move('teachers', orderedTeachers, source, target, 'after')
+      else columnOrderStore.moveToEnd('teachers', orderedTeachers, source)
+    })
     flashDropped(source)
     clearColumnDrag()
   }
@@ -323,9 +356,8 @@
 {:else}
   <div class="teachers-page">
     <div class="matrix-groups-toolbar">
-      <Button variant="secondary" class="h-8 px-2.5 text-xs" onclick={addTeacherGroup} title="Создать группу преподавателей">
+      <Button variant="secondary" class="matrix-add-group-button" onclick={addTeacherGroup} title="Создать группу преподавателей" aria-label="Создать группу преподавателей">
         <Plus class="h-3.5 w-3.5" />
-        Группа
       </Button>
     </div>
 
@@ -379,47 +411,54 @@
             <th class="th-day" title="День">Дн</th>
             <th class="th-pair" title="Пара">№</th>
             {#each columnSlots as slot (slot.id)}
-              {#if slot.type === 'group-empty'}
-                <th
-                  class={cn('matrix-empty-group-slot', groupSlotClasses(slot))}
-                  role="columnheader"
-                  title="Перетащите преподавателя в группу"
-                  data-drag-over={dragOverGroupId === slot.groupId ? 'true' : null}
-                  ondragover={(event) => allowGroupDrop(event, slot.groupId)}
-                  ondragleave={() => clearGroupHover(slot.groupId)}
-                  ondrop={(event) => {
-                    event.preventDefault()
-                    if (slot.groupId) dropTeacherOnGroup(slot.groupId)
-                  }}
-                >
-                  Перетащите
-                </th>
-              {:else if slot.column}
-              {@const teacher = slot.column}
-              {@const isMatch = teacherMatch?.has(teacher)}
-              {@const isDim = teacherMatch && !isMatch}
+              {@const teacher = slot.column || ''}
+              {@const isMatch = teacher ? teacherMatch?.has(teacher) : false}
+              {@const isDim = Boolean(teacher && teacherMatch && !isMatch)}
               <th
+                animate:flip={{ duration: 170 }}
                 class={cn(
-                  'th-teacher matrix-draggable-header',
+                  slot.type === 'group-empty' ? 'matrix-empty-group-slot' : 'th-teacher matrix-draggable-header',
                   isMatch && 'th-teacher-match',
                   isDim && 'th-teacher-dim',
                   groupSlotClasses(slot),
                   draggedTeacher === teacher && 'matrix-col-dragging',
                   dragOverTeacher === teacher && 'matrix-drag-over-col',
+                  dragOverTeacher === teacher && dragOverSide === 'before' && 'matrix-drag-over-before',
+                  dragOverTeacher === teacher && dragOverSide === 'after' && 'matrix-drag-over-after',
                   recentlyDropped === teacher && 'matrix-just-dropped',
                 )}
-                title={teacher}
-                draggable="true"
-                aria-grabbed={draggedTeacher === teacher}
-                ondragstart={(event) => startColumnDrag(event, teacher)}
-                ondragover={(event) => allowColumnDrop(event, teacher)}
-                ondragleave={() => clearColumnHover(teacher)}
-                ondrop={(event) => dropColumn(event, teacher)}
+                role={slot.type === 'group-empty' ? 'columnheader' : undefined}
+                title={slot.type === 'group-empty' ? 'Перетащите преподавателя в группу' : teacher}
+                data-drag-over={slot.type === 'group-empty' && dragOverGroupId === slot.groupId ? 'true' : null}
+                draggable={Boolean(teacher)}
+                aria-grabbed={teacher ? draggedTeacher === teacher : undefined}
+                ondragstart={(event) => {
+                  if (teacher) startColumnDrag(event, teacher)
+                }}
+                ondragover={(event) => {
+                  if (teacher) allowColumnDrop(event, teacher)
+                  else allowGroupDrop(event, slot.groupId)
+                }}
+                ondragleave={() => {
+                  if (teacher) clearColumnHover(teacher)
+                  else clearGroupHover(slot.groupId)
+                }}
+                ondrop={(event) => {
+                  if (teacher) {
+                    dropColumn(event, teacher)
+                    return
+                  }
+                  event.preventDefault()
+                  if (slot.groupId) dropTeacherOnGroup(slot.groupId)
+                }}
                 ondragend={clearColumnDrag}
               >
-                <div class="th-teacher-label">{shortTeacherName(teacher)}</div>
+                {#if teacher}
+                  <div class="th-teacher-label">{shortTeacherName(teacher)}</div>
+                {:else}
+                  Перетащите
+                {/if}
               </th>
-              {/if}
             {/each}
           </tr>
         </thead>

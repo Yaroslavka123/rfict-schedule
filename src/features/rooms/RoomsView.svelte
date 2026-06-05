@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Plus, Trash2 } from '@lucide/svelte'
+  import { flip } from 'svelte/animate'
 
   import Card from '@/components/ui/Card.svelte'
   import Button from '@/components/ui/Button.svelte'
@@ -38,6 +39,7 @@
   let tooltipKey = $state<string | null>(null)
   let draggedRoom = $state<string | null>(null)
   let dragOverRoom = $state<string | null>(null)
+  let dragOverSide = $state<'before' | 'after' | null>(null)
   let dragOverGroupId = $state<string | null>(null)
   let recentlyDropped = $state<string | null>(null)
   let pendingTooltip = $state<{ x: number; y: number; key: string; entries: RoomSlotEntry[] } | null>(null)
@@ -234,6 +236,7 @@
   function clearColumnDrag() {
     draggedRoom = null
     dragOverRoom = null
+    dragOverSide = null
     dragOverGroupId = null
   }
 
@@ -243,7 +246,24 @@
     dropFlashTimer = setTimeout(() => {
       recentlyDropped = null
       dropFlashTimer = null
-    }, 220)
+    }, 420)
+  }
+
+  type ViewTransitionDocument = Document & {
+    startViewTransition?: (callback: () => void) => { finished: Promise<void> }
+  }
+
+  function runMatrixTransition(update: () => void) {
+    const doc = document as ViewTransitionDocument
+    if (!doc.startViewTransition) {
+      update()
+      return
+    }
+    document.documentElement.classList.add('matrix-reorder')
+    const transition = doc.startViewTransition(update)
+    void transition.finished.finally(() => {
+      document.documentElement.classList.remove('matrix-reorder')
+    })
   }
 
   function startColumnDrag(event: DragEvent, room: string) {
@@ -270,21 +290,29 @@
     if (!draggedRoom) return
     if (room && draggedRoom === room) {
       dragOverRoom = null
+      dragOverSide = null
       dragOverGroupId = null
       return
     }
     event.preventDefault()
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
     if (room) {
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+      const side = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
       if (dragOverRoom !== room) dragOverRoom = room
+      if (dragOverSide !== side) dragOverSide = side
       if (dragOverGroupId !== null) dragOverGroupId = null
     } else {
       if (dragOverRoom !== null) dragOverRoom = null
+      if (dragOverSide !== null) dragOverSide = null
     }
   }
 
   function clearColumnHover(room: string) {
-    if (dragOverRoom === room) dragOverRoom = null
+    if (dragOverRoom === room) {
+      dragOverRoom = null
+      dragOverSide = null
+    }
   }
 
   function allowGroupDrop(event: DragEvent, groupId: string | undefined) {
@@ -293,6 +321,7 @@
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
     if (dragOverGroupId !== groupId) dragOverGroupId = groupId
     if (dragOverRoom !== null) dragOverRoom = null
+    if (dragOverSide !== null) dragOverSide = null
   }
 
   function clearGroupHover(groupId: string | undefined) {
@@ -318,10 +347,12 @@
     if (source && source !== room) {
       const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
       const side = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
-      columnOrderStore.move('rooms', orderedRooms, source, room, side)
-      const targetSlot = columnSlots.find((slot) => slot.column === room)
-      if (targetSlot?.groupId) columnGroupsStore.assignItem('rooms', targetSlot.groupId, source)
-      else columnGroupsStore.unassignItem('rooms', source)
+      runMatrixTransition(() => {
+        columnOrderStore.move('rooms', orderedRooms, source, room, side)
+        const targetSlot = columnSlots.find((slot) => slot.column === room)
+        if (targetSlot?.groupId) columnGroupsStore.assignItem('rooms', targetSlot.groupId, source)
+        else columnGroupsStore.unassignItem('rooms', source)
+      })
       flashDropped(source)
     }
     clearColumnDrag()
@@ -332,9 +363,11 @@
     const source = draggedRoom
     const group = roomGroups.find((item) => item.id === groupId)
     const target = group?.items.filter((item) => item !== source && orderedRooms.includes(item)).at(-1)
-    columnGroupsStore.assignItem('rooms', groupId, source)
-    if (target) columnOrderStore.move('rooms', orderedRooms, source, target, 'after')
-    else columnOrderStore.moveToEnd('rooms', orderedRooms, source)
+    runMatrixTransition(() => {
+      columnGroupsStore.assignItem('rooms', groupId, source)
+      if (target) columnOrderStore.move('rooms', orderedRooms, source, target, 'after')
+      else columnOrderStore.moveToEnd('rooms', orderedRooms, source)
+    })
     flashDropped(source)
     clearColumnDrag()
   }
@@ -354,9 +387,8 @@
 {:else}
   <div class="rooms-page">
     <div class="matrix-groups-toolbar">
-      <Button variant="secondary" class="h-8 px-2.5 text-xs" onclick={addRoomGroup} title="Создать группу кабинетов">
+      <Button variant="secondary" class="matrix-add-group-button" onclick={addRoomGroup} title="Создать группу кабинетов" aria-label="Создать группу кабинетов">
         <Plus class="h-3.5 w-3.5" />
-        Группа
       </Button>
     </div>
 
@@ -410,46 +442,53 @@
             <th class="th-day" title="День">Дн</th>
             <th class="th-pair" title="Пара">№</th>
             {#each columnSlots as slot (slot.id)}
-              {#if slot.type === 'group-empty'}
-                <th
-                  class={cn('matrix-empty-group-slot', groupSlotClasses(slot))}
-                  role="columnheader"
-                  title="Перетащите кабинет в группу"
-                  data-drag-over={dragOverGroupId === slot.groupId ? 'true' : null}
-                  ondragover={(event) => allowGroupDrop(event, slot.groupId)}
-                  ondragleave={() => clearGroupHover(slot.groupId)}
-                  ondrop={(event) => {
-                    event.preventDefault()
-                    if (slot.groupId) dropRoomOnGroup(slot.groupId)
-                  }}
-                >
-                  Перетащите
-                </th>
-              {:else if slot.column}
-              {@const room = slot.column}
-              {@const category = categoryByRoom[room]}
+              {@const room = slot.column || ''}
+              {@const category = room ? categoryByRoom[room] : undefined}
               <th
+                animate:flip={{ duration: 170 }}
                 class={cn(
-                  'th-room matrix-draggable-header',
-                  `th-cat-${category}`,
-                  `cat-bg-${category}`,
+                  slot.type === 'group-empty' ? 'matrix-empty-group-slot' : 'th-room matrix-draggable-header',
+                  category && `th-cat-${category}`,
+                  category && `cat-bg-${category}`,
                   groupSlotClasses(slot),
                   draggedRoom === room && 'matrix-col-dragging',
                   dragOverRoom === room && 'matrix-drag-over-col',
+                  dragOverRoom === room && dragOverSide === 'before' && 'matrix-drag-over-before',
+                  dragOverRoom === room && dragOverSide === 'after' && 'matrix-drag-over-after',
                   recentlyDropped === room && 'matrix-just-dropped',
                 )}
-                title={room}
-                draggable="true"
-                aria-grabbed={draggedRoom === room}
-                ondragstart={(event) => startColumnDrag(event, room)}
-                ondragover={(event) => allowColumnDrop(event, room)}
-                ondragleave={() => clearColumnHover(room)}
-                ondrop={(event) => dropColumn(event, room)}
+                role={slot.type === 'group-empty' ? 'columnheader' : undefined}
+                title={slot.type === 'group-empty' ? 'Перетащите кабинет в группу' : room}
+                data-drag-over={slot.type === 'group-empty' && dragOverGroupId === slot.groupId ? 'true' : null}
+                draggable={Boolean(room)}
+                aria-grabbed={room ? draggedRoom === room : undefined}
+                ondragstart={(event) => {
+                  if (room) startColumnDrag(event, room)
+                }}
+                ondragover={(event) => {
+                  if (room) allowColumnDrop(event, room)
+                  else allowGroupDrop(event, slot.groupId)
+                }}
+                ondragleave={() => {
+                  if (room) clearColumnHover(room)
+                  else clearGroupHover(slot.groupId)
+                }}
+                ondrop={(event) => {
+                  if (room) {
+                    dropColumn(event, room)
+                    return
+                  }
+                  event.preventDefault()
+                  if (slot.groupId) dropRoomOnGroup(slot.groupId)
+                }}
                 ondragend={clearColumnDrag}
               >
-                {room}
+                {#if room}
+                  {room}
+                {:else}
+                  Перетащите
+                {/if}
               </th>
-              {/if}
             {/each}
           </tr>
         </thead>

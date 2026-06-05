@@ -1,5 +1,6 @@
 <script lang="ts">
   import { AlertCircle, Loader2 } from '@lucide/svelte'
+  import { fade, fly } from 'svelte/transition'
 
   import AppShell, { type AppTab } from '@/components/layout/AppShell.svelte'
   import TopFilters from '@/components/layout/TopFilters.svelte'
@@ -207,20 +208,21 @@
     teachers: string[],
   ) {
     if (!query.trim()) return ''
-    if (tab === 'teachers') return firstSearchSuggestion(query, teachers)
-    if (tab === 'rooms') return firstSearchSuggestion(query, rooms)
+    const broadCandidates = [
+      ...lessons.map((lesson) => lesson.subject),
+      ...lessons.map((lesson) => lesson.teacher),
+      ...lessons.map((lesson) => lesson.room),
+      ...groups.map((group) => group.name),
+    ]
+    if (tab === 'teachers') return firstSearchSuggestion(query, [...teachers, ...broadCandidates])
+    if (tab === 'rooms') return firstSearchSuggestion(query, [...rooms, ...broadCandidates])
     if (tab === 'analytics') {
       return firstSearchSuggestion(query, [
         ...lessons.map((lesson) => lesson.subject),
         ...groups.map((group) => group.name),
       ])
     }
-    return firstSearchSuggestion(query, [
-      ...lessons.map((lesson) => lesson.subject),
-      ...lessons.map((lesson) => lesson.teacher),
-      ...lessons.map((lesson) => lesson.room),
-      ...groups.map((group) => group.name),
-    ])
+    return firstSearchSuggestion(query, broadCandidates)
   }
 
   function formatScheduleError(error: string | null) {
@@ -275,7 +277,7 @@
     </Card>
   {:else if schedule}
     {#if renderedTab === 'rooms'}
-    <div class="tab-view h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
+    <div class="tab-view h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0" in:fly={{ y: 6, duration: 170 }} out:fade={{ duration: 80 }}>
       <RoomsView
         roomData={$scheduleStore.index.roomOccupancyByWeek[filters.week] || null}
         groupFilter={filters.group}
@@ -285,7 +287,7 @@
     </div>
     {:else if renderedTab === 'teachers'}
 
-    <div class="tab-view h-[calc(100vh-var(--header-h)-1.5rem)] min-w-0">
+    <div class="tab-view h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0" in:fly={{ y: 6, duration: 170 }} out:fade={{ duration: 80 }}>
       <TeachersView
         teacherData={$scheduleStore.index.teacherOccupancyByWeek[filters.week] || null}
         groupFilter={filters.group}
@@ -295,7 +297,7 @@
     </div>
     {:else if renderedTab === 'analytics'}
 
-    <div class="tab-view">
+    <div class="tab-view" in:fly={{ y: 6, duration: 170 }} out:fade={{ duration: 80 }}>
       <AnalyticsView
         course={filters.course}
         groupFilter={filters.group}
@@ -310,7 +312,7 @@
     </div>
     {:else if renderedTab === 'schedule'}
 
-    <div class="tab-view">
+    <div class="tab-view" in:fly={{ y: 6, duration: 170 }} out:fade={{ duration: 80 }}>
       <ScheduleView
         groups={schedule.groups}
         lessons={filteredWeekLessons}
