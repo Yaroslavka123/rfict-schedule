@@ -67,8 +67,10 @@ const SEARCH_SPLITTER_RE = /[/\\|+_=*#№]+/g
 const SEARCH_DASH_RE = /[-–—]+/g
 const COMPACT_INITIALS_RE = /([А-ЯЁа-яё])([А-ЯЁ])\.?\s*([А-ЯЁ])\.?/g
 const CYRILLIC_CASE_BOUNDARY_RE = /([а-яё])([А-ЯЁ])/g
+const RAW_ACADEMIC_TITLE_RE =
+  /(^|\s)(ст\s*\.\s*пр|ст\s*пр|доц|асс|проф|преп)\.\s*/giu
 const ACADEMIC_TITLE_RE =
-  /(^|\s)(доцент[а-я]*|доц|профессор[а-я]*|проф|ст\s*преп|старш[а-я]*\s+преподавател[а-я]*|преподавател[а-я]*|преп|пр\s*ст|ассистент[а-я]*|асс)(?=\s|$)/g
+  /(^|\s)(доцент[а-я]*|доц|профессор[а-я]*|проф|ст\s*пр|ст\s*преп|старш[а-я]*\s+преподавател[а-я]*|преподавател[а-я]*|преп|пр\s*ст|ассистент[а-я]*|асс)(?=\s|$)/g
 const DISPLAY_TITLE_WORDS = new Set([
   'доц',
   'доцент',
@@ -92,6 +94,10 @@ function repairCompactInitialsForDisplay(value: string) {
     .replace(CYRILLIC_CASE_BOUNDARY_RE, '$1 $2')
 }
 
+function stripRawAcademicTitlePrefixes(value: string) {
+  return value.replace(RAW_ACADEMIC_TITLE_RE, ' ')
+}
+
 function stripAcademicTitlesFromNormalized(value: string) {
   return value
     .replace(ACADEMIC_TITLE_RE, ' ')
@@ -104,7 +110,7 @@ export function normalizeSearchText(value: string | null | undefined) {
   const cached = searchNormalizeCache.get(key)
   if (cached !== undefined) return cached
 
-  const normalized = repairCompactInitials(key)
+  const normalized = stripRawAcademicTitlePrefixes(repairCompactInitials(key))
     .toLowerCase()
     .replace(/ё/g, 'е')
     .replace(SEARCH_PUNCTUATION_RE, ' ')
@@ -139,7 +145,7 @@ export function buildSearchKey(value: string | null | undefined) {
 }
 
 export function cleanSearchCandidate(value: string | null | undefined) {
-  const normalizedTokens = repairCompactInitialsForDisplay(String(value || ''))
+  const normalizedTokens = stripRawAcademicTitlePrefixes(repairCompactInitialsForDisplay(String(value || '')))
     .replace(DISPLAY_PUNCTUATION_RE, ' ')
     .replace(/\s+/g, ' ')
     .trim()

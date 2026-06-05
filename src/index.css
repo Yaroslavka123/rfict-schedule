@@ -131,7 +131,8 @@
   }
 
   .app-header {
-    @apply sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl;
+    @apply sticky top-0 z-[120] border-b border-border bg-card/95 backdrop-blur-xl;
+    overflow: visible;
     box-shadow: 0 1px 0 hsl(var(--border) / 0.5), 0 6px 16px -10px hsl(var(--foreground) / 0.08);
     transition: box-shadow 240ms var(--ease), background-color 220ms var(--ease);
   }
@@ -331,11 +332,11 @@
 
   .filter-select-custom {
     @apply relative h-8 w-full;
-    z-index: 35;
+    z-index: 125;
   }
 
   .filter-select-open {
-    z-index: 80;
+    z-index: 220;
   }
 
   .filter-select-trigger {
@@ -378,7 +379,7 @@
   }
 
   .filter-select-menu {
-    @apply absolute left-0 top-[calc(100%+0.35rem)] z-50 max-h-72 min-w-full overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-xl;
+    @apply absolute left-0 top-[calc(100%+0.35rem)] z-[230] max-h-72 min-w-full overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-xl;
     transform-origin: top center;
     animation: filter-menu-in 150ms var(--ease) both;
   }
@@ -422,12 +423,8 @@
     caret-color: hsl(var(--primary));
     transition:
       border-color 160ms var(--ease),
-      box-shadow 180ms var(--ease),
-      transform 180ms var(--ease);
+      box-shadow 180ms var(--ease);
     will-change: box-shadow;
-  }
-  .filter-search:focus {
-    transform: translateY(-1px);
   }
 
   .filter-search-icon {
@@ -439,12 +436,12 @@
   }
 
   .filter-search-ghost {
-    @apply pointer-events-none absolute inset-0 z-20 flex h-8 items-center overflow-hidden whitespace-pre rounded-md px-3 text-sm text-muted-foreground/50;
+    @apply pointer-events-none absolute inset-0 z-20 block h-8 overflow-hidden whitespace-pre rounded-md px-3 text-sm text-muted-foreground/50;
     padding-left: 2.5rem !important;
     font-family: inherit;
     font-size: 0.875rem;
     font-weight: 500;
-    line-height: 1.25rem;
+    line-height: 2rem;
     letter-spacing: 0;
     animation: search-ghost-in 120ms var(--ease) both;
   }
@@ -533,11 +530,22 @@
 
   /* Tab view (used in App.svelte) */
   .tab-view {
-    animation: tab-fade-in 180ms var(--ease);
+    transform-origin: top center;
+    animation: tab-assemble 230ms var(--ease-snap) both;
   }
-  @keyframes tab-fade-in {
-    from { opacity: 0; transform: translate3d(0, 5px, 0); }
-    to { opacity: 1; transform: none; }
+  .tab-view-matrix :where(.room-matrix-wrap, .teachers-matrix-wrap),
+  .tab-view-analytics :where(.analytics-summary, .plan-table-wrap),
+  .tab-view-schedule :where(.view-toolbar, .dense-table) {
+    animation: tab-surface-in 260ms var(--ease) both;
+  }
+  @keyframes tab-assemble {
+    0% { opacity: 0; transform: translate3d(0, 8px, 0) scale(0.992); }
+    58% { opacity: 1; }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes tab-surface-in {
+    0% { opacity: 0; transform: translate3d(0, 6px, 0); }
+    100% { opacity: 1; transform: none; }
   }
   @keyframes search-ghost-in {
     from { opacity: 0; transform: translate3d(3px, 0, 0); }
@@ -552,20 +560,6 @@
     to { opacity: 1; transform: scale(1); }
   }
 
-  html.matrix-reorder::view-transition-old(root) {
-    animation: matrix-reorder-old 110ms var(--ease) both;
-  }
-  html.matrix-reorder::view-transition-new(root) {
-    animation: matrix-reorder-new 180ms var(--ease) both;
-  }
-  @keyframes matrix-reorder-old {
-    from { opacity: 1; }
-    to { opacity: 0.9; }
-  }
-  @keyframes matrix-reorder-new {
-    from { opacity: 0.74; }
-    to { opacity: 1; }
-  }
 
   /* Loaded timestamp pill in header */
   .loaded-at {
@@ -823,7 +817,7 @@
     content: '';
     position: absolute;
     top: -0.35rem;
-    bottom: -999rem;
+    bottom: -0.35rem;
     z-index: 6;
     width: 3px;
     border-radius: 999px;
@@ -852,7 +846,7 @@
   .matrix-just-dropped {
     outline: 2px solid hsl(var(--primary));
     outline-offset: -2px;
-    animation: drop-confirm 420ms var(--ease-spring) both;
+    animation: drop-confirm 220ms var(--ease) both;
   }
 
   .matrix-group-head[data-drag-over="true"] {

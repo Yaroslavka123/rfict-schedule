@@ -1,6 +1,5 @@
 <script lang="ts">
   import { AlertCircle, Loader2 } from '@lucide/svelte'
-  import { fade, fly } from 'svelte/transition'
 
   import AppShell, { type AppTab } from '@/components/layout/AppShell.svelte'
   import TopFilters from '@/components/layout/TopFilters.svelte'
@@ -34,6 +33,20 @@
   const SEARCH_DEBOUNCE_MS = 120
   const FETCH_DEBOUNCE_MS = 100
 
+  interface SearchCandidate {
+    display: string
+    normalized: string
+    compact: string
+    key: string
+  }
+
+  interface SearchCandidateBuckets {
+    broad: SearchCandidate[]
+    rooms: SearchCandidate[]
+    teachers: SearchCandidate[]
+    analytics: SearchCandidate[]
+  }
+
   let activeTab = $state<AppTab>('rooms')
   let renderedTab = $state<AppTab>('rooms')
   let filters = $state<FiltersState>({ ...defaultFilters })
@@ -44,15 +57,16 @@
   let selectedWeeks = $derived($scheduleStore.index.weeksByNumber[filters.week] || [])
   let week = $derived(selectedWeeks[0] || null)
   let selectedWeekLessons = $derived($scheduleStore.index.lessonsByWeek[filters.week] || [])
-  let searchSuggestion = $derived(
-    buildSearchSuggestion(
-      activeTab,
-      filters.search,
+  let searchCandidates = $derived(
+    buildSearchCandidates(
       schedule?.groups || [],
       selectedWeekLessons,
       $scheduleStore.index.roomOccupancyByWeek[filters.week]?.orderedRooms || [],
       $scheduleStore.index.teacherOccupancyByWeek[filters.week]?.orderedTeachers || [],
     ),
+  )
+  let searchSuggestion = $derived(
+    buildSearchSuggestion(activeTab, filters.search, searchCandidates),
   )
   let lessonFilters = $derived({
     course: filters.course,
@@ -93,17 +107,7 @@
   })
 
   $effect(() => {
-    const tab = activeTab
-    let cancelled = false
-    const frame = requestAnimationFrame(() => {
-      setTimeout(() => {
-        if (!cancelled) renderedTab = tab
-      }, 0)
-    })
-    return () => {
-      cancelled = true
-      cancelAnimationFrame(frame)
-    }
+    renderedTab = activeTab
   })
 
   $effect(() => {
@@ -176,24 +180,71 @@
     return ranges.at(-1)?.week ?? null
   }
 
-  function firstSearchSuggestion(query: string, candidates: (string | null | undefined)[]) {
+  function createSearchCandidate(raw: string | null | undefined): SearchCandidate | null {
+    const display = cleanSearchCandidate(raw) || String(raw || '').trim()
+    if (!display) return null
+    const normalized = normalizeSearchQuery(display)
+    if (!normalized) return null
+    const key = buildSearchKey(`${raw || ''} ${display}`)
+    return {
+      display,
+      normalized,
+      compact: normalized.replace(/\s+/g, ''),
+      key,
+    }
+  }
+
+  function addSearchCandidate(target: SearchCandidate[], seen: Set<string>, raw: string | null | undefined) {
+    const candidate = createSearchCandidate(raw)
+    if (!candidate || seen.has(candidate.key)) return
+    seen.add(candidate.key)
+    target.push(candidate)
+  }
+
+  function buildCandidateList(values: (string | null | undefined)[]) {
+    const seen = new Set<string>()
+    const candidates: SearchCandidate[] = []
+    values.forEach((value) => addSearchCandidate(candidates, seen, value))
+    return candidates
+  }
+
+  function buildSearchCandidates(
+    groups: (ScheduleGroup | ScheduleGroupWithCourse)[],
+    lessons: ScheduleLesson[],
+    rooms: string[],
+    teachers: string[],
+  ): SearchCandidateBuckets {
+    const broadValues = [
+      ...lessons.map((lesson) => lesson.teacher),
+      ...lessons.map((lesson) => lesson.subject),
+      ...lessons.map((lesson) => lesson.room),
+      ...groups.map((group) => group.name),
+    ]
+    return {
+      broad: buildCandidateList(broadValues),
+      rooms: buildCandidateList(rooms),
+      teachers: buildCandidateList(teachers),
+      analytics: buildCandidateList([
+        ...lessons.map((lesson) => lesson.subject),
+        ...groups.map((group) => group.name),
+      ]),
+    }
+  }
+
+  function firstSearchSuggestion(query: string, candidates: SearchCandidate[]) {
     const normalizedQuery = normalizeSearchQuery(query)
     const compactQuery = normalizedQuery.replace(/\s+/g, '')
     if (!normalizedQuery) return ''
 
     const seen = new Set<string>()
-    for (const raw of candidates) {
-      const candidate = cleanSearchCandidate(raw) || String(raw || '').trim()
-      const normalizedCandidate = normalizeSearchQuery(candidate)
-      const compactCandidate = normalizedCandidate.replace(/\s+/g, '')
-      const candidateKey = buildSearchKey(`${raw || ''} ${candidate}`)
-      if (!candidate || seen.has(candidateKey)) continue
-      seen.add(candidateKey)
+    for (const candidate of candidates) {
+      if (seen.has(candidate.key)) continue
+      seen.add(candidate.key)
       if (
-        normalizedCandidate !== normalizedQuery &&
-        (normalizedCandidate.startsWith(normalizedQuery) || compactCandidate.startsWith(compactQuery))
+        candidate.normalized !== normalizedQuery &&
+        (candidate.normalized.startsWith(normalizedQuery) || candidate.compact.startsWith(compactQuery))
       ) {
-        return candidate
+        return candidate.display
       }
     }
     return ''
@@ -202,27 +253,13 @@
   function buildSearchSuggestion(
     tab: AppTab,
     query: string,
-    groups: (ScheduleGroup | ScheduleGroupWithCourse)[],
-    lessons: ScheduleLesson[],
-    rooms: string[],
-    teachers: string[],
+    candidates: SearchCandidateBuckets,
   ) {
     if (!query.trim()) return ''
-    const broadCandidates = [
-      ...lessons.map((lesson) => lesson.subject),
-      ...lessons.map((lesson) => lesson.teacher),
-      ...lessons.map((lesson) => lesson.room),
-      ...groups.map((group) => group.name),
-    ]
-    if (tab === 'teachers') return firstSearchSuggestion(query, [...teachers, ...broadCandidates])
-    if (tab === 'rooms') return firstSearchSuggestion(query, [...rooms, ...broadCandidates])
-    if (tab === 'analytics') {
-      return firstSearchSuggestion(query, [
-        ...lessons.map((lesson) => lesson.subject),
-        ...groups.map((group) => group.name),
-      ])
-    }
-    return firstSearchSuggestion(query, broadCandidates)
+    if (tab === 'teachers') return firstSearchSuggestion(query, [...candidates.teachers, ...candidates.broad])
+    if (tab === 'rooms') return firstSearchSuggestion(query, [...candidates.rooms, ...candidates.broad])
+    if (tab === 'analytics') return firstSearchSuggestion(query, candidates.analytics)
+    return firstSearchSuggestion(query, candidates.broad)
   }
 
   function formatScheduleError(error: string | null) {
@@ -277,7 +314,7 @@
     </Card>
   {:else if schedule}
     {#if renderedTab === 'rooms'}
-    <div class="tab-view h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0" in:fly={{ y: 6, duration: 170 }} out:fade={{ duration: 80 }}>
+    <div class="tab-view tab-view-matrix h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0">
       <RoomsView
         roomData={$scheduleStore.index.roomOccupancyByWeek[filters.week] || null}
         groupFilter={filters.group}
@@ -287,7 +324,7 @@
     </div>
     {:else if renderedTab === 'teachers'}
 
-    <div class="tab-view h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0" in:fly={{ y: 6, duration: 170 }} out:fade={{ duration: 80 }}>
+    <div class="tab-view tab-view-matrix h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0">
       <TeachersView
         teacherData={$scheduleStore.index.teacherOccupancyByWeek[filters.week] || null}
         groupFilter={filters.group}
@@ -297,7 +334,7 @@
     </div>
     {:else if renderedTab === 'analytics'}
 
-    <div class="tab-view" in:fly={{ y: 6, duration: 170 }} out:fade={{ duration: 80 }}>
+    <div class="tab-view tab-view-analytics">
       <AnalyticsView
         course={filters.course}
         groupFilter={filters.group}
@@ -312,7 +349,7 @@
     </div>
     {:else if renderedTab === 'schedule'}
 
-    <div class="tab-view" in:fly={{ y: 6, duration: 170 }} out:fade={{ duration: 80 }}>
+    <div class="tab-view tab-view-schedule">
       <ScheduleView
         groups={schedule.groups}
         lessons={filteredWeekLessons}

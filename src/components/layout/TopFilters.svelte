@@ -94,6 +94,7 @@
 
   function completionFor(query: string, suggestion: string) {
     if (!query.trim() || !suggestion) return ''
+    const trimmedQuery = query.trimEnd()
     const normalizedQuery = normalizeSearchQuery(query)
     const normalizedSuggestion = normalizeSearchQuery(suggestion)
     const compactQuery = normalizedQuery.replace(/\s+/g, '')
@@ -105,7 +106,15 @@
     ) {
       return ''
     }
-    return suggestion.slice(query.trimEnd().length)
+    if (suggestion.toLocaleLowerCase('ru').startsWith(trimmedQuery.toLocaleLowerCase('ru'))) {
+      return suggestion.slice(trimmedQuery.length)
+    }
+    const tail = trimmedQuery.split(/\s+/).at(-1) || trimmedQuery
+    const normalizedTail = normalizeSearchQuery(tail)
+    if (normalizedTail && normalizedSuggestion.startsWith(normalizedTail)) {
+      return suggestion.slice(tail.length)
+    }
+    return ''
   }
 
   function acceptSearchSuggestion(event: KeyboardEvent) {
