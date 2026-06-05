@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Plus, Trash2 } from '@lucide/svelte'
+  import { flip } from 'svelte/animate'
 
   import Card from '@/components/ui/Card.svelte'
   import Button from '@/components/ui/Button.svelte'
@@ -213,7 +214,24 @@
     dropFlashTimer = setTimeout(() => {
       recentlyDropped = null
       dropFlashTimer = null
-    }, 220)
+    }, 420)
+  }
+
+  type ViewTransitionDocument = Document & {
+    startViewTransition?: (callback: () => void) => { finished: Promise<void> }
+  }
+
+  function runMatrixTransition(update: () => void) {
+    const doc = document as ViewTransitionDocument
+    if (!doc.startViewTransition) {
+      update()
+      return
+    }
+    document.documentElement.classList.add('matrix-reorder')
+    const transition = doc.startViewTransition(update)
+    void transition.finished.finally(() => {
+      document.documentElement.classList.remove('matrix-reorder')
+    })
   }
 
   function startColumnDrag(event: DragEvent, teacher: string) {
@@ -298,10 +316,12 @@
     if (source && source !== teacher) {
       const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
       const side = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
-      columnOrderStore.move('teachers', orderedTeachers, source, teacher, side)
-      const targetSlot = columnSlots.find((slot) => slot.column === teacher)
-      if (targetSlot?.groupId) columnGroupsStore.assignItem('teachers', targetSlot.groupId, source)
-      else columnGroupsStore.unassignItem('teachers', source)
+      runMatrixTransition(() => {
+        columnOrderStore.move('teachers', orderedTeachers, source, teacher, side)
+        const targetSlot = columnSlots.find((slot) => slot.column === teacher)
+        if (targetSlot?.groupId) columnGroupsStore.assignItem('teachers', targetSlot.groupId, source)
+        else columnGroupsStore.unassignItem('teachers', source)
+      })
       flashDropped(source)
     }
     clearColumnDrag()
@@ -312,9 +332,11 @@
     const source = draggedTeacher
     const group = teacherGroups.find((item) => item.id === groupId)
     const target = group?.items.filter((item) => item !== source && orderedTeachers.includes(item)).at(-1)
-    columnGroupsStore.assignItem('teachers', groupId, source)
-    if (target) columnOrderStore.move('teachers', orderedTeachers, source, target, 'after')
-    else columnOrderStore.moveToEnd('teachers', orderedTeachers, source)
+    runMatrixTransition(() => {
+      columnGroupsStore.assignItem('teachers', groupId, source)
+      if (target) columnOrderStore.move('teachers', orderedTeachers, source, target, 'after')
+      else columnOrderStore.moveToEnd('teachers', orderedTeachers, source)
+    })
     flashDropped(source)
     clearColumnDrag()
   }
@@ -393,6 +415,7 @@
               {@const isMatch = teacher ? teacherMatch?.has(teacher) : false}
               {@const isDim = Boolean(teacher && teacherMatch && !isMatch)}
               <th
+                animate:flip={{ duration: 170 }}
                 class={cn(
                   slot.type === 'group-empty' ? 'matrix-empty-group-slot' : 'th-teacher matrix-draggable-header',
                   isMatch && 'th-teacher-match',

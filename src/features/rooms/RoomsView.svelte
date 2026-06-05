@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Plus, Trash2 } from '@lucide/svelte'
+  import { flip } from 'svelte/animate'
 
   import Card from '@/components/ui/Card.svelte'
   import Button from '@/components/ui/Button.svelte'
@@ -245,7 +246,24 @@
     dropFlashTimer = setTimeout(() => {
       recentlyDropped = null
       dropFlashTimer = null
-    }, 220)
+    }, 420)
+  }
+
+  type ViewTransitionDocument = Document & {
+    startViewTransition?: (callback: () => void) => { finished: Promise<void> }
+  }
+
+  function runMatrixTransition(update: () => void) {
+    const doc = document as ViewTransitionDocument
+    if (!doc.startViewTransition) {
+      update()
+      return
+    }
+    document.documentElement.classList.add('matrix-reorder')
+    const transition = doc.startViewTransition(update)
+    void transition.finished.finally(() => {
+      document.documentElement.classList.remove('matrix-reorder')
+    })
   }
 
   function startColumnDrag(event: DragEvent, room: string) {
@@ -329,10 +347,12 @@
     if (source && source !== room) {
       const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
       const side = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
-      columnOrderStore.move('rooms', orderedRooms, source, room, side)
-      const targetSlot = columnSlots.find((slot) => slot.column === room)
-      if (targetSlot?.groupId) columnGroupsStore.assignItem('rooms', targetSlot.groupId, source)
-      else columnGroupsStore.unassignItem('rooms', source)
+      runMatrixTransition(() => {
+        columnOrderStore.move('rooms', orderedRooms, source, room, side)
+        const targetSlot = columnSlots.find((slot) => slot.column === room)
+        if (targetSlot?.groupId) columnGroupsStore.assignItem('rooms', targetSlot.groupId, source)
+        else columnGroupsStore.unassignItem('rooms', source)
+      })
       flashDropped(source)
     }
     clearColumnDrag()
@@ -343,9 +363,11 @@
     const source = draggedRoom
     const group = roomGroups.find((item) => item.id === groupId)
     const target = group?.items.filter((item) => item !== source && orderedRooms.includes(item)).at(-1)
-    columnGroupsStore.assignItem('rooms', groupId, source)
-    if (target) columnOrderStore.move('rooms', orderedRooms, source, target, 'after')
-    else columnOrderStore.moveToEnd('rooms', orderedRooms, source)
+    runMatrixTransition(() => {
+      columnGroupsStore.assignItem('rooms', groupId, source)
+      if (target) columnOrderStore.move('rooms', orderedRooms, source, target, 'after')
+      else columnOrderStore.moveToEnd('rooms', orderedRooms, source)
+    })
     flashDropped(source)
     clearColumnDrag()
   }
@@ -423,6 +445,7 @@
               {@const room = slot.column || ''}
               {@const category = room ? categoryByRoom[room] : undefined}
               <th
+                animate:flip={{ duration: 170 }}
                 class={cn(
                   slot.type === 'group-empty' ? 'matrix-empty-group-slot' : 'th-room matrix-draggable-header',
                   category && `th-cat-${category}`,
