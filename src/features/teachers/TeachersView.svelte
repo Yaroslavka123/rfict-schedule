@@ -21,6 +21,7 @@
     buildColumnSections,
     buildColumnSlots,
     columnGroupsStore,
+    type ColumnSlot,
   } from '@/stores/columnGroups'
   import { applyColumnOrder, columnOrderStore } from '@/stores/columnOrder'
   import type { TeacherCell, TeacherOccupancyIndex, TeacherSlotEntry } from '@/stores/scheduleStore'
@@ -85,13 +86,15 @@
   let searchRequestId = 0
 
   let teacherCellByKey = $state<Map<string, TeacherCell> | null>(null)
+  let teacherMatch = $state<ReadonlySet<string> | null>(null)
   let orderedTeachers = $derived(applyColumnOrder(teacherData?.orderedTeachers || [], $columnOrderStore.teachers))
   let teacherGroups = $derived($columnGroupsStore.teachers)
   let columnSections = $derived(buildColumnSections(orderedTeachers, teacherGroups))
   let columnSlots = $derived(buildColumnSlots(columnSections))
+  let teacherHighlightColumns = $derived(matchedColumnTokens(columnSlots, teacherMatch))
+  let teacherHasDimmedColumns = $derived(Boolean(teacherMatch))
   let occupancy = $derived(teacherData?.occupancy || {})
   let normalizedSearch = $derived(normalizeSearchQuery(search.trim()))
-  let teacherMatch = $state<ReadonlySet<string> | null>(null)
   let tooltipMerged = $derived(tooltip ? mergeTooltipEntries(tooltip.entries) : [])
 
   onDestroy(() => {
@@ -205,6 +208,18 @@
 
   function slotKey(teacher: string, day: string, pair: number) {
     return teacherSlotKey(teacher, day, pair)
+  }
+
+  function matrixColumnClass(index: number) {
+    return `matrix-col-${index}`
+  }
+
+  function matchedColumnTokens(slots: ColumnSlot[], matches: ReadonlySet<string> | null) {
+    if (!matches) return ''
+    return slots
+      .map((slot, index) => (slot.column && matches.has(slot.column) ? matrixColumnClass(index) : ''))
+      .filter(Boolean)
+      .join(' ')
   }
 
   function computeTooltipPos(clientX: number, clientY: number): { x: number; y: number } {
@@ -571,12 +586,24 @@
     </div>
 
     <div class="teachers-matrix-wrap" bind:this={matrixWrap}>
-      <table class="teachers-matrix" onpointermove={handleTableHover} onmouseleave={hideTooltip}>
+      <table
+        class="teachers-matrix"
+        data-highlight={teacherHighlightColumns || null}
+        data-dim={teacherHasDimmedColumns ? 'true' : null}
+        onpointermove={handleTableHover}
+        onmouseleave={hideTooltip}
+      >
         <colgroup>
           <col style="width: 2rem" />
           <col style="width: 2rem" />
-          {#each columnSlots as slot (slot.id)}
-            <col />
+          {#each columnSlots as slot, slotIndex (slot.id)}
+            <col
+              class={cn(
+                matrixColumnClass(slotIndex),
+                slot.column && teacherMatch?.has(slot.column) && 'matrix-col-match',
+                slot.column && teacherMatch && !teacherMatch.has(slot.column) && 'matrix-col-dim',
+              )}
+            />
           {/each}
         </colgroup>
         <thead>
@@ -614,7 +641,7 @@
           <tr class="matrix-column-row">
             <th class="th-day" title="День">Дн</th>
             <th class="th-pair" title="Пара">№</th>
-            {#each columnSlots as slot (slot.id)}
+            {#each columnSlots as slot, slotIndex (slot.id)}
               {@const teacher = slot.column || ''}
               {@const isMatch = teacher ? teacherMatch?.has(teacher) : false}
               {@const isDim = Boolean(teacher && teacherMatch && !isMatch)}
@@ -622,6 +649,7 @@
                 animate:flip={{ duration: 170 }}
                 class={cn(
                   slot.type === 'group-empty' ? 'matrix-empty-group-slot' : 'th-teacher matrix-draggable-header',
+                  matrixColumnClass(slotIndex),
                   isMatch && 'th-teacher-match',
                   isDim && 'th-teacher-dim',
                   groupSlotClasses(slot),
@@ -661,21 +689,19 @@
                   <td class="td-day" rowspan="8">{day}</td>
                 {/if}
                 <td class="td-pair" title={PAIR_TIMES[pair]}>{pair}</td>
-                {#each columnSlots as slot (slot.id)}
+                {#each columnSlots as slot, slotIndex (slot.id)}
                   {#if slot.type === 'group-empty'}
                     <td
-                      class={cn('slot-cell matrix-empty-group-body', groupSlotClasses(slot))}
+                      class={cn('slot-cell matrix-empty-group-body', matrixColumnClass(slotIndex), groupSlotClasses(slot))}
                       role="gridcell"
                       data-matrix-group-id={slot.groupId}
                     ></td>
                   {:else if slot.column}
                   {@const teacher = slot.column}
                   {@const cell = getVisibleTeacherCell(teacher, day, pair)}
-                  {@const isMatch = teacherMatch?.has(teacher)}
-                  {@const isDim = teacherMatch && !isMatch}
                   {#if !cell}
                     <td
-                      class={cn('slot-cell slot-free', isMatch && 'slot-column-match', isDim && 'slot-dim', groupSlotClasses(slot))}
+                      class={cn('slot-cell slot-free', matrixColumnClass(slotIndex), groupSlotClasses(slot))}
                       data-matrix-column={teacher}
                     ></td>
                   {:else}
@@ -687,7 +713,7 @@
                         ? 'slot-type-multi'
                         : `slot-type-${cell.types[0] || 'unknown'}`}
                     <td
-                      class={cn('slot-cell slot-busy', typeClass, isMatch && 'slot-match slot-column-match', isDim && 'slot-dim', hasSheet && 'slot-clickable', groupSlotClasses(slot))}
+                      class={cn('slot-cell slot-busy', matrixColumnClass(slotIndex), typeClass, hasSheet && 'slot-clickable', groupSlotClasses(slot))}
                       data-slot-key={cellKey}
                       data-slot-day={day}
                       data-slot-pair={pair}

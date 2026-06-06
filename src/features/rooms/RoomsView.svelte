@@ -21,6 +21,7 @@
     buildColumnSections,
     buildColumnSlots,
     columnGroupsStore,
+    type ColumnSlot,
   } from '@/stores/columnGroups'
   import { applyColumnOrder, columnOrderStore } from '@/stores/columnOrder'
   import type { RoomCell, RoomOccupancyIndex, RoomSlotEntry } from '@/stores/scheduleStore'
@@ -93,6 +94,8 @@
   let roomGroups = $derived($columnGroupsStore.rooms)
   let columnSections = $derived(buildColumnSections(orderedRooms, roomGroups))
   let columnSlots = $derived(buildColumnSlots(columnSections))
+  let roomHighlightColumns = $derived(matchedColumnTokens(columnSlots, roomMatch))
+  let roomHasDimmedColumns = $derived(Boolean(roomMatch))
   let occupancy = $derived(roomData?.occupancy || {})
   let tooltipMerged = $derived(tooltip ? mergeTooltipEntries(tooltip.entries) : [])
   let tooltipRoom = $derived(tooltip?.entries[0]?.room || '')
@@ -208,6 +211,18 @@
 
   function slotKey(room: string, day: string, pair: number) {
     return roomSlotKey(room, day, pair)
+  }
+
+  function matrixColumnClass(index: number) {
+    return `matrix-col-${index}`
+  }
+
+  function matchedColumnTokens(slots: ColumnSlot[], matches: ReadonlySet<string> | null) {
+    if (!matches) return ''
+    return slots
+      .map((slot, index) => (slot.column && matches.has(slot.column) ? matrixColumnClass(index) : ''))
+      .filter(Boolean)
+      .join(' ')
   }
 
   function computeTooltipPos(clientX: number, clientY: number): { x: number; y: number } {
@@ -581,12 +596,24 @@
     </div>
 
     <div class="room-matrix-wrap" bind:this={matrixWrap}>
-      <table class="room-matrix" onpointermove={handleTableHover} onmouseleave={hideTooltip}>
+      <table
+        class="room-matrix"
+        data-highlight={roomHighlightColumns || null}
+        data-dim={roomHasDimmedColumns ? 'true' : null}
+        onpointermove={handleTableHover}
+        onmouseleave={hideTooltip}
+      >
         <colgroup>
           <col style="width: 2rem" />
           <col style="width: 2rem" />
-          {#each columnSlots as slot (slot.id)}
-            <col />
+          {#each columnSlots as slot, slotIndex (slot.id)}
+            <col
+              class={cn(
+                matrixColumnClass(slotIndex),
+                slot.column && roomMatch?.has(slot.column) && 'matrix-col-match',
+                slot.column && roomMatch && !roomMatch.has(slot.column) && 'matrix-col-dim',
+              )}
+            />
           {/each}
         </colgroup>
         <thead>
@@ -624,7 +651,7 @@
           <tr class="matrix-column-row">
             <th class="th-day" title="День">Дн</th>
             <th class="th-pair" title="Пара">№</th>
-            {#each columnSlots as slot (slot.id)}
+            {#each columnSlots as slot, slotIndex (slot.id)}
               {@const room = slot.column || ''}
               {@const category = room ? categoryByRoom[room] : undefined}
               {@const isMatch = room ? roomMatch?.has(room) : false}
@@ -633,6 +660,7 @@
                 animate:flip={{ duration: 170 }}
                 class={cn(
                   slot.type === 'group-empty' ? 'matrix-empty-group-slot' : 'th-room matrix-draggable-header',
+                  matrixColumnClass(slotIndex),
                   category && `th-cat-${category}`,
                   category && `cat-bg-${category}`,
                   isMatch && 'th-room-match',
@@ -674,10 +702,10 @@
                   <td class="td-day" rowspan="8">{day}</td>
                 {/if}
                 <td class="td-pair" title={PAIR_TIMES[pair]}>{pair}</td>
-                {#each columnSlots as slot (slot.id)}
+                {#each columnSlots as slot, slotIndex (slot.id)}
                   {#if slot.type === 'group-empty'}
                     <td
-                      class={cn('slot-cell matrix-empty-group-body', groupSlotClasses(slot))}
+                      class={cn('slot-cell matrix-empty-group-body', matrixColumnClass(slotIndex), groupSlotClasses(slot))}
                       role="gridcell"
                       data-matrix-group-id={slot.groupId}
                     ></td>
@@ -685,11 +713,9 @@
                   {@const room = slot.column}
                   {@const cell = getVisibleRoomCell(room, day, pair)}
                   {@const category = categoryByRoom[room]}
-                  {@const isMatch = roomMatch?.has(room)}
-                  {@const isDim = roomMatch && !isMatch}
                   {#if !cell}
                     <td
-                      class={cn('slot-cell slot-free', `cat-bg-${category}`, isMatch && 'slot-column-match', isDim && 'slot-dim', groupSlotClasses(slot))}
+                      class={cn('slot-cell slot-free', matrixColumnClass(slotIndex), `cat-bg-${category}`, groupSlotClasses(slot))}
                       data-matrix-column={room}
                     ></td>
                   {:else}
@@ -701,7 +727,7 @@
                         ? 'slot-type-multi'
                         : `slot-type-${cell.types[0] || 'unknown'}`}
                     <td
-                      class={cn('slot-cell slot-busy', typeClass, isMatch && 'slot-column-match', isDim && 'slot-dim', hasSheet && 'slot-clickable', groupSlotClasses(slot))}
+                      class={cn('slot-cell slot-busy', matrixColumnClass(slotIndex), typeClass, hasSheet && 'slot-clickable', groupSlotClasses(slot))}
                       data-slot-key={cellKey}
                       data-slot-day={day}
                       data-slot-pair={pair}
