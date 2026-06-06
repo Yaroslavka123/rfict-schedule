@@ -21,7 +21,7 @@
     type MatrixDropTarget,
     type MatrixHitTestCache,
   } from '@/features/matrix/matrixDnd'
-  import type { MatrixAdapter } from '@/features/matrix/matrixTypes'
+  import type { MatrixAdapter, MatrixRenderCell } from '@/features/matrix/matrixTypes'
   import { PAIRS, PAIR_TIMES } from '@/lib/constants'
   import { openGoogleSheet } from '@/lib/googleSheets'
   import { cn, normalizeSearchQuery } from '@/lib/utils'
@@ -82,7 +82,7 @@
   let searchRequestId = 0
 
   let normalizedSearch = $derived(normalizeSearchQuery(search))
-  let cellByKey = $state<Map<string, unknown> | null>(null)
+  let cellByKey = $state<Map<string, MatrixRenderCell> | null>(null)
   let columnMatch = $state<ReadonlySet<string> | null>(null)
   let orderedColumns = $derived(applyColumnOrder(source ? adapter.getOrderedColumns(source) : [], $columnOrderStore[adapter.scope]))
   let matrixGroups = $derived($columnGroupsStore[adapter.scope])
@@ -214,7 +214,7 @@
     }
   }
 
-  function getVisibleCell(column: string, day: string, pair: number) {
+  function getVisibleCell(column: string, day: string, pair: number): MatrixRenderCell | null {
     if (!source) return null
     if (!cellByKey) return adapter.getCell(source, column, day, pair)
     return cellByKey.get(adapter.slotKey(column, day, pair)) || null
@@ -291,12 +291,12 @@
     lessonPress = { x: event.clientX, y: event.clientY, key }
   }
 
-  function finishLessonPress(event: PointerEvent, key: string, entries: unknown[]) {
+  function finishLessonPress(event: PointerEvent, key: string, cell: MatrixRenderCell) {
     if (!lessonPress || lessonPress.key !== key) return
     const distance = Math.hypot(event.clientX - lessonPress.x, event.clientY - lessonPress.y)
     lessonPress = null
     if (distance > 5) return
-    const sheetId = adapter.getSheetId(entries)
+    const sheetId = cell.precomputedSheetId
     if (!sheetId) return
     event.preventDefault()
     event.stopPropagation()
@@ -598,34 +598,33 @@
                         data-matrix-column={column}
                       ></td>
                     {:else}
-                      {@const cellKey = adapter.slotKey(column, day, pair)}
-                      {@const entries = adapter.getCellEntries(cell)}
-                      {@const hasSheet = Boolean(adapter.getSheetId(entries))}
-                      {@const mainClass = adapter.getCellMainClass(cell)}
+                      {@const cellKey = cell.precomputedKey}
+                      {@const entries = cell.entries}
+                      {@const hasSheet = cell.precomputedHasSheet}
                       <td
-                        class={cn(
+                        class={[
                           'slot-cell slot-busy',
                           matrixColumnClass(slotIndex),
-                          ...adapter.getBusyCellClasses(cell),
+                          ...cell.precomputedBusyClasses,
                           hasSheet && 'slot-clickable',
                           groupSlotClasses(slot),
-                        )}
+                        ].filter(Boolean).join(' ')}
                         data-slot-key={cellKey}
                         data-slot-day={day}
                         data-slot-pair={pair}
                         data-matrix-column={column}
                         title={hasSheet ? 'Открыть Google Таблицу' : undefined}
                         onpointerdown={(event) => startLessonPress(event, cellKey)}
-                        onpointerup={(event) => finishLessonPress(event, cellKey, entries)}
+                        onpointerup={(event) => finishLessonPress(event, cellKey, cell)}
                         onpointercancel={cancelLessonPress}
                       >
                         <div class="slot-content">
-                          <div class={cn('slot-main', mainClass)}>{adapter.getCellMain(cell)}</div>
-                          {#if adapter.getCellMeta(cell)}
-                            <div class="slot-meta">{adapter.getCellMeta(cell)}</div>
+                          <div class={['slot-main', cell.precomputedMainClass].filter(Boolean).join(' ')}>{cell.precomputedMain}</div>
+                          {#if cell.precomputedMeta}
+                            <div class="slot-meta">{cell.precomputedMeta}</div>
                           {/if}
                         </div>
-                        {#each adapter.getCellBadges(cell) as badge (`${badge.className}-${badge.title}`)}
+                        {#each cell.precomputedBadges as badge (`${badge.className}-${badge.title}`)}
                           <span class={badge.className} title={badge.title}>
                             {badge.value}
                           </span>

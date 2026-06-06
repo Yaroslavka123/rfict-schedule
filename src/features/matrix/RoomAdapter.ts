@@ -1,19 +1,12 @@
 import { filterRoomMatrix, roomSlotKey, type MatrixCellFilter } from '@/features/matrix/matrixFilter'
 import { buildTooltipSummary, formatTooltipGroups } from '@/features/matrix/matrixTooltip'
-import type { MatrixAdapter, MatrixCellBadge, MatrixTooltipBlock } from '@/features/matrix/matrixTypes'
+import type { MatrixAdapter, MatrixTooltipBlock } from '@/features/matrix/matrixTypes'
 import { LESSON_TYPE_LABELS } from '@/lib/constants'
-import type { RoomCell, RoomOccupancyIndex, RoomSlotEntry } from '@/stores/scheduleStore'
+import { roomCell, type RoomCell, type RoomOccupancyIndex, type RoomSlotEntry } from '@/stores/scheduleStore'
 import type { LessonType } from '@/types/schedule'
 
-function summarizeRoomEntries(entries: RoomSlotEntry[]): RoomCell {
-  return {
-    entries,
-    allCancelled: entries.every((entry) => entry.cancelled),
-    types: Array.from(new Set(entries.map((entry) => entry.type))),
-    groups: Array.from(new Set(entries.map((entry) => entry.group).filter(Boolean))),
-    teachers: Array.from(new Set(entries.map((entry) => entry.teacher).filter(Boolean))),
-    first: entries[0],
-  }
+function summarizeRoomEntries(entries: RoomSlotEntry[], key: string): RoomCell {
+  return roomCell(entries, key)
 }
 
 function buildRoomCellMap(source: RoomOccupancyIndex, cells: MatrixCellFilter | null) {
@@ -28,20 +21,9 @@ function buildRoomCellMap(source: RoomOccupancyIndex, cells: MatrixCellFilter | 
       .map((index) => cell.entries[index])
       .filter((entry): entry is RoomSlotEntry => Boolean(entry))
     if (entries.length === 0) return
-    map.set(key, entries.length === cell.entries.length ? cell : summarizeRoomEntries(entries))
+    map.set(key, entries.length === cell.entries.length ? cell : summarizeRoomEntries(entries, key))
   })
   return map
-}
-
-function shortenSubject(subject: string) {
-  if (!subject) return 'Занято'
-  return subject.length > 14 ? `${subject.slice(0, 13)}...` : subject
-}
-
-function typeClass(cell: RoomCell) {
-  if (cell.allCancelled) return 'slot-cancelled'
-  if (cell.types.length > 1) return 'slot-type-multi'
-  return `slot-type-${cell.types[0] || 'unknown'}`
 }
 
 export const roomMatrixAdapter: MatrixAdapter = {
@@ -88,7 +70,7 @@ export const roomMatrixAdapter: MatrixAdapter = {
     return category ? [`cat-bg-${category}`] : []
   },
   getBusyCellClasses(cell) {
-    return [typeClass(cell as RoomCell)]
+    return cell.precomputedBusyClasses
   },
   getCell(source, column, day, pair) {
     return (source as RoomOccupancyIndex).occupancy[column]?.[day]?.[pair] || null
@@ -97,35 +79,19 @@ export const roomMatrixAdapter: MatrixAdapter = {
     return (cell as RoomCell).entries
   },
   getCellMain(cell) {
-    return shortenSubject((cell as RoomCell).first.subject)
+    return cell.precomputedMain
   },
   getCellMeta(cell) {
-    return (cell as RoomCell).groups[0] || null
+    return cell.precomputedMeta
   },
   getCellMainClass(cell) {
-    return (cell as RoomCell).allCancelled ? 'line-through' : null
+    return cell.precomputedMainClass
   },
   getCellBadges(cell) {
-    const roomCell = cell as RoomCell
-    const badges: MatrixCellBadge[] = []
-    if (roomCell.teachers.length > 1) {
-      badges.push({
-        className: 'slot-badge slot-badge-teacher',
-        title: `Преподавателей: ${roomCell.teachers.length}`,
-        value: roomCell.teachers.length,
-      })
-    }
-    if (roomCell.groups.length > 1) {
-      badges.push({
-        className: 'slot-badge slot-badge-group',
-        title: `Групп: ${roomCell.groups.length}`,
-        value: roomCell.groups.length,
-      })
-    }
-    return badges
+    return cell.precomputedBadges
   },
-  getSheetId(entries) {
-    return (entries as RoomSlotEntry[]).find((entry) => entry.googleSheetId)?.googleSheetId || null
+  getSheetId(cell) {
+    return cell.precomputedSheetId
   },
   slotKey: roomSlotKey,
   filter(source, activeGroup, query, types) {

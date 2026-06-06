@@ -16,6 +16,18 @@ export interface MatrixCellBadge {
   value: number
 }
 
+export interface MatrixRenderCell {
+  entries: unknown[]
+  precomputedKey: string
+  precomputedMain: string
+  precomputedMainClass: string | null
+  precomputedMeta: string | null
+  precomputedBadges: MatrixCellBadge[]
+  precomputedBusyClasses: string[]
+  precomputedSheetId: string | null
+  precomputedHasSheet: boolean
+}
+
 export interface MatrixTooltipLine {
   className?: string
   text: string
@@ -57,20 +69,20 @@ export interface MatrixAdapter {
   getColumnLabelClass(column: string): string | null
   getHeaderClasses(source: unknown | null, column: string, isMatch: boolean, isDim: boolean): string[]
   getFreeCellClasses(source: unknown | null, column: string): string[]
-  getBusyCellClasses(cell: unknown): string[]
-  getCell(source: unknown, column: string, day: string, pair: number): unknown | null
-  getCellEntries(cell: unknown): unknown[]
-  getCellMain(cell: unknown): string
-  getCellMeta(cell: unknown): string | null
-  getCellMainClass(cell: unknown): string | null
-  getCellBadges(cell: unknown): MatrixCellBadge[]
-  getSheetId(entries: unknown[]): string | null
+  getBusyCellClasses(cell: MatrixRenderCell): string[]
+  getCell(source: unknown, column: string, day: string, pair: number): MatrixRenderCell | null
+  getCellEntries(cell: MatrixRenderCell): unknown[]
+  getCellMain(cell: MatrixRenderCell): string
+  getCellMeta(cell: MatrixRenderCell): string | null
+  getCellMainClass(cell: MatrixRenderCell): string | null
+  getCellBadges(cell: MatrixRenderCell): MatrixCellBadge[]
+  getSheetId(cell: MatrixRenderCell): string | null
   slotKey(column: string, day: string, pair: number): string
   filter(source: unknown, activeGroup: string, query: string, types: LessonType[]): {
     cells: [key: string, entryIndexes: number[]][] | null
     matches: ReadonlySet<string> | null
   }
-  buildCellMap(source: unknown, cells: [key: string, entryIndexes: number[]][] | null): Map<string, unknown> | null
+  buildCellMap(source: unknown, cells: [key: string, entryIndexes: number[]][] | null): Map<string, MatrixRenderCell> | null
   getTooltipHeader(column: string, entries: unknown[]): MatrixTooltipHeader | null
   getTooltipBlocks(column: string, entries: unknown[]): MatrixTooltipBlock[]
 }

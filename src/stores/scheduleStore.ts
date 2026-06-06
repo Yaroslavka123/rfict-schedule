@@ -9,6 +9,7 @@ import {
   type AllCoursesBundle,
   type CourseDataBundle,
 } from '@/api/scheduleClient'
+import type { MatrixCellBadge } from '@/features/matrix/matrixTypes'
 import { PAIR_TIMES } from '@/lib/constants'
 import {
   categorizeRoom,
@@ -108,6 +109,19 @@ export interface RoomCell {
   groups: string[]
   teachers: string[]
   first: RoomSlotEntry
+  precomputedKey: string
+  precomputedMain: string
+  precomputedMainClass: string | null
+  precomputedMeta: string | null
+  precomputedBadgeKey: string | null
+  precomputedBadges: MatrixCellBadge[]
+  precomputedBusyClasses: string[]
+  precomputedSheetId: string | null
+  precomputedHasSheet: boolean
+  precomputedIsMultiTeacher: boolean
+  precomputedIsMultiGroup: boolean
+  precomputedTeacherCount: number
+  precomputedGroupCount: number
 }
 
 export interface RoomOccupancyIndex {
@@ -137,6 +151,14 @@ export interface TeacherCell {
   allCancelled: boolean
   types: LessonType[]
   rooms: string[]
+  precomputedKey: string
+  precomputedMain: string
+  precomputedMainClass: string | null
+  precomputedMeta: string | null
+  precomputedBadges: MatrixCellBadge[]
+  precomputedBusyClasses: string[]
+  precomputedSheetId: string | null
+  precomputedHasSheet: boolean
 }
 
 export interface TeacherOccupancyIndex {
@@ -284,28 +306,104 @@ function getGroupName(
   return groupNameById[groupId] || `Группа ${groupId}`
 }
 
-function roomCell(entries: RoomSlotEntry[]): RoomCell {
+function matrixSlotKey(column: string, day: string, pair: number) {
+  return `${encodeURIComponent(column)}|${day}|${pair}`
+}
+
+function shortenSubject(subject: string) {
+  if (!subject) return 'Занято'
+  return subject.length > 14 ? `${subject.slice(0, 13)}...` : subject
+}
+
+function getSheetId(entries: Array<{ googleSheetId?: string | null }>) {
+  return entries.find((entry) => entry.googleSheetId)?.googleSheetId || null
+}
+
+function matrixTypeClass(allCancelled: boolean, types: LessonType[]) {
+  if (allCancelled) return 'slot-cancelled'
+  if (types.length > 1) return 'slot-type-multi'
+  return `slot-type-${types[0] || 'unknown'}`
+}
+
+export function roomCell(entries: RoomSlotEntry[], key: string): RoomCell {
   const groups = Array.from(new Set(entries.map((entry) => entry.group).filter(Boolean)))
   const teachers = Array.from(new Set(entries.map((entry) => entry.teacher).filter(Boolean)))
   const types = Array.from(new Set(entries.map((entry) => entry.type)))
+  const allCancelled = entries.every((entry) => entry.cancelled)
+  const first = entries[0]
+  const teacherCount = teachers.length
+  const groupCount = groups.length
+  const isMultiTeacher = teacherCount > 1
+  const isMultiGroup = groupCount > 1
+  const sheetId = getSheetId(entries)
+  const precomputedBadges: MatrixCellBadge[] = []
+
+  if (isMultiTeacher) {
+    precomputedBadges.push({
+      className: 'slot-badge slot-badge-teacher',
+      title: `Преподавателей: ${teacherCount}`,
+      value: teacherCount,
+    })
+  }
+  if (isMultiGroup) {
+    precomputedBadges.push({
+      className: 'slot-badge slot-badge-group',
+      title: `Групп: ${groupCount}`,
+      value: groupCount,
+    })
+  }
+
   return {
     entries,
-    allCancelled: entries.every((entry) => entry.cancelled),
+    allCancelled,
     types,
     groups,
     teachers,
-    first: entries[0],
+    first,
+    precomputedKey: key,
+    precomputedMain: shortenSubject(first.subject),
+    precomputedMainClass: allCancelled ? 'line-through' : null,
+    precomputedMeta: groups[0] || null,
+    precomputedBadgeKey: isMultiTeacher || isMultiGroup ? `${teacherCount}-${groupCount}` : null,
+    precomputedBadges,
+    precomputedBusyClasses: [matrixTypeClass(allCancelled, types)],
+    precomputedSheetId: sheetId,
+    precomputedHasSheet: Boolean(sheetId),
+    precomputedIsMultiTeacher: isMultiTeacher,
+    precomputedIsMultiGroup: isMultiGroup,
+    precomputedTeacherCount: teacherCount,
+    precomputedGroupCount: groupCount,
   }
 }
 
-function teacherCell(entries: TeacherSlotEntry[]): TeacherCell {
+export function teacherCell(entries: TeacherSlotEntry[], key: string): TeacherCell {
   const rooms = Array.from(new Set(entries.map((entry) => entry.room).filter(Boolean)))
   const types = Array.from(new Set(entries.map((entry) => entry.type)))
+  const allCancelled = entries.every((entry) => entry.cancelled)
+  const sheetId = getSheetId(entries)
+  const precomputedBadges: MatrixCellBadge[] = []
+
+  if (rooms.length > 1) {
+    precomputedBadges.push({
+      className: 'slot-badge slot-badge-group',
+      title: `Кабинетов: ${rooms.length}`,
+      value: rooms.length,
+    })
+  }
+
   return {
     entries,
-    allCancelled: entries.every((entry) => entry.cancelled),
+    allCancelled,
     types,
     rooms,
+    precomputedKey: key,
+    precomputedMain: rooms[0] || '—',
+    precomputedMainClass: allCancelled ? 'line-through' : null,
+    precomputedMeta: null,
+    precomputedBadges,
+    precomputedBusyClasses: [matrixTypeClass(allCancelled, types)],
+    precomputedSheetId: sheetId,
+    precomputedHasSheet: Boolean(sheetId),
   }
 }
 
@@ -448,7 +546,7 @@ function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): S
       Object.entries(days).forEach(([day, pairs]) => {
         index.occupancy[room][day] = {}
         Object.entries(pairs).forEach(([pair, entries]) => {
-          index.occupancy[room][day][Number(pair)] = roomCell(entries)
+          index.occupancy[room][day][Number(pair)] = roomCell(entries, matrixSlotKey(room, day, Number(pair)))
         })
       })
     })
@@ -469,7 +567,7 @@ function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): S
       Object.entries(days).forEach(([day, pairs]) => {
         index.occupancy[teacher][day] = {}
         Object.entries(pairs).forEach(([pair, entries]) => {
-          index.occupancy[teacher][day][Number(pair)] = teacherCell(entries)
+          index.occupancy[teacher][day][Number(pair)] = teacherCell(entries, matrixSlotKey(teacher, day, Number(pair)))
           entries.forEach((entry) => teacherSearchParts.push(entry.searchKey))
         })
       })

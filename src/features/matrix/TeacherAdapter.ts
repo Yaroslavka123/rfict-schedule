@@ -1,16 +1,11 @@
 import { filterTeacherMatrix, teacherSlotKey, type MatrixCellFilter } from '@/features/matrix/matrixFilter'
 import { buildTooltipSummary, formatTooltipGroups } from '@/features/matrix/matrixTooltip'
-import type { MatrixAdapter, MatrixCellBadge, MatrixTooltipBlock } from '@/features/matrix/matrixTypes'
+import type { MatrixAdapter, MatrixTooltipBlock } from '@/features/matrix/matrixTypes'
 import { LESSON_TYPE_LABELS } from '@/lib/constants'
-import type { TeacherCell, TeacherOccupancyIndex, TeacherSlotEntry } from '@/stores/scheduleStore'
+import { teacherCell, type TeacherCell, type TeacherOccupancyIndex, type TeacherSlotEntry } from '@/stores/scheduleStore'
 
-function summarizeTeacherEntries(entries: TeacherSlotEntry[]): TeacherCell {
-  return {
-    entries,
-    allCancelled: entries.every((entry) => entry.cancelled),
-    types: Array.from(new Set(entries.map((entry) => entry.type))),
-    rooms: Array.from(new Set(entries.map((entry) => entry.room).filter(Boolean))),
-  }
+function summarizeTeacherEntries(entries: TeacherSlotEntry[], key: string): TeacherCell {
+  return teacherCell(entries, key)
 }
 
 function buildTeacherCellMap(source: TeacherOccupancyIndex, cells: MatrixCellFilter | null) {
@@ -25,7 +20,7 @@ function buildTeacherCellMap(source: TeacherOccupancyIndex, cells: MatrixCellFil
       .map((index) => cell.entries[index])
       .filter((entry): entry is TeacherSlotEntry => Boolean(entry))
     if (entries.length === 0) return
-    map.set(key, entries.length === cell.entries.length ? cell : summarizeTeacherEntries(entries))
+    map.set(key, entries.length === cell.entries.length ? cell : summarizeTeacherEntries(entries, key))
   })
   return map
 }
@@ -34,12 +29,6 @@ function shortTeacherName(full: string): string {
   const trimmed = full.trim()
   if (trimmed.length <= 22) return trimmed
   return `${trimmed.slice(0, 21)}...`
-}
-
-function typeClass(cell: TeacherCell) {
-  if (cell.allCancelled) return 'slot-cancelled'
-  if (cell.types.length > 1) return 'slot-type-multi'
-  return `slot-type-${cell.types[0] || 'unknown'}`
 }
 
 export const teacherMatrixAdapter: MatrixAdapter = {
@@ -78,7 +67,7 @@ export const teacherMatrixAdapter: MatrixAdapter = {
     return []
   },
   getBusyCellClasses(cell) {
-    return [typeClass(cell as TeacherCell)]
+    return cell.precomputedBusyClasses
   },
   getCell(source, column, day, pair) {
     return (source as TeacherOccupancyIndex).occupancy[column]?.[day]?.[pair] || null
@@ -87,28 +76,19 @@ export const teacherMatrixAdapter: MatrixAdapter = {
     return (cell as TeacherCell).entries
   },
   getCellMain(cell) {
-    return (cell as TeacherCell).rooms[0] || '—'
+    return cell.precomputedMain
   },
-  getCellMeta() {
-    return null
+  getCellMeta(cell) {
+    return cell.precomputedMeta
   },
   getCellMainClass(cell) {
-    return (cell as TeacherCell).allCancelled ? 'line-through' : null
+    return cell.precomputedMainClass
   },
   getCellBadges(cell) {
-    const teacherCell = cell as TeacherCell
-    const badges: MatrixCellBadge[] = []
-    if (teacherCell.rooms.length > 1) {
-      badges.push({
-        className: 'slot-badge slot-badge-group',
-        title: `Кабинетов: ${teacherCell.rooms.length}`,
-        value: teacherCell.rooms.length,
-      })
-    }
-    return badges
+    return cell.precomputedBadges
   },
-  getSheetId(entries) {
-    return (entries as TeacherSlotEntry[]).find((entry) => entry.googleSheetId)?.googleSheetId || null
+  getSheetId(cell) {
+    return cell.precomputedSheetId
   },
   slotKey: teacherSlotKey,
   filter(source, activeGroup, query, types) {
