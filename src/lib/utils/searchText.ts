@@ -35,6 +35,7 @@ const DISPLAY_TITLE_WORDS = new Set([
   'асс',
   'ассистент',
 ])
+const SHORT_SEARCH_QUERY_RE = /^[\p{L}\p{N}\s]+$/u
 
 function repairCompactInitials(value: string) {
   return value
@@ -73,6 +74,12 @@ export function normalizeSearchText(value: string | null | undefined) {
 }
 
 export function normalizeSearchQuery(value: string | null | undefined) {
+  const key = String(value || '')
+  if (!key) return ''
+  if (key.length < 3 && SHORT_SEARCH_QUERY_RE.test(key)) {
+    return key.toLowerCase().replace(/ё/g, 'е').trim()
+  }
+
   const raw = normalizeSearchText(value)
   const withoutTitles = stripAcademicTitlesFromNormalized(raw)
   return withoutTitles || raw

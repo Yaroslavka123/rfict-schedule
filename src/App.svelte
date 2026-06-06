@@ -243,6 +243,7 @@
     if (!normalizedQuery) return ''
 
     for (const candidate of candidates) {
+      if (candidate.normalized.length < normalizedQuery.length) continue
       if (
         candidate.normalized !== normalizedQuery &&
         (candidate.normalized.startsWith(normalizedQuery) || candidate.compact.startsWith(compactQuery))

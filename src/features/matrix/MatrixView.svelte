@@ -91,7 +91,7 @@
   const cellByKeyInternal = new Map<string, MatrixRenderCell>()
   const searchResultCache = new Map<string, { result: MatrixFilterResult; ts: number }>()
 
-  let normalizedSearch = $derived(normalizeSearchQuery(search))
+  let normalizedSearch = $derived(search ? normalizeSearchQuery(search) : '')
   let cellByKey = $state<Map<string, MatrixRenderCell> | null>(null)
   let columnMatch = $state<ReadonlySet<string> | null>(null)
   let orderedColumns = $derived(applyColumnOrder(source ? adapter.getOrderedColumns(source) : [], $columnOrderStore[adapter.scope]))
@@ -167,7 +167,7 @@
         })
         scheduleFallbackSearch(() => {
           applyFallbackSearch(requestId, currentSource, activeGroup, query, types, cacheKey)
-        }, 240)
+        }, 60)
         return
       } catch {
         searchWorker?.terminate()

@@ -9,6 +9,8 @@ import type { LessonType } from '@/types/schedule'
 
 export type MatrixCellFilter = [key: string, entryIndexes: number[] | null][]
 
+const roomSearchKeyCache = new Map<string, string>()
+
 export interface RoomMatrixFilterResult {
   cells: MatrixCellFilter | null
   matches: ReadonlySet<string> | null
@@ -39,6 +41,14 @@ function teacherEntryMatches(entry: TeacherSlotEntry, activeGroup: string, types
   return true
 }
 
+function getRoomSearchKey(room: string) {
+  const cached = roomSearchKeyCache.get(room)
+  if (cached !== undefined) return cached
+  const key = buildSearchKey(room)
+  roomSearchKeyCache.set(room, key)
+  return key
+}
+
 export function filterRoomMatrix(
   source: RoomOccupancyIndex | null,
   activeGroup: string,
@@ -52,7 +62,7 @@ export function filterRoomMatrix(
   const matches = query ? new Set<string>() : null
 
   source.orderedRooms.forEach((room) => {
-    const roomNameMatches = query ? buildSearchKey(room).includes(query) : false
+    const roomNameMatches = query ? getRoomSearchKey(room).includes(query) : false
     let hasMatchingCell = false
     const days = source.occupancy[room]
 
