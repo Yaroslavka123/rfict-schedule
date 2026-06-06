@@ -86,7 +86,7 @@
 <div class="space-y-3">
   <div class="view-toolbar">
     <div class="flex min-w-[12rem] flex-1 items-center gap-2">
-      <div class="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary transition-transform duration-300 hover:rotate-[-6deg] hover:scale-110">
+      <div class="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary transition-colors duration-300 hover:bg-primary/15">
         <CalendarRange class="h-4 w-4" />
       </div>
       <div>

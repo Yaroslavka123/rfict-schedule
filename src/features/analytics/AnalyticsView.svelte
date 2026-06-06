@@ -498,7 +498,7 @@
         Свернуть
       </Button>
       <Button variant="secondary" class="h-8 px-3 text-xs" onclick={exportCsv}>
-        <Download class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-y-px" />
+        <Download class="h-3.5 w-3.5 transition-colors duration-200" />
         CSV
       </Button>
     </div>
