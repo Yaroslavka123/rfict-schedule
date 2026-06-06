@@ -1,7 +1,9 @@
+import type { LessonType } from '@/types/schedule'
+
 export interface MatrixTooltipInput {
   subject: string
   counterpart: string
-  type: string
+  type: LessonType
   time: string
   group: string
   subgroup: string | null
@@ -19,7 +21,7 @@ export interface MatrixTooltipSummary {
   subject: string
   counterpart: string
   counterpartCourses: number[]
-  type: string
+  type: LessonType
   time: string
   groups: MatrixTooltipGroup[]
   cancelled: boolean
