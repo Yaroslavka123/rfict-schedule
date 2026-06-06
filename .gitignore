@@ -1,6 +1,8 @@
 .env
 .env.local
 *.log
+preview-server.*.log
+vite-*.log
 node_modules
 dist
 coverage
