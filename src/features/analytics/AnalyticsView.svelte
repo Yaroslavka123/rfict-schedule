@@ -5,9 +5,12 @@
   import Button from '@/components/ui/Button.svelte'
   import Card from '@/components/ui/Card.svelte'
   import Input from '@/components/ui/Input.svelte'
+  import {
+    buildAnalyticsIndex,
+    buildPlanFactHierarchy,
+  } from '@/features/analytics/analyticsIndex'
   import { COURSES } from '@/lib/constants'
   import {
-    buildPlanFactHierarchy,
     getLessonTypeLabel,
     statusColor,
     type PlanFactCourse,
@@ -84,12 +87,19 @@
         : groups.filter((group) => group.id === groupFilter)
       : [],
   )
-  let courseRows = $derived(
+  let analyticsIndex = $derived(
     active
-      ? buildPlanFactHierarchy({
+      ? buildAnalyticsIndex({
           courses,
           groups: filteredGroups,
           lessons: filteredLessons,
+        })
+      : null,
+  )
+  let courseRows = $derived(
+    active && analyticsIndex
+      ? buildPlanFactHierarchy({
+          index: analyticsIndex,
           plans,
           today,
           search,
