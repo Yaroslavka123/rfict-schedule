@@ -47,6 +47,8 @@ export interface BuildIndexedPlanFactOptions {
   search?: string
 }
 
+const lessonDayStampCache = new WeakMap<ScheduleLesson, number | null>()
+
 function rawSubgroupNumbers(raw: string | null | undefined): string[] {
   if (!raw) return []
   return raw
@@ -55,11 +57,31 @@ function rawSubgroupNumbers(raw: string | null | undefined): string[] {
     .filter((part) => /^\d+$/.test(part))
 }
 
-function isLessonBeforeToday(lesson: ScheduleLesson, today: Date): boolean {
-  if (!lesson.date) return false
+function dateDayStamp(value: Date) {
+  return Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate())
+}
+
+function lessonDayStamp(lesson: ScheduleLesson): number | null {
+  const cached = lessonDayStampCache.get(lesson)
+  if (cached !== undefined) return cached
+  if (!lesson.date) {
+    lessonDayStampCache.set(lesson, null)
+    return null
+  }
   const date = new Date(lesson.date)
-  if (Number.isNaN(date.getTime())) return false
-  return date < today && !lesson.cancelled
+  if (Number.isNaN(date.getTime())) {
+    lessonDayStampCache.set(lesson, null)
+    return null
+  }
+  const stamp = dateDayStamp(date)
+  lessonDayStampCache.set(lesson, stamp)
+  return stamp
+}
+
+function isLessonBeforeToday(lesson: ScheduleLesson, todayStamp: number): boolean {
+  if (!lesson.date) return false
+  const stamp = lessonDayStamp(lesson)
+  return stamp !== null && stamp < todayStamp && !lesson.cancelled
 }
 
 function pairsFor(lesson: ScheduleLesson) {
@@ -178,7 +200,7 @@ function buildPlanFactSubgroupRow(
   subject: string,
   groupId: string,
   plan: CoursePlanMap,
-  today: Date,
+  todayStamp: number,
 ): PlanFactSubgroup | null {
   const typesMap = new Map<LessonType, AnalyticsCell>()
   const weekNumbers: number[] = []
@@ -190,7 +212,7 @@ function buildPlanFactSubgroupRow(
     const cell = typesMap.get(type)!
     const pairCount = pairsFor(lesson)
     cell.scheduled += pairCount
-    if (isLessonBeforeToday(lesson, today)) cell.done += pairCount
+    if (isLessonBeforeToday(lesson, todayStamp)) cell.done += pairCount
 
     if (Number.isFinite(lesson.week_number as number)) {
       weekNumbers.push(lesson.week_number as number)
@@ -265,6 +287,7 @@ export function buildPlanFactHierarchy({
   search,
 }: BuildIndexedPlanFactOptions): PlanFactCourse[] {
   const query = search ? normalizeSearchQuery(search) : ''
+  const todayStamp = dateDayStamp(today)
 
   return index.courses
     .map<PlanFactCourse>((courseIndex) => {
@@ -305,7 +328,7 @@ export function buildPlanFactHierarchy({
                 const typeCell = typeMap.get(type)!
                 const pairCount = pairsFor(lesson)
                 typeCell.scheduled += pairCount
-                if (isLessonBeforeToday(lesson, today)) typeCell.done += pairCount
+                if (isLessonBeforeToday(lesson, todayStamp)) typeCell.done += pairCount
               })
               const typeRows: PlanFactTypeRowExport[] = Array.from(typeMap.keys())
                 .sort((a, b) => getLessonTypeLabel(a).localeCompare(getLessonTypeLabel(b), 'ru'))
@@ -329,7 +352,7 @@ export function buildPlanFactHierarchy({
             }
 
             const subgroupResults: PlanFactSubgroup[] = slotNames
-              .map((subgroupName) => buildPlanFactSubgroupRow(subgroupName, groupLessons, subject, group.id, coursePlan, today))
+              .map((subgroupName) => buildPlanFactSubgroupRow(subgroupName, groupLessons, subject, group.id, coursePlan, todayStamp))
               .filter((row): row is PlanFactSubgroup => row !== null)
 
             if (subgroupResults.length === 0) return

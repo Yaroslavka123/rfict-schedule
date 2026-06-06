@@ -54,7 +54,8 @@
     onPlanChange,
   }: AnalyticsViewProps = $props()
 
-  let today = $state(new Date())
+  let currentDayStamp = $state(dayStamp(new Date()))
+  let today = $derived(new Date(currentDayStamp))
   let planInputs = $state<Record<string, string>>({})
   let savingRows = $state<Record<string, boolean>>({})
   let saveStatus = $state<Record<string, 'saved' | 'error'>>({})
@@ -65,8 +66,8 @@
   $effect(() => {
     if (!active) return
     const interval = setInterval(() => {
-      const next = new Date()
-      if (dayKey(next) !== dayKey(today)) today = next
+      const nextStamp = dayStamp(new Date())
+      if (nextStamp !== currentDayStamp) currentDayStamp = nextStamp
     }, 60_000)
     return () => clearInterval(interval)
   })
@@ -134,8 +135,8 @@
     return (found.size > 0 ? Array.from(found) : [...COURSES]).sort((a, b) => a - b)
   }
 
-  function dayKey(value: Date) {
-    return `${value.getFullYear()}-${value.getMonth()}-${value.getDate()}`
+  function dayStamp(value: Date) {
+    return Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate())
   }
 
   function summarize(rows: PlanFactCourse[]) {
