@@ -8,21 +8,25 @@ function summarizeTeacherEntries(entries: TeacherSlotEntry[], key: string): Teac
   return teacherCell(entries, key)
 }
 
-function buildTeacherCellMap(source: TeacherOccupancyIndex, cells: MatrixCellFilter | null) {
+function buildTeacherCellMap(source: TeacherOccupancyIndex, cells: MatrixCellFilter | null, target = new Map<string, TeacherCell>()) {
   if (cells === null) return null
-  const map = new Map<string, TeacherCell>()
+  target.clear()
   cells.forEach(([key, entryIndexes]) => {
     const [encodedTeacher, day, pairValue] = key.split('|')
     const teacher = decodeURIComponent(encodedTeacher || '')
     const cell = source.occupancy[teacher]?.[day]?.[Number(pairValue)]
     if (!cell) return
+    if (entryIndexes === null) {
+      target.set(key, cell)
+      return
+    }
     const entries = entryIndexes
       .map((index) => cell.entries[index])
       .filter((entry): entry is TeacherSlotEntry => Boolean(entry))
     if (entries.length === 0) return
-    map.set(key, entries.length === cell.entries.length ? cell : summarizeTeacherEntries(entries, key))
+    target.set(key, entries.length === cell.entries.length ? cell : summarizeTeacherEntries(entries, key))
   })
-  return map
+  return target
 }
 
 function shortTeacherName(full: string): string {
@@ -94,8 +98,8 @@ export const teacherMatrixAdapter: MatrixAdapter = {
   filter(source, activeGroup, query, types) {
     return filterTeacherMatrix(source as TeacherOccupancyIndex | null, activeGroup, query, types)
   },
-  buildCellMap(source, cells) {
-    return buildTeacherCellMap(source as TeacherOccupancyIndex, cells)
+  buildCellMap(source, cells, target) {
+    return buildTeacherCellMap(source as TeacherOccupancyIndex, cells, target as Map<string, TeacherCell> | undefined)
   },
   getTooltipHeader(column) {
     return { className: 'mb-1 font-bold text-primary', text: column || '—' }

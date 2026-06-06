@@ -7,7 +7,7 @@ import type {
 } from '@/stores/scheduleStore'
 import type { LessonType } from '@/types/schedule'
 
-export type MatrixCellFilter = [key: string, entryIndexes: number[]][]
+export type MatrixCellFilter = [key: string, entryIndexes: number[] | null][]
 
 export interface RoomMatrixFilterResult {
   cells: MatrixCellFilter | null
@@ -59,11 +59,17 @@ export function filterRoomMatrix(
     if (days) {
       Object.entries(days).forEach(([day, pairs]) => {
         Object.entries(pairs).forEach(([pair, cell]) => {
-          const entryIndexes: number[] = []
+          let entryIndexes: number[] | null = null
+          let matchedCount = 0
           cell.entries.forEach((entry, index) => {
-            if (roomEntryMatches(entry, activeGroup, query, types)) entryIndexes.push(index)
+            if (roomEntryMatches(entry, activeGroup, query, types)) {
+              matchedCount += 1
+              entryIndexes?.push(index)
+            } else if (entryIndexes === null) {
+              entryIndexes = Array.from({ length: matchedCount }, (_, matchedIndex) => matchedIndex)
+            }
           })
-          if (entryIndexes.length === 0) return
+          if (matchedCount === 0) return
           hasMatchingCell = true
           cells.push([roomSlotKey(room, day, Number(pair)), entryIndexes])
         })
@@ -103,11 +109,17 @@ export function filterTeacherMatrix(
 
     Object.entries(days).forEach(([day, pairs]) => {
       Object.entries(pairs).forEach(([pair, cell]) => {
-        const entryIndexes: number[] = []
+        let entryIndexes: number[] | null = null
+        let matchedCount = 0
         cell.entries.forEach((entry, index) => {
-          if (teacherEntryMatches(entry, activeGroup, types)) entryIndexes.push(index)
+          if (teacherEntryMatches(entry, activeGroup, types)) {
+            matchedCount += 1
+            entryIndexes?.push(index)
+          } else if (entryIndexes === null) {
+            entryIndexes = Array.from({ length: matchedCount }, (_, matchedIndex) => matchedIndex)
+          }
         })
-        if (entryIndexes.length > 0) cells.push([teacherSlotKey(teacher, day, Number(pair)), entryIndexes])
+        if (matchedCount > 0) cells.push([teacherSlotKey(teacher, day, Number(pair)), entryIndexes])
       })
     })
   })

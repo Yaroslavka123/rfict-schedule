@@ -9,21 +9,25 @@ function summarizeRoomEntries(entries: RoomSlotEntry[], key: string): RoomCell {
   return roomCell(entries, key)
 }
 
-function buildRoomCellMap(source: RoomOccupancyIndex, cells: MatrixCellFilter | null) {
+function buildRoomCellMap(source: RoomOccupancyIndex, cells: MatrixCellFilter | null, target = new Map<string, RoomCell>()) {
   if (cells === null) return null
-  const map = new Map<string, RoomCell>()
+  target.clear()
   cells.forEach(([key, entryIndexes]) => {
     const [encodedRoom, day, pairValue] = key.split('|')
     const room = decodeURIComponent(encodedRoom || '')
     const cell = source.occupancy[room]?.[day]?.[Number(pairValue)]
     if (!cell) return
+    if (entryIndexes === null) {
+      target.set(key, cell)
+      return
+    }
     const entries = entryIndexes
       .map((index) => cell.entries[index])
       .filter((entry): entry is RoomSlotEntry => Boolean(entry))
     if (entries.length === 0) return
-    map.set(key, entries.length === cell.entries.length ? cell : summarizeRoomEntries(entries, key))
+    target.set(key, entries.length === cell.entries.length ? cell : summarizeRoomEntries(entries, key))
   })
-  return map
+  return target
 }
 
 export const roomMatrixAdapter: MatrixAdapter = {
@@ -97,8 +101,8 @@ export const roomMatrixAdapter: MatrixAdapter = {
   filter(source, activeGroup, query, types) {
     return filterRoomMatrix(source as RoomOccupancyIndex | null, activeGroup, query, types)
   },
-  buildCellMap(source, cells) {
-    return buildRoomCellMap(source as RoomOccupancyIndex, cells)
+  buildCellMap(source, cells, target) {
+    return buildRoomCellMap(source as RoomOccupancyIndex, cells, target as Map<string, RoomCell> | undefined)
   },
   getTooltipHeader(column) {
     return column ? { className: 'mb-1 font-bold text-amber-500', text: `Кабинет: ${column}` } : null

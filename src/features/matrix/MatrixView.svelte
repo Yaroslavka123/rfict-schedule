@@ -46,11 +46,15 @@
   type MatrixSearchWorkerMessage = {
     type: 'rooms-result' | 'teachers-result'
     id: number
-    cells: [key: string, entryIndexes: number[]][] | null
+    cells: [key: string, entryIndexes: number[] | null][] | null
     matches: ReadonlySet<string> | null
   }
 
+  type MatrixFilterResult = ReturnType<MatrixAdapter['filter']>
+
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+  const SEARCH_CACHE_TTL_MS = 5000
+  const WORKER_POST_THROTTLE_MS = 50
 
   let { active, source, groupFilter, search, lessonTypes, adapter }: MatrixViewProps = $props()
   let tooltip = $state<{ x: number; y: number; entries: unknown[]; column: string } | null>(null)
@@ -78,8 +82,14 @@
   let lessonPress: { x: number; y: number; key: string } | null = null
   let searchWorker: Worker | null = null
   let searchWorkerSource: unknown | null | undefined
+  let searchCacheSource: unknown | null | undefined
+  let searchCacheKind: string | null = null
   let fallbackSearchCancel: (() => void) | null = null
+  let workerRequestCancel: (() => void) | null = null
   let searchRequestId = 0
+  let lastWorkerPostAt = 0
+  const cellByKeyInternal = new Map<string, MatrixRenderCell>()
+  const searchResultCache = new Map<string, { result: MatrixFilterResult; ts: number }>()
 
   let normalizedSearch = $derived(normalizeSearchQuery(search))
   let cellByKey = $state<Map<string, MatrixRenderCell> | null>(null)
@@ -95,6 +105,7 @@
 
   onDestroy(() => {
     cancelFallbackSearch()
+    cancelWorkerRequest()
     searchWorker?.terminate()
     searchWorker = null
   })
@@ -103,6 +114,7 @@
     const isActive = active
     if (!isActive) {
       cancelFallbackSearch()
+      cancelWorkerRequest()
       return
     }
 
@@ -111,17 +123,29 @@
     const query = normalizedSearch
     const types = lessonTypes
     const requestId = ++searchRequestId
+    const cacheKey = buildSearchCacheKey(activeGroup, query, types)
     cancelFallbackSearch()
+    cancelWorkerRequest()
 
     if (!currentSource) {
+      cellByKeyInternal.clear()
       cellByKey = null
       columnMatch = null
       return
     }
 
+    refreshSearchCacheScope(currentSource)
+
     if (activeGroup === 'all' && !query && types.length === 0) {
+      cellByKeyInternal.clear()
       cellByKey = null
       columnMatch = null
+      return
+    }
+
+    const cached = getCachedSearchResult(cacheKey)
+    if (cached) {
+      applyFilterResult(currentSource, cached)
       return
     }
 
@@ -132,15 +156,17 @@
           searchWorkerSource = currentSource
           worker.postMessage({ type: adapter.kind === 'rooms' ? 'set-rooms-source' : 'set-teachers-source', source: currentSource })
         }
-        worker.postMessage({
-          type: adapter.kind === 'rooms' ? 'run-rooms' : 'run-teachers',
-          id: requestId,
-          activeGroup,
-          query,
-          types,
+        scheduleWorkerRequest(() => {
+          worker.postMessage({
+            type: adapter.kind === 'rooms' ? 'run-rooms' : 'run-teachers',
+            id: requestId,
+            activeGroup,
+            query,
+            types,
+          })
         })
         scheduleFallbackSearch(() => {
-          applyFallbackSearch(requestId, currentSource, activeGroup, query, types)
+          applyFallbackSearch(requestId, currentSource, activeGroup, query, types, cacheKey)
         }, 240)
         return
       } catch {
@@ -151,7 +177,7 @@
     }
 
     scheduleFallbackSearch(() => {
-      applyFallbackSearch(requestId, currentSource, activeGroup, query, types)
+      applyFallbackSearch(requestId, currentSource, activeGroup, query, types, cacheKey)
     })
   })
 
@@ -163,7 +189,7 @@
       const message = event.data
       if (message.type !== expectedType || message.id !== searchRequestId) return
       cancelFallbackSearch()
-      applyFilterResult(source, message)
+      applyFilterResult(source, message, getCurrentSearchCacheKey())
     }
     searchWorker = worker
     return worker
@@ -175,19 +201,89 @@
     activeGroup: string,
     query: string,
     types: LessonType[],
+    cacheKey: string,
   ) {
     if (requestId !== searchRequestId) return
-    applyFilterResult(currentSource, adapter.filter(currentSource, activeGroup, query, types))
+    applyFilterResult(currentSource, adapter.filter(currentSource, activeGroup, query, types), cacheKey)
   }
 
-  function applyFilterResult(currentSource: unknown | null, result: MatrixSearchWorkerMessage | ReturnType<MatrixAdapter['filter']>) {
-    cellByKey = currentSource ? adapter.buildCellMap(currentSource, result.cells) : null
-    columnMatch = result.matches
+  function applyFilterResult(currentSource: unknown | null, result: MatrixSearchWorkerMessage | MatrixFilterResult, cacheKey?: string) {
+    const filterResult: MatrixFilterResult = { cells: result.cells, matches: result.matches }
+    if (cacheKey) cacheSearchResult(cacheKey, filterResult)
+
+    if (!currentSource || !filterResult.cells) {
+      cellByKeyInternal.clear()
+      cellByKey = null
+    } else {
+      adapter.buildCellMap(currentSource, filterResult.cells, cellByKeyInternal)
+      cellByKey = cellByKeyInternal
+    }
+
+    columnMatch = filterResult.matches
   }
 
   function cancelFallbackSearch() {
     fallbackSearchCancel?.()
     fallbackSearchCancel = null
+  }
+
+  function cancelWorkerRequest() {
+    workerRequestCancel?.()
+    workerRequestCancel = null
+  }
+
+  function scheduleWorkerRequest(callback: () => void) {
+    const elapsed = Date.now() - lastWorkerPostAt
+    const delay = Math.max(0, WORKER_POST_THROTTLE_MS - elapsed)
+    let cancelled = false
+
+    const run = () => {
+      if (cancelled) return
+      workerRequestCancel = null
+      lastWorkerPostAt = Date.now()
+      callback()
+    }
+
+    if (delay === 0) {
+      run()
+      workerRequestCancel = null
+      return
+    }
+
+    const id = window.setTimeout(run, delay)
+    workerRequestCancel = () => {
+      cancelled = true
+      window.clearTimeout(id)
+    }
+  }
+
+  function buildSearchCacheKey(activeGroup: string, query: string, types: LessonType[]) {
+    return `${adapter.kind}|${activeGroup}|${query}|${types.join(',')}`
+  }
+
+  function getCurrentSearchCacheKey() {
+    return buildSearchCacheKey(groupFilter, normalizedSearch, lessonTypes)
+  }
+
+  function refreshSearchCacheScope(currentSource: unknown) {
+    if (searchCacheSource === currentSource && searchCacheKind === adapter.kind) return
+    searchCacheSource = currentSource
+    searchCacheKind = adapter.kind
+    searchResultCache.clear()
+  }
+
+  function getCachedSearchResult(key: string) {
+    const cached = searchResultCache.get(key)
+    if (!cached) return null
+    if (Date.now() - cached.ts > SEARCH_CACHE_TTL_MS) {
+      searchResultCache.delete(key)
+      return null
+    }
+    return cached.result
+  }
+
+  function cacheSearchResult(key: string, result: MatrixFilterResult) {
+    searchResultCache.set(key, { result, ts: Date.now() })
   }
 
   function scheduleFallbackSearch(callback: () => void, delay = 0) {

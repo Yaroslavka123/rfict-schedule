@@ -79,10 +79,14 @@ export interface MatrixAdapter {
   getSheetId(cell: MatrixRenderCell): string | null
   slotKey(column: string, day: string, pair: number): string
   filter(source: unknown, activeGroup: string, query: string, types: LessonType[]): {
-    cells: [key: string, entryIndexes: number[]][] | null
+    cells: [key: string, entryIndexes: number[] | null][] | null
     matches: ReadonlySet<string> | null
   }
-  buildCellMap(source: unknown, cells: [key: string, entryIndexes: number[]][] | null): Map<string, MatrixRenderCell> | null
+  buildCellMap(
+    source: unknown,
+    cells: [key: string, entryIndexes: number[] | null][] | null,
+    target?: Map<string, MatrixRenderCell>,
+  ): Map<string, MatrixRenderCell> | null
   getTooltipHeader(column: string, entries: unknown[]): MatrixTooltipHeader | null
   getTooltipBlocks(column: string, entries: unknown[]): MatrixTooltipBlock[]
 }
