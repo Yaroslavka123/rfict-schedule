@@ -98,6 +98,7 @@ export interface RoomSlotEntry {
   cancelled: boolean
   room: string
   searchKey: string
+  googleSheetId?: string | null
 }
 
 export interface RoomCell {
@@ -128,6 +129,7 @@ export interface TeacherSlotEntry {
   cancelled: boolean
   course?: number
   searchKey: string
+  googleSheetId?: string | null
 }
 
 export interface TeacherCell {
@@ -397,6 +399,7 @@ function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): S
           cancelled: Boolean(lesson.cancelled),
           room,
           searchKey,
+          googleSheetId: lesson.google_sheet_id,
         })
       }
     }
@@ -424,6 +427,7 @@ function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): S
           cancelled: Boolean(lesson.cancelled),
           course,
           searchKey,
+          googleSheetId: lesson.google_sheet_id,
         })
       }
     }

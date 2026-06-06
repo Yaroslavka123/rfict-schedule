@@ -3,6 +3,7 @@
 
   import Card from '@/components/ui/Card.svelte'
   import { DAY_ORDER, LESSON_TYPE_LABELS } from '@/lib/constants'
+  import { openGoogleSheet } from '@/lib/googleSheets'
   import { buildStats, formatActiveSubgroups, getGoogleSheetUrl, getPairRange } from '@/lib/schedule'
   import { cn } from '@/lib/utils'
   import type { ScheduleGroup, ScheduleLesson } from '@/types/schedule'
@@ -15,6 +16,7 @@
   }
 
   let { groups, lessons, weekName, dateRange }: ScheduleViewProps = $props()
+  let lessonPress: { x: number; y: number; key: string } | null = null
 
   let stats = $derived(buildStats(lessons))
   let byDay = $derived(groupByDay(lessons))
@@ -60,6 +62,24 @@
       blue: 'text-sky-500',
       red: 'text-red-500',
     }[tone]
+  }
+
+  function startLessonPress(event: PointerEvent, key: string) {
+    if (event.button !== 0) return
+    lessonPress = { x: event.clientX, y: event.clientY, key }
+  }
+
+  function finishLessonPress(event: PointerEvent, key: string, sheetId: string | null | undefined) {
+    if (!lessonPress || lessonPress.key !== key) return
+    const distance = Math.hypot(event.clientX - lessonPress.x, event.clientY - lessonPress.y)
+    lessonPress = null
+    if (distance > 5 || !sheetId) return
+    event.preventDefault()
+    openGoogleSheet(sheetId)
+  }
+
+  function cancelLessonPress() {
+    lessonPress = null
   }
 </script>
 
@@ -115,7 +135,14 @@
             </tr>
             {#each byDay[day] as lesson, index (`${lesson.day}-${lesson.pair}-${lesson.group}-${lesson.subject}-${lesson.subgroup ?? ''}-${index}`)}
               {@const sheetUrl = getGoogleSheetUrl(lesson)}
-              <tr class={lesson.cancelled ? 'opacity-50' : ''}>
+              {@const lessonKey = `${lesson.day}-${lesson.pair}-${lesson.group}-${lesson.subject}-${index}`}
+              <tr
+                class={cn(lesson.cancelled && 'opacity-50', sheetUrl && 'lesson-row-clickable')}
+                title={sheetUrl ? 'Открыть Google Таблицу' : undefined}
+                onpointerdown={(event) => startLessonPress(event, lessonKey)}
+                onpointerup={(event) => finishLessonPress(event, lessonKey, lesson.google_sheet_id)}
+                onpointercancel={cancelLessonPress}
+              >
                 <td class="font-bold">{getPairRange(lesson)}</td>
                 <td class="whitespace-nowrap text-muted-foreground">{lesson.time || '—'}</td>
                 <td>
@@ -128,9 +155,15 @@
                       <a
                         class="inline-flex text-muted-foreground transition hover:text-primary"
                         href={sheetUrl}
-                        target="_blank"
+                        target={lesson.google_sheet_id ? `rfict-sheet-${lesson.google_sheet_id}` : '_blank'}
                         rel="noreferrer"
                         aria-label="Открыть Google Таблицу"
+                        onclick={(event) => {
+                          event.preventDefault()
+                          openGoogleSheet(lesson.google_sheet_id)
+                        }}
+                        onpointerdown={(event) => event.stopPropagation()}
+                        onpointerup={(event) => event.stopPropagation()}
                       >
                         <ExternalLink class="h-3.5 w-3.5" />
                       </a>

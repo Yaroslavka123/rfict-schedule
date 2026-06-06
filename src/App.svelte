@@ -1,6 +1,6 @@
 <script lang="ts">
   import { AlertCircle, Loader2 } from '@lucide/svelte'
-  import { fade, fly } from 'svelte/transition'
+  import { cubicOut } from 'svelte/easing'
 
   import AppShell, { type AppTab } from '@/components/layout/AppShell.svelte'
   import TopFilters from '@/components/layout/TopFilters.svelte'
@@ -32,22 +32,25 @@
     search: '',
   }
   const SEARCH_DEBOUNCE_MS = 120
+  const SEARCH_SUGGESTION_DELAY_MS = 80
   const FETCH_DEBOUNCE_MS = 100
 
   let activeTab = $state<AppTab>('rooms')
   let renderedTab = $state<AppTab>('rooms')
+  let switchingTab = $state<AppTab | null>(null)
   let filters = $state<FiltersState>({ ...defaultFilters })
   let debouncedSearch = $state('')
+  let searchSuggestion = $state('')
   let autoWeekCourse = $state<CourseSelection | null>(null)
+  let tabSwitchTimer: ReturnType<typeof setTimeout> | null = null
 
   let schedule = $derived($scheduleStore.schedule)
   let selectedWeeks = $derived($scheduleStore.index.weeksByNumber[filters.week] || [])
   let week = $derived(selectedWeeks[0] || null)
   let selectedWeekLessons = $derived($scheduleStore.index.lessonsByWeek[filters.week] || [])
-  let searchSuggestion = $derived(
-    buildSearchSuggestion(
-      activeTab,
-      filters.search,
+  let searchCandidates = $derived(
+    buildSearchCandidates(
+      renderedTab,
       schedule?.groups || [],
       selectedWeekLessons,
       $scheduleStore.index.roomOccupancyByWeek[filters.week]?.orderedRooms || [],
@@ -93,11 +96,36 @@
   })
 
   $effect(() => {
-    const tab = activeTab
+    const query = filters.search
+    const candidates = searchCandidates
+    let cancelled = false
+    let cancelDeferred: (() => void) | null = null
+
+    if (!query.trim() || candidates.length === 0) {
+      searchSuggestion = ''
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      cancelDeferred = scheduleDeferred(() => {
+        if (cancelled) return
+        searchSuggestion = firstSearchSuggestion(query, candidates)
+      })
+    }, SEARCH_SUGGESTION_DELAY_MS)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timeout)
+      cancelDeferred?.()
+    }
+  })
+
+  $effect(() => {
+    if (renderedTab === activeTab) return
     let cancelled = false
     const frame = requestAnimationFrame(() => {
       setTimeout(() => {
-        if (!cancelled) renderedTab = tab
+        if (!cancelled) renderedTab = activeTab
       }, 0)
     })
     return () => {
@@ -127,6 +155,41 @@
       autoWeekCourse = null
     }
     filters = next
+  }
+
+  function setActiveTab(tab: AppTab) {
+    if (tab === activeTab) return
+    activeTab = tab
+    switchingTab = tab
+    if (tabSwitchTimer) clearTimeout(tabSwitchTimer)
+    tabSwitchTimer = setTimeout(() => {
+      renderedTab = tab
+      switchingTab = null
+      tabSwitchTimer = null
+    }, 165)
+  }
+
+  function tabViewClass(extra = '') {
+    const leaving = switchingTab && switchingTab !== renderedTab ? ' tab-view-leaving' : ''
+    return `tab-view${leaving}${extra ? ` ${extra}` : ''}`
+  }
+
+  function tabEnter(_node: Element) {
+    return {
+      duration: 360,
+      easing: cubicOut,
+      css: (t: number, u: number) =>
+        `opacity: ${t}; transform: translate3d(0, ${u * 12}px, 0) scale(${0.996 + t * 0.004});`,
+    }
+  }
+
+  function tabExit(_node: Element) {
+    return {
+      duration: 170,
+      easing: cubicOut,
+      css: (t: number, u: number) =>
+        `opacity: ${t}; transform: translate3d(0, ${u * -6}px, 0) scale(${0.998 + t * 0.002});`,
+    }
   }
 
   type IdleWindow = Window & {
@@ -176,53 +239,76 @@
     return ranges.at(-1)?.week ?? null
   }
 
-  function firstSearchSuggestion(query: string, candidates: (string | null | undefined)[]) {
+  interface SearchSuggestionCandidate {
+    display: string
+    normalized: string
+    compact: string
+    key: string
+  }
+
+  function makeSearchSuggestionCandidate(raw: string | null | undefined): SearchSuggestionCandidate | null {
+    const display = cleanSearchCandidate(raw) || String(raw || '').trim()
+    if (!display) return null
+    const normalized = normalizeSearchQuery(display)
+    if (!normalized) return null
+    return {
+      display,
+      normalized,
+      compact: normalized.replace(/\s+/g, ''),
+      key: buildSearchKey(`${raw || ''} ${display}`),
+    }
+  }
+
+  function uniqueSearchCandidates(values: (string | null | undefined)[]) {
+    const result: SearchSuggestionCandidate[] = []
+    const seen = new Set<string>()
+    values.forEach((value) => {
+      const candidate = makeSearchSuggestionCandidate(value)
+      if (!candidate || seen.has(candidate.key)) return
+      seen.add(candidate.key)
+      result.push(candidate)
+    })
+    return result
+  }
+
+  function firstSearchSuggestion(query: string, candidates: SearchSuggestionCandidate[]) {
     const normalizedQuery = normalizeSearchQuery(query)
     const compactQuery = normalizedQuery.replace(/\s+/g, '')
     if (!normalizedQuery) return ''
 
-    const seen = new Set<string>()
-    for (const raw of candidates) {
-      const candidate = cleanSearchCandidate(raw) || String(raw || '').trim()
-      const normalizedCandidate = normalizeSearchQuery(candidate)
-      const compactCandidate = normalizedCandidate.replace(/\s+/g, '')
-      const candidateKey = buildSearchKey(`${raw || ''} ${candidate}`)
-      if (!candidate || seen.has(candidateKey)) continue
-      seen.add(candidateKey)
+    for (const candidate of candidates) {
       if (
-        normalizedCandidate !== normalizedQuery &&
-        (normalizedCandidate.startsWith(normalizedQuery) || compactCandidate.startsWith(compactQuery))
+        candidate.normalized !== normalizedQuery &&
+        (candidate.normalized.startsWith(normalizedQuery) || candidate.compact.startsWith(compactQuery))
       ) {
-        return candidate
+        return candidate.display
       }
     }
     return ''
   }
 
-  function buildSearchSuggestion(
+  function buildSearchCandidates(
     tab: AppTab,
-    query: string,
     groups: (ScheduleGroup | ScheduleGroupWithCourse)[],
     lessons: ScheduleLesson[],
     rooms: string[],
     teachers: string[],
   ) {
-    if (!query.trim()) return ''
     const broadCandidates = [
       ...lessons.map((lesson) => lesson.subject),
       ...lessons.map((lesson) => lesson.teacher),
       ...lessons.map((lesson) => lesson.room),
       ...groups.map((group) => group.name),
     ]
-    if (tab === 'teachers') return firstSearchSuggestion(query, [...teachers, ...broadCandidates])
-    if (tab === 'rooms') return firstSearchSuggestion(query, [...rooms, ...broadCandidates])
+    if (tab === 'teachers') return uniqueSearchCandidates([...teachers, ...broadCandidates])
+    if (tab === 'rooms') return uniqueSearchCandidates([...rooms, ...broadCandidates])
     if (tab === 'analytics') {
-      return firstSearchSuggestion(query, [
+      return uniqueSearchCandidates([
         ...lessons.map((lesson) => lesson.subject),
         ...groups.map((group) => group.name),
       ])
     }
-    return firstSearchSuggestion(query, broadCandidates)
+    return uniqueSearchCandidates(broadCandidates)
   }
 
   function formatScheduleError(error: string | null) {
@@ -236,7 +322,7 @@
 
 <AppShell
   {activeTab}
-  onTabChange={(tab) => (activeTab = tab)}
+  onTabChange={setActiveTab}
   theme={$themeStore}
   onToggleTheme={toggleTheme}
   onRefresh={scheduleStore.refresh}
@@ -277,7 +363,7 @@
     </Card>
   {:else if schedule}
     {#if renderedTab === 'rooms'}
-    <div class="tab-view h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0" in:fly={{ y: 6, duration: 170 }} out:fade={{ duration: 80 }}>
+    <div class={tabViewClass('h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0')} in:tabEnter out:tabExit>
       <RoomsView
         roomData={$scheduleStore.index.roomOccupancyByWeek[filters.week] || null}
         groupFilter={filters.group}
@@ -287,7 +373,7 @@
     </div>
     {:else if renderedTab === 'teachers'}
 
-    <div class="tab-view h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0" in:fly={{ y: 6, duration: 170 }} out:fade={{ duration: 80 }}>
+    <div class={tabViewClass('h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0')} in:tabEnter out:tabExit>
       <TeachersView
         teacherData={$scheduleStore.index.teacherOccupancyByWeek[filters.week] || null}
         groupFilter={filters.group}
@@ -297,7 +383,7 @@
     </div>
     {:else if renderedTab === 'analytics'}
 
-    <div class="tab-view" in:fly={{ y: 6, duration: 170 }} out:fade={{ duration: 80 }}>
+    <div class={tabViewClass()} in:tabEnter out:tabExit>
       <AnalyticsView
         course={filters.course}
         groupFilter={filters.group}
@@ -312,7 +398,7 @@
     </div>
     {:else if renderedTab === 'schedule'}
 
-    <div class="tab-view" in:fly={{ y: 6, duration: 170 }} out:fade={{ duration: 80 }}>
+    <div class={tabViewClass()} in:tabEnter out:tabExit>
       <ScheduleView
         groups={schedule.groups}
         lessons={filteredWeekLessons}

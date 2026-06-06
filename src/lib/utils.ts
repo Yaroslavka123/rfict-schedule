@@ -68,7 +68,7 @@ const SEARCH_DASH_RE = /[-–—]+/g
 const COMPACT_INITIALS_RE = /([А-ЯЁа-яё])([А-ЯЁ])\.?\s*([А-ЯЁ])\.?/g
 const CYRILLIC_CASE_BOUNDARY_RE = /([а-яё])([А-ЯЁ])/g
 const ACADEMIC_TITLE_RE =
-  /(^|\s)(доцент[а-я]*|доц|профессор[а-я]*|проф|ст\s*преп|старш[а-я]*\s+преподавател[а-я]*|преподавател[а-я]*|преп|пр\s*ст|ассистент[а-я]*|асс)(?=\s|$)/g
+  /(^|\s)(доцент[а-я]*|доц|профессор[а-я]*|проф|ст\s*преп|ст\s*пр|старш[а-я]*\s+преподавател[а-я]*|преподавател[а-я]*|преп|пр\s*ст|ассистент[а-я]*|асс)(?=\s|$)/g
 const DISPLAY_TITLE_WORDS = new Set([
   'доц',
   'доцент',
@@ -151,7 +151,7 @@ export function cleanSearchCandidate(value: string | null | undefined) {
     const token = normalizedTokens[index]
     const normalized = normalizeSearchText(token)
     const next = normalizeSearchText(normalizedTokens[index + 1])
-    if (normalized === 'ст' && next === 'пр') {
+    if (normalized === 'ст' && (next === 'пр' || next === 'преп')) {
       index += 1
       continue
     }

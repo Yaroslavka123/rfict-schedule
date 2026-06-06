@@ -131,7 +131,7 @@
   }
 
   .app-header {
-    @apply sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl;
+    @apply sticky top-0 z-[120] border-b border-border bg-card/95 backdrop-blur-xl;
     box-shadow: 0 1px 0 hsl(var(--border) / 0.5), 0 6px 16px -10px hsl(var(--foreground) / 0.08);
     transition: box-shadow 240ms var(--ease), background-color 220ms var(--ease);
   }
@@ -335,7 +335,7 @@
   }
 
   .filter-select-open {
-    z-index: 80;
+    z-index: 150;
   }
 
   .filter-select-trigger {
@@ -378,7 +378,7 @@
   }
 
   .filter-select-menu {
-    @apply absolute left-0 top-[calc(100%+0.35rem)] z-50 max-h-72 min-w-full overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-xl;
+    @apply absolute left-0 top-[calc(100%+0.35rem)] z-[150] max-h-72 min-w-full overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-xl;
     transform-origin: top center;
     animation: filter-menu-in 150ms var(--ease) both;
   }
@@ -411,13 +411,16 @@
   }
 
   .filter-search {
-    @apply relative z-10 h-8 rounded-md bg-transparent text-sm;
+    @apply relative z-20 rounded-md bg-transparent text-sm;
+    height: 2.5rem !important;
     padding-left: 2.5rem !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
     background-color: transparent !important;
     font-family: inherit;
     font-size: 0.875rem;
     font-weight: 500;
-    line-height: 1.25rem;
+    line-height: 2.5rem !important;
     letter-spacing: 0;
     caret-color: hsl(var(--primary));
     transition:
@@ -431,20 +434,24 @@
   }
 
   .filter-search-icon {
+    top: 50% !important;
+    transform: translateY(-50%);
     transition: transform 220ms var(--ease-spring), color 160ms var(--ease);
   }
   .filter-field:focus-within .filter-search-icon {
-    transform: scale(1.18) rotate(-8deg);
+    transform: translateY(-50%) scale(1.18) rotate(-8deg);
     color: hsl(var(--primary));
   }
 
   .filter-search-ghost {
-    @apply pointer-events-none absolute inset-0 z-20 flex h-8 items-center overflow-hidden whitespace-pre rounded-md px-3 text-sm text-muted-foreground/50;
+    @apply pointer-events-none absolute inset-0 z-10 overflow-hidden whitespace-pre rounded-md px-3 text-sm text-muted-foreground/50;
+    top: 0 !important;
+    height: 2.5rem !important;
     padding-left: 2.5rem !important;
     font-family: inherit;
     font-size: 0.875rem;
     font-weight: 500;
-    line-height: 1.25rem;
+    line-height: 2.5rem !important;
     letter-spacing: 0;
     animation: search-ghost-in 120ms var(--ease) both;
   }
@@ -481,6 +488,14 @@
   }
   .dense-table tbody tr.cancelled:hover {
     background-color: hsl(var(--destructive) / 0.08);
+  }
+
+  .dense-table tbody tr.lesson-row-clickable {
+    cursor: pointer;
+  }
+
+  .dense-table tbody tr.lesson-row-clickable:hover {
+    box-shadow: inset 3px 0 0 hsl(var(--primary) / 0.75);
   }
 
   .dense-table tbody tr td {
@@ -533,11 +548,15 @@
 
   /* Tab view (used in App.svelte) */
   .tab-view {
-    animation: tab-fade-in 180ms var(--ease);
+    transform-origin: top center;
+    transition: opacity 165ms var(--ease), transform 165ms var(--ease);
+    will-change: opacity;
   }
-  @keyframes tab-fade-in {
-    from { opacity: 0; transform: translate3d(0, 5px, 0); }
-    to { opacity: 1; transform: none; }
+
+  .tab-view-leaving {
+    opacity: 0.36;
+    pointer-events: none;
+    transform: translate3d(0, -6px, 0) scale(0.998);
   }
   @keyframes search-ghost-in {
     from { opacity: 0; transform: translate3d(3px, 0, 0); }
@@ -783,6 +802,18 @@
     animation: drag-image-in 120ms var(--ease) both;
   }
 
+  .matrix-drag-preview {
+    @apply max-w-56 truncate rounded-md border border-primary/40 bg-popover px-2.5 py-1.5 text-xs font-bold text-primary shadow-xl;
+    box-shadow: 0 12px 32px -14px hsl(var(--primary) / 0.5), 0 0 0 1px hsl(var(--background) / 0.6);
+    will-change: transform;
+  }
+
+  html.matrix-dragging-page,
+  html.matrix-dragging-page * {
+    cursor: grabbing !important;
+    user-select: none !important;
+  }
+
   @keyframes drag-image-in {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -791,6 +822,19 @@
   .room-matrix .th-room {
     @apply px-1 text-[10px] leading-none align-middle;
     min-width: 3.25rem;
+  }
+
+  .room-matrix .th-room-match {
+    color: hsl(var(--primary)) !important;
+    background-color: hsl(var(--primary) / 0.12) !important;
+    box-shadow:
+      inset 0 -2px 0 hsl(var(--primary) / 0.62),
+      inset 0 0 0 1px hsl(var(--primary) / 0.24);
+    opacity: 1 !important;
+  }
+
+  .room-matrix .th-room-dim {
+    opacity: 0.46;
   }
 
   .matrix-draggable-header {
@@ -954,13 +998,19 @@
     padding: 0.25rem 0;
   }
   .teachers-matrix .th-teacher-match {
-    @apply bg-primary/15 text-primary;
+    @apply text-primary;
+    background-color: hsl(var(--primary) / 0.12) !important;
+    box-shadow:
+      inset 0 -2px 0 hsl(var(--primary) / 0.62),
+      inset 0 0 0 1px hsl(var(--primary) / 0.24);
+    opacity: 1 !important;
   }
   .teachers-matrix .th-teacher-dim {
-    @apply opacity-30;
+    @apply opacity-45;
   }
-  .teachers-matrix .slot-match { box-shadow: inset 0 0 0 2px hsl(var(--primary)); }
-  .teachers-matrix .slot-dim { opacity: 0.25; }
+  .teachers-matrix .slot-match { box-shadow: none; }
+  .teachers-matrix .slot-dim,
+  .room-matrix .slot-dim { opacity: 0.42; }
 
   .slot-cell {
     @apply relative min-w-0 align-middle text-center;
@@ -984,6 +1034,44 @@
   .slot-busy:hover {
     @apply ring-2 ring-inset ring-primary/60 z-10;
     transform: translateZ(0) scale(1.025);
+  }
+
+  .slot-clickable {
+    cursor: pointer;
+  }
+
+  .slot-column-match {
+    background-image: linear-gradient(hsl(var(--primary) / 0.07), hsl(var(--primary) / 0.07));
+    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.22);
+  }
+
+  .slot-column-match::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: 3px;
+    border: 1px solid hsl(var(--primary) / 0.26);
+    background-image:
+      linear-gradient(90deg, hsl(var(--primary) / 0.08) 1px, transparent 1px),
+      linear-gradient(0deg, hsl(var(--primary) / 0.07) 1px, transparent 1px);
+    background-size: 8px 8px;
+    mask-image: linear-gradient(180deg, transparent, #000 20%, #000 80%, transparent);
+    opacity: 0.75;
+  }
+
+  .slot-column-match > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .slot-busy.slot-column-match {
+    filter: saturate(1.06);
+  }
+
+  .slot-clickable:hover {
+    @apply ring-2 ring-inset ring-primary/80 z-10;
   }
 
   .slot-busy .slot-content {

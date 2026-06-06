@@ -3,7 +3,6 @@
 
   import Button from '@/components/ui/Button.svelte'
   import FilterSelect, { type FilterSelectOption } from '@/components/ui/FilterSelect.svelte'
-  import Input from '@/components/ui/Input.svelte'
   import type { AppTab } from '@/components/layout/AppShell.svelte'
   import { COURSES, LESSON_TYPE_LABELS } from '@/lib/constants'
   import { normalizeSearchQuery } from '@/lib/utils'
@@ -31,6 +30,13 @@
   ) as [LessonType, string][]
 
   let { filters, groups, weeks, activeTab, searchSuggestion = '', onFiltersChange }: TopFiltersProps = $props()
+
+  function currentFilterSearch() {
+    return filters.search
+  }
+
+  let searchDraft = $state(currentFilterSearch())
+  let lastExternalSearch = currentFilterSearch()
 
   let showWeek = $derived(activeTab !== 'analytics')
   let showGroup = $derived(activeTab !== 'analytics' || groups.length > 0)
@@ -70,13 +76,41 @@
     { value: 'all', label: 'Все типы' },
     ...lessonTypes.map(([type, label]) => ({ value: type, label })),
   ])
-  let searchCompletion = $derived(completionFor(filters.search, searchSuggestion))
+  let searchCompletion = $derived(completionFor(searchDraft, searchSuggestion))
   let hasActiveFilters = $derived(
-    filters.group !== 'all' || filters.subgroup !== 'all' || filters.lessonTypes.length > 0 || Boolean(filters.search),
+    filters.group !== 'all' || filters.subgroup !== 'all' || filters.lessonTypes.length > 0 || Boolean(searchDraft),
   )
+
+  $effect(() => {
+    const nextSearch = filters.search
+    if (nextSearch !== lastExternalSearch) {
+      lastExternalSearch = nextSearch
+      searchDraft = nextSearch
+    }
+  })
+
+  $effect(() => {
+    const value = searchDraft
+    if (value === lastExternalSearch) return
+    publishSearch(value)
+  })
 
   function update(next: Partial<FiltersState>) {
     onFiltersChange({ ...filters, ...next })
+  }
+
+  function publishSearch(value: string) {
+    lastExternalSearch = value
+    update({ search: value })
+  }
+
+  function commitSearch(value: string) {
+    searchDraft = value
+    publishSearch(value)
+  }
+
+  function queueSearch(value: string) {
+    searchDraft = value
   }
 
   function setCourse(raw: string) {
@@ -105,14 +139,25 @@
     ) {
       return ''
     }
-    return suggestion.slice(query.trimEnd().length)
+    return suggestion.slice(completionStartIndex(suggestion, compactQuery))
+  }
+
+  function completionStartIndex(suggestion: string, compactQuery: string) {
+    if (!compactQuery) return 0
+    for (let index = 1; index <= suggestion.length; index += 1) {
+      const compactPrefix = normalizeSearchQuery(suggestion.slice(0, index)).replace(/\s+/g, '')
+      if (compactPrefix.length >= compactQuery.length && compactPrefix.startsWith(compactQuery)) {
+        return index
+      }
+    }
+    return suggestion.length
   }
 
   function acceptSearchSuggestion(event: KeyboardEvent) {
     if (!searchCompletion || !searchSuggestion) return
     if (event.key !== 'Tab' && event.key !== 'ArrowRight') return
     event.preventDefault()
-    update({ search: searchSuggestion })
+    commitSearch(searchSuggestion)
   }
 </script>
 
@@ -148,16 +193,19 @@
   <label class="filter-field filter-field-search">
     <div class="filter-search-wrap">
       <Search class="filter-search-icon pointer-events-none absolute left-3 top-2 z-30 h-4 w-4 text-muted-foreground" />
-      <Input
-        class={searchClass}
+      <input
+        class={`h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none transition duration-200 ease-out placeholder:text-muted-foreground hover:border-muted-foreground/55 focus:border-primary focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.08)] focus:ring-2 focus:ring-primary/20 ${searchClass}`}
+        type="text"
         placeholder="Предмет, ФИО, ауд."
-        value={filters.search}
-        oninput={(event) => update({ search: event.currentTarget.value })}
+        bind:value={searchDraft}
+        oninput={(event) => queueSearch(event.currentTarget.value)}
+        onkeyup={(event) => queueSearch(event.currentTarget.value)}
+        onchange={(event) => queueSearch(event.currentTarget.value)}
         onkeydown={acceptSearchSuggestion}
       />
       {#if searchCompletion}
         <div class="filter-search-ghost" aria-hidden="true">
-          <span class="filter-search-ghost-prefix">{filters.search}</span>{searchCompletion}
+          <span class="filter-search-ghost-prefix">{searchDraft}</span>{searchCompletion}
         </div>
       {/if}
     </div>
@@ -167,7 +215,10 @@
     <Button
       variant="ghost"
       class="filter-reset h-9 w-9 p-0"
-      onclick={() => update({ group: 'all', subgroup: 'all', lessonTypes: [], search: '' })}
+      onclick={() => {
+        commitSearch('')
+        update({ group: 'all', subgroup: 'all', lessonTypes: [], search: '' })
+      }}
       title="Сбросить фильтры"
       aria-label="Сбросить фильтры"
     >

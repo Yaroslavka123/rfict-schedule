@@ -1,10 +1,18 @@
 <script lang="ts">
   import { Plus, Trash2 } from '@lucide/svelte'
   import { flip } from 'svelte/animate'
+  import { onDestroy } from 'svelte'
 
   import Card from '@/components/ui/Card.svelte'
   import Button from '@/components/ui/Button.svelte'
   import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
+  import {
+    autoScrollMatrixWrap,
+    resolveMatrixDropTarget,
+    type MatrixDropSide,
+    type MatrixDropTarget,
+  } from '@/lib/matrixDrag'
+  import { openGoogleSheet } from '@/lib/googleSheets'
   import { cn, normalizeSearchQuery } from '@/lib/utils'
   import {
     buildColumnSections,
@@ -22,6 +30,18 @@
     lessonTypes: LessonType[]
   }
 
+  type TeacherSearchWorkerMessage = {
+    type: 'teachers-result'
+    id: number
+    filtered: TeacherOccupancyIndex | null
+    matches: string[] | null
+  }
+
+  type IdleWindow = Window & {
+    requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+    cancelIdleCallback?: (id: number) => void
+  }
+
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
   let { teacherData, groupFilter, search, lessonTypes }: TeachersViewProps = $props()
@@ -32,11 +52,27 @@
   let dragOverSide = $state<'before' | 'after' | null>(null)
   let dragOverGroupId = $state<string | null>(null)
   let recentlyDropped = $state<string | null>(null)
+  let dragPreview = $state<{ x: number; y: number; label: string } | null>(null)
+  let pointerDrag = $state<{
+    pointerId: number
+    source: string
+    startX: number
+    startY: number
+    active: boolean
+  } | null>(null)
   let pendingTooltip = $state<{ x: number; y: number; key: string; entries: TeacherSlotEntry[]; teacher: string } | null>(null)
+  let pendingDragPoint: { x: number; y: number } | null = null
   let tooltipFrame: number | null = null
+  let dragFrame: number | null = null
   let dropFlashTimer: ReturnType<typeof setTimeout> | null = null
+  let matrixWrap: HTMLDivElement | null = $state(null)
+  let lessonPress: { x: number; y: number; key: string } | null = null
+  let searchWorker: Worker | null = null
+  let searchWorkerSource: TeacherOccupancyIndex | null | undefined
+  let fallbackSearchCancel: (() => void) | null = null
+  let searchRequestId = 0
 
-  let filteredTeacherData = $derived(filterTeacherData(teacherData, groupFilter, lessonTypes))
+  let filteredTeacherData = $state<TeacherOccupancyIndex | null>(currentTeacherData())
   let orderedTeachers = $derived(applyColumnOrder(filteredTeacherData?.orderedTeachers || [], $columnOrderStore.teachers))
   let teacherGroups = $derived($columnGroupsStore.teachers)
   let columnSections = $derived(buildColumnSections(orderedTeachers, teacherGroups))
@@ -44,7 +80,117 @@
   let occupancy = $derived(filteredTeacherData?.occupancy || {})
   let tooltipEntriesByKey = $derived(buildTooltipEntriesByKeyFromSlots(columnSlots, occupancy))
   let normalizedSearch = $derived(normalizeSearchQuery(search.trim()))
-  let teacherMatch = $derived(buildTeacherMatch(filteredTeacherData, normalizedSearch))
+  let teacherMatch = $state<Set<string> | null>(null)
+
+  onDestroy(() => {
+    cancelFallbackSearch()
+    searchWorker?.terminate()
+    searchWorker = null
+  })
+
+  $effect(() => {
+    const source = teacherData
+    const activeGroup = groupFilter
+    const query = normalizedSearch
+    const types = lessonTypes
+    const requestId = ++searchRequestId
+    cancelFallbackSearch()
+
+    if (!source) {
+      filteredTeacherData = null
+      teacherMatch = null
+      return
+    }
+
+    if (activeGroup === 'all' && !query && types.length === 0) {
+      filteredTeacherData = source
+      teacherMatch = null
+      return
+    }
+
+    if (typeof Worker !== 'undefined') {
+      try {
+        const worker = getSearchWorker()
+        if (searchWorkerSource !== source) {
+          searchWorkerSource = source
+          worker.postMessage({ type: 'set-teachers-source', source })
+        }
+        worker.postMessage({ type: 'run-teachers', id: requestId, activeGroup, query, types })
+        scheduleFallbackSearch(() => {
+          applyFallbackTeacherSearch(requestId, source, activeGroup, query, types)
+        }, 240)
+        return
+      } catch {
+        searchWorker?.terminate()
+        searchWorker = null
+        searchWorkerSource = undefined
+      }
+    }
+
+    scheduleFallbackSearch(() => {
+      applyFallbackTeacherSearch(requestId, source, activeGroup, query, types)
+    })
+  })
+
+  function currentTeacherData() {
+    return teacherData
+  }
+
+  function getSearchWorker() {
+    if (searchWorker) return searchWorker
+    const worker = new Worker(new URL('../../lib/matrixSearchWorker.ts', import.meta.url), { type: 'module' })
+    worker.onmessage = (event: MessageEvent<TeacherSearchWorkerMessage>) => {
+      const message = event.data
+      if (message.type !== 'teachers-result' || message.id !== searchRequestId) return
+      cancelFallbackSearch()
+      filteredTeacherData = message.filtered
+      teacherMatch = message.matches ? new Set(message.matches) : null
+    }
+    searchWorker = worker
+    return worker
+  }
+
+  function applyFallbackTeacherSearch(
+    requestId: number,
+    source: TeacherOccupancyIndex,
+    activeGroup: string,
+    query: string,
+    types: LessonType[],
+  ) {
+    if (requestId !== searchRequestId) return
+    const filtered = filterTeacherData(source, activeGroup, types)
+    filteredTeacherData = filtered
+    teacherMatch = buildTeacherMatch(filtered, query)
+  }
+
+  function cancelFallbackSearch() {
+    fallbackSearchCancel?.()
+    fallbackSearchCancel = null
+  }
+
+  function scheduleFallbackSearch(callback: () => void, delay = 0) {
+    let cancelled = false
+    const win = window as IdleWindow
+    let idleId: number | null = null
+
+    const run = () => {
+      if (cancelled) return
+      if (typeof win.requestIdleCallback === 'function') {
+        idleId = win.requestIdleCallback(() => {
+          if (!cancelled) callback()
+        }, { timeout: 180 })
+        return
+      }
+      callback()
+    }
+
+    const id = window.setTimeout(run, delay)
+    fallbackSearchCancel = () => {
+      cancelled = true
+      window.clearTimeout(id)
+      if (idleId !== null) win.cancelIdleCallback?.(idleId)
+    }
+  }
 
   function buildTeacherMatch(data: TeacherOccupancyIndex | null, query: string) {
     if (!query) return null
@@ -82,12 +228,14 @@
     const TIP_W = 320
     const TIP_H = 180
     const PAD = 10
-    const OFFSET = 12
+    const OFFSET = 8
     const maxX = Math.max(PAD, window.innerWidth - TIP_W - PAD)
     const maxY = Math.max(PAD, window.innerHeight - TIP_H - PAD)
+    const preferredX = Math.min(clientX + OFFSET, maxX)
+    const preferredY = Math.min(clientY + OFFSET, maxY)
     return {
-      x: Math.max(PAD, Math.min(clientX + OFFSET, maxX)),
-      y: Math.max(PAD, Math.min(clientY + OFFSET, maxY)),
+      x: Math.max(PAD, preferredX),
+      y: Math.max(PAD, preferredY),
     }
   }
 
@@ -201,6 +349,31 @@
     return `${trimmed.slice(0, 21)}...`
   }
 
+  function sheetIdForEntries(entries: TeacherSlotEntry[]) {
+    return entries.find((entry) => entry.googleSheetId)?.googleSheetId || null
+  }
+
+  function startLessonPress(event: PointerEvent, key: string) {
+    if (event.button !== 0) return
+    lessonPress = { x: event.clientX, y: event.clientY, key }
+  }
+
+  function finishLessonPress(event: PointerEvent, key: string, entries: TeacherSlotEntry[]) {
+    if (!lessonPress || lessonPress.key !== key) return
+    const distance = Math.hypot(event.clientX - lessonPress.x, event.clientY - lessonPress.y)
+    lessonPress = null
+    if (distance > 5) return
+    const sheetId = sheetIdForEntries(entries)
+    if (!sheetId) return
+    event.preventDefault()
+    event.stopPropagation()
+    openGoogleSheet(sheetId)
+  }
+
+  function cancelLessonPress() {
+    lessonPress = null
+  }
+
   function clearColumnDrag() {
     draggedTeacher = null
     dragOverTeacher = null
@@ -234,67 +407,94 @@
     })
   }
 
-  function startColumnDrag(event: DragEvent, teacher: string) {
-    hideTooltip()
-    draggedTeacher = teacher
-    event.dataTransfer?.setData('text/plain', teacher)
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move'
-      setColumnDragImage(event, teacher)
-    }
-  }
-
-  function setColumnDragImage(event: DragEvent, label: string) {
-    if (!event.dataTransfer) return
-    const dragImage = document.createElement('div')
-    dragImage.className = 'matrix-drag-image'
-    dragImage.textContent = label
-    document.body.appendChild(dragImage)
-    event.dataTransfer.setDragImage(dragImage, 12, 12)
-    requestAnimationFrame(() => dragImage.remove())
-  }
-
-  function allowColumnDrop(event: DragEvent, teacher?: string) {
-    if (!draggedTeacher) return
-    if (teacher && draggedTeacher === teacher) {
+  function applyDropTarget(target: MatrixDropTarget) {
+    if (!target) {
       dragOverTeacher = null
       dragOverSide = null
       dragOverGroupId = null
       return
     }
-    event.preventDefault()
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
-    if (teacher) {
-      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-      const side = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
-      if (dragOverTeacher !== teacher) dragOverTeacher = teacher
-      if (dragOverSide !== side) dragOverSide = side
-      if (dragOverGroupId !== null) dragOverGroupId = null
-    } else {
-      // hovering over a group zone (header or empty slot)
-      if (dragOverTeacher !== null) dragOverTeacher = null
-      if (dragOverSide !== null) dragOverSide = null
+    if (target.type === 'column') {
+      dragOverTeacher = target.column
+      dragOverSide = target.side
+      dragOverGroupId = null
+      return
     }
+    dragOverTeacher = null
+    dragOverSide = null
+    dragOverGroupId = target.groupId
   }
 
-  function clearColumnHover(teacher: string) {
-    if (dragOverTeacher === teacher) {
-      dragOverTeacher = null
-      dragOverSide = null
+  function flushPointerDrag() {
+    dragFrame = null
+    if (!pendingDragPoint || !pointerDrag?.active) return
+    const point = pendingDragPoint
+    pendingDragPoint = null
+    dragPreview = { x: point.x, y: point.y, label: pointerDrag.source }
+    autoScrollMatrixWrap(matrixWrap, point.x, point.y)
+    applyDropTarget(resolveMatrixDropTarget(point.x, point.y, pointerDrag.source))
+  }
+
+  function queuePointerDrag(clientX: number, clientY: number) {
+    pendingDragPoint = { x: clientX, y: clientY }
+    if (dragFrame !== null) return
+    dragFrame = requestAnimationFrame(flushPointerDrag)
+  }
+
+  function startColumnPointer(event: PointerEvent, teacher: string) {
+    if (event.button !== 0) return
+    hideTooltip()
+    pointerDrag = {
+      pointerId: event.pointerId,
+      source: teacher,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
     }
+    ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
   }
 
-  function allowGroupDrop(event: DragEvent, groupId: string | undefined) {
-    if (!draggedTeacher || !groupId) return
+  function moveColumnPointer(event: PointerEvent) {
+    if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return
+    const distance = Math.hypot(event.clientX - pointerDrag.startX, event.clientY - pointerDrag.startY)
+    if (!pointerDrag.active) {
+      if (distance < 4) return
+      pointerDrag = { ...pointerDrag, active: true }
+      draggedTeacher = pointerDrag.source
+      document.documentElement.classList.add('matrix-dragging-page')
+    }
     event.preventDefault()
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
-    if (dragOverGroupId !== groupId) dragOverGroupId = groupId
-    if (dragOverTeacher !== null) dragOverTeacher = null
-    if (dragOverSide !== null) dragOverSide = null
+    queuePointerDrag(event.clientX, event.clientY)
   }
 
-  function clearGroupHover(groupId: string | undefined) {
-    if (groupId && dragOverGroupId === groupId) dragOverGroupId = null
+  function cleanupPointerDrag(captureTarget?: HTMLElement, pointerId?: number) {
+    if (dragFrame !== null) cancelAnimationFrame(dragFrame)
+    dragFrame = null
+    pendingDragPoint = null
+    dragPreview = null
+    pointerDrag = null
+    document.documentElement.classList.remove('matrix-dragging-page')
+    if (captureTarget && pointerId !== undefined && captureTarget.hasPointerCapture(pointerId)) {
+      captureTarget.releasePointerCapture(pointerId)
+    }
+    clearColumnDrag()
+  }
+
+  function finishColumnPointer(event: PointerEvent) {
+    if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return
+    const target = pointerDrag.active
+      ? resolveMatrixDropTarget(event.clientX, event.clientY, pointerDrag.source)
+      : null
+    const source = pointerDrag.source
+    cleanupPointerDrag(event.currentTarget as HTMLElement, event.pointerId)
+    if (!target) return
+    if (target.type === 'column') commitColumnDrop(source, target.column, target.side)
+    else commitGroupDrop(source, target.groupId)
+  }
+
+  function cancelColumnPointer(event: PointerEvent) {
+    if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return
+    cleanupPointerDrag(event.currentTarget as HTMLElement, event.pointerId)
   }
 
   function groupToneClass(tone: number | undefined) {
@@ -310,26 +510,18 @@
     )
   }
 
-  function dropColumn(event: DragEvent, teacher: string) {
-    event.preventDefault()
-    const source = draggedTeacher || event.dataTransfer?.getData('text/plain')
-    if (source && source !== teacher) {
-      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-      const side = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
-      runMatrixTransition(() => {
-        columnOrderStore.move('teachers', orderedTeachers, source, teacher, side)
-        const targetSlot = columnSlots.find((slot) => slot.column === teacher)
-        if (targetSlot?.groupId) columnGroupsStore.assignItem('teachers', targetSlot.groupId, source)
-        else columnGroupsStore.unassignItem('teachers', source)
-      })
-      flashDropped(source)
-    }
-    clearColumnDrag()
+  function commitColumnDrop(source: string, teacher: string, side: MatrixDropSide) {
+    if (source === teacher) return
+    runMatrixTransition(() => {
+      columnOrderStore.move('teachers', orderedTeachers, source, teacher, side)
+      const targetSlot = columnSlots.find((slot) => slot.column === teacher)
+      if (targetSlot?.groupId) columnGroupsStore.assignItem('teachers', targetSlot.groupId, source)
+      else columnGroupsStore.unassignItem('teachers', source)
+    })
+    flashDropped(source)
   }
 
-  function dropTeacherOnGroup(groupId: string) {
-    if (!draggedTeacher) return
-    const source = draggedTeacher
+  function commitGroupDrop(source: string, groupId: string) {
     const group = teacherGroups.find((item) => item.id === groupId)
     const target = group?.items.filter((item) => item !== source && orderedTeachers.includes(item)).at(-1)
     runMatrixTransition(() => {
@@ -338,7 +530,6 @@
       else columnOrderStore.moveToEnd('teachers', orderedTeachers, source)
     })
     flashDropped(source)
-    clearColumnDrag()
   }
 
   function addTeacherGroup() {
@@ -361,7 +552,7 @@
       </Button>
     </div>
 
-    <div class="teachers-matrix-wrap">
+    <div class="teachers-matrix-wrap" bind:this={matrixWrap}>
       <table class="teachers-matrix" onpointermove={handleTableHover} onmouseleave={hideTooltip}>
         <colgroup>
           <col style="width: 2rem" />
@@ -382,13 +573,8 @@
                     section.columns.length === 0 && 'matrix-group-head-empty',
                   )}
                   colspan={Math.max(section.columns.length, 1)}
+                  data-matrix-group-id={section.groupId}
                   data-drag-over={dragOverGroupId === section.groupId ? 'true' : null}
-                  ondragover={(event) => allowGroupDrop(event, section.groupId)}
-                  ondragleave={() => clearGroupHover(section.groupId)}
-                  ondrop={(event) => {
-                    event.preventDefault()
-                    if (section.groupId) dropTeacherOnGroup(section.groupId)
-                  }}
                   title={draggedTeacher ? `Перетащить «${draggedTeacher}» в ${section.name}` : section.name}
                 >
                   <span class="matrix-group-head-name">{section.name}</span>
@@ -429,29 +615,16 @@
                 )}
                 role={slot.type === 'group-empty' ? 'columnheader' : undefined}
                 title={slot.type === 'group-empty' ? 'Перетащите преподавателя в группу' : teacher}
+                data-matrix-column={teacher || null}
+                data-matrix-group-id={slot.type === 'group-empty' ? slot.groupId : null}
                 data-drag-over={slot.type === 'group-empty' && dragOverGroupId === slot.groupId ? 'true' : null}
-                draggable={Boolean(teacher)}
                 aria-grabbed={teacher ? draggedTeacher === teacher : undefined}
-                ondragstart={(event) => {
-                  if (teacher) startColumnDrag(event, teacher)
+                onpointerdown={(event) => {
+                  if (teacher) startColumnPointer(event, teacher)
                 }}
-                ondragover={(event) => {
-                  if (teacher) allowColumnDrop(event, teacher)
-                  else allowGroupDrop(event, slot.groupId)
-                }}
-                ondragleave={() => {
-                  if (teacher) clearColumnHover(teacher)
-                  else clearGroupHover(slot.groupId)
-                }}
-                ondrop={(event) => {
-                  if (teacher) {
-                    dropColumn(event, teacher)
-                    return
-                  }
-                  event.preventDefault()
-                  if (slot.groupId) dropTeacherOnGroup(slot.groupId)
-                }}
-                ondragend={clearColumnDrag}
+                onpointermove={moveColumnPointer}
+                onpointerup={finishColumnPointer}
+                onpointercancel={cancelColumnPointer}
               >
                 {#if teacher}
                   <div class="th-teacher-label">{shortTeacherName(teacher)}</div>
@@ -475,11 +648,7 @@
                     <td
                       class={cn('slot-cell matrix-empty-group-body', groupSlotClasses(slot))}
                       role="gridcell"
-                      ondragover={(event) => allowColumnDrop(event)}
-                      ondrop={(event) => {
-                        event.preventDefault()
-                        if (slot.groupId) dropTeacherOnGroup(slot.groupId)
-                      }}
+                      data-matrix-group-id={slot.groupId}
                     ></td>
                   {:else if slot.column}
                   {@const teacher = slot.column}
@@ -487,16 +656,26 @@
                   {@const isMatch = teacherMatch?.has(teacher)}
                   {@const isDim = teacherMatch && !isMatch}
                   {#if !cell}
-                    <td class={cn('slot-cell slot-free', isDim && 'slot-dim', groupSlotClasses(slot))}></td>
+                    <td
+                      class={cn('slot-cell slot-free', isMatch && 'slot-column-match', isDim && 'slot-dim', groupSlotClasses(slot))}
+                      data-matrix-column={teacher}
+                    ></td>
                   {:else}
+                    {@const cellKey = slotKey(teacher, day, pair)}
+                    {@const hasSheet = Boolean(sheetIdForEntries(cell.entries))}
                     {@const typeClass = cell.allCancelled
                       ? 'slot-cancelled'
                       : cell.types.length > 1
                         ? 'slot-type-multi'
                         : `slot-type-${cell.types[0] || 'unknown'}`}
                     <td
-                      class={cn('slot-cell slot-busy', typeClass, isMatch && 'slot-match', isDim && 'slot-dim', groupSlotClasses(slot))}
-                      data-slot-key={slotKey(teacher, day, pair)}
+                      class={cn('slot-cell slot-busy', typeClass, isMatch && 'slot-match slot-column-match', isDim && 'slot-dim', hasSheet && 'slot-clickable', groupSlotClasses(slot))}
+                      data-slot-key={cellKey}
+                      data-matrix-column={teacher}
+                      title={hasSheet ? 'Открыть Google Таблицу' : undefined}
+                      onpointerdown={(event) => startLessonPress(event, cellKey)}
+                      onpointerup={(event) => finishLessonPress(event, cellKey, cell.entries)}
+                      onpointercancel={cancelLessonPress}
                     >
                       <div class={cn('slot-content', cell.allCancelled && 'line-through')}>
                         <div class="slot-main">{cell.rooms[0] || '—'}</div>
@@ -516,6 +695,15 @@
         </tbody>
       </table>
     </div>
+
+    {#if dragPreview}
+      <div
+        class="matrix-drag-preview pointer-events-none fixed left-0 top-0 z-[160]"
+        style={`transform: translate3d(${dragPreview.x + 12}px, ${dragPreview.y + 12}px, 0)`}
+      >
+        {dragPreview.label}
+      </div>
+    {/if}
 
     {#if tooltip}
       <div
