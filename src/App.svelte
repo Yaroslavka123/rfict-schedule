@@ -34,18 +34,28 @@
   const SEARCH_SUGGESTION_DELAY_MS = 80
   const FETCH_DEBOUNCE_MS = 100
 
+  type SearchCandidatesMemo = {
+    tab: AppTab
+    groups: (ScheduleGroup | ScheduleGroupWithCourse)[]
+    lessons: ScheduleLesson[]
+    rooms: string[]
+    teachers: string[]
+    result: SearchSuggestionCandidate[]
+  }
+
   let activeTab = $state<AppTab>('rooms')
   let filters = $state<FiltersState>({ ...defaultFilters })
   let debouncedSearch = $state('')
   let searchSuggestion = $state('')
   let autoWeekCourse = $state<CourseSelection | null>(null)
+  let searchCandidatesMemo: SearchCandidatesMemo | null = null
 
   let schedule = $derived($scheduleStore.schedule)
   let selectedWeeks = $derived($scheduleStore.index.weeksByNumber[filters.week] || [])
   let week = $derived(selectedWeeks[0] || null)
   let selectedWeekLessons = $derived($scheduleStore.index.lessonsByWeek[filters.week] || [])
   let searchCandidates = $derived(
-    buildSearchCandidates(
+    memoizedSearchCandidates(
       activeTab,
       schedule?.groups || [],
       selectedWeekLessons,
@@ -265,6 +275,28 @@
       ])
     }
     return uniqueSearchCandidates(broadCandidates)
+  }
+
+  function memoizedSearchCandidates(
+    tab: AppTab,
+    groups: (ScheduleGroup | ScheduleGroupWithCourse)[],
+    lessons: ScheduleLesson[],
+    rooms: string[],
+    teachers: string[],
+  ) {
+    if (
+      searchCandidatesMemo?.tab === tab &&
+      searchCandidatesMemo.groups === groups &&
+      searchCandidatesMemo.lessons === lessons &&
+      searchCandidatesMemo.rooms === rooms &&
+      searchCandidatesMemo.teachers === teachers
+    ) {
+      return searchCandidatesMemo.result
+    }
+
+    const result = buildSearchCandidates(tab, groups, lessons, rooms, teachers)
+    searchCandidatesMemo = { tab, groups, lessons, rooms, teachers, result }
+    return result
   }
 
   function formatScheduleError(error: string | null) {
