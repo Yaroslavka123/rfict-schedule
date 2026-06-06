@@ -5,8 +5,19 @@ import { defineConfig } from 'vite'
 
 const BACKEND_API_BASE_URL = 'https://rfict.up.railway.app'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [svelte()],
+  build: {
+    target: 'es2022',
+    minify: 'esbuild',
+    cssMinify: true,
+    sourcemap: false,
+  },
+  esbuild: mode === 'production'
+    ? {
+        drop: ['console', 'debugger'],
+      }
+    : undefined,
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -28,4 +39,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))
