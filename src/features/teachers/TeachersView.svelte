@@ -5,6 +5,14 @@
 
   import Card from '@/components/ui/Card.svelte'
   import Button from '@/components/ui/Button.svelte'
+  import {
+    buildColumnSections,
+    buildColumnSlots,
+    groupSlotClasses,
+    groupToneClass,
+    matchedColumnTokens,
+    matrixColumnClass,
+  } from '@/features/matrix/matrixColumns'
   import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
   import {
     autoScrollMatrixWrap,
@@ -17,12 +25,7 @@
   import { filterTeacherMatrix, teacherSlotKey, type TeacherMatrixFilterResult } from '@/lib/matrixFilter'
   import { openGoogleSheet } from '@/lib/googleSheets'
   import { cn, normalizeSearchQuery } from '@/lib/utils'
-  import {
-    buildColumnSections,
-    buildColumnSlots,
-    columnGroupsStore,
-    type ColumnSlot,
-  } from '@/stores/columnGroups'
+  import { columnGroupsStore } from '@/stores/columnGroups'
   import { applyColumnOrder, columnOrderStore } from '@/stores/columnOrder'
   import type { TeacherCell, TeacherOccupancyIndex, TeacherSlotEntry } from '@/stores/scheduleStore'
   import type { LessonType } from '@/types/schedule'
@@ -208,18 +211,6 @@
 
   function slotKey(teacher: string, day: string, pair: number) {
     return teacherSlotKey(teacher, day, pair)
-  }
-
-  function matrixColumnClass(index: number) {
-    return `matrix-col-${index}`
-  }
-
-  function matchedColumnTokens(slots: ColumnSlot[], matches: ReadonlySet<string> | null) {
-    if (!matches) return ''
-    return slots
-      .map((slot, index) => (slot.column && matches.has(slot.column) ? matrixColumnClass(index) : ''))
-      .filter(Boolean)
-      .join(' ')
   }
 
   function computeTooltipPos(clientX: number, clientY: number): { x: number; y: number } {
@@ -528,19 +519,6 @@
   function cancelColumnPointer(event: PointerEvent) {
     if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return
     cleanupPointerDrag(event.currentTarget as HTMLElement, event.pointerId)
-  }
-
-  function groupToneClass(tone: number | undefined) {
-    return tone === undefined ? null : `matrix-group-tone-${tone}`
-  }
-
-  function groupSlotClasses(slot: ReturnType<typeof buildColumnSlots>[number]) {
-    return cn(
-      groupToneClass(slot.tone),
-      slot.groupId && 'matrix-user-group-member',
-      slot.groupStart && 'matrix-group-start',
-      slot.groupEnd && 'matrix-group-end',
-    )
   }
 
   function commitColumnDrop(source: string, teacher: string, side: MatrixDropSide) {
