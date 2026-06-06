@@ -1,16 +1,8 @@
 import { filterTeacherMatrix, teacherSlotKey, type MatrixCellFilter } from '@/features/matrix/matrixFilter'
+import { buildTooltipSummary, formatTooltipGroups } from '@/features/matrix/matrixTooltip'
 import type { MatrixAdapter, MatrixCellBadge, MatrixTooltipBlock } from '@/features/matrix/matrixTypes'
 import { LESSON_TYPE_LABELS } from '@/lib/constants'
 import type { TeacherCell, TeacherOccupancyIndex, TeacherSlotEntry } from '@/stores/scheduleStore'
-
-interface TeacherTooltipBlock {
-  subject: string
-  room: string
-  type: TeacherSlotEntry['type']
-  time: string
-  cancelled: boolean
-  groups: { name: string; subgroup: string | null; course?: number }[]
-}
 
 function summarizeTeacherEntries(entries: TeacherSlotEntry[]): TeacherCell {
   return {
@@ -36,57 +28,6 @@ function buildTeacherCellMap(source: TeacherOccupancyIndex, cells: MatrixCellFil
     map.set(key, entries.length === cell.entries.length ? cell : summarizeTeacherEntries(entries))
   })
   return map
-}
-
-function formatSubgroup(raw: string): string {
-  const trimmed = raw.trim()
-  if (!trimmed) return ''
-  if (/\d/.test(trimmed)) {
-    return trimmed
-      .split(',')
-      .map((part) => `${part.trim().replace(/\s+/g, '')} пг`)
-      .join(', ')
-  }
-  return trimmed
-}
-
-function mergeTooltipEntries(entries: TeacherSlotEntry[]): TeacherTooltipBlock[] {
-  const map = new Map<string, TeacherTooltipBlock>()
-  entries.forEach((entry) => {
-    const key = [entry.subject, entry.room, entry.type, entry.time, entry.cancelled].join('|')
-    const current = map.get(key)
-    if (current) {
-      if (entry.group && !current.groups.some((group) => group.name === entry.group && group.subgroup === entry.subgroup)) {
-        current.groups.push({ name: entry.group, subgroup: entry.subgroup || null, course: entry.course })
-      }
-      return
-    }
-    map.set(key, {
-      subject: entry.subject,
-      room: entry.room,
-      type: entry.type,
-      time: entry.time,
-      cancelled: entry.cancelled,
-      groups: entry.group ? [{ name: entry.group, subgroup: entry.subgroup || null, course: entry.course }] : [],
-    })
-  })
-  return Array.from(map.values())
-}
-
-function formatTooltipGroup(group: TeacherTooltipBlock['groups'][number]) {
-  return `${group.name}${group.subgroup ? ` (${formatSubgroup(group.subgroup)})` : ''}`
-}
-
-function formatTooltipGroups(groups: TeacherTooltipBlock['groups']) {
-  const byCourse = new Map<string, string[]>()
-  groups.forEach((group) => {
-    const key = group.course ? String(group.course) : ''
-    if (!byCourse.has(key)) byCourse.set(key, [])
-    byCourse.get(key)!.push(formatTooltipGroup(group))
-  })
-  return Array.from(byCourse.entries())
-    .map(([course, values]) => course ? `${course} курс: ${values.join(', ')}` : values.join(', '))
-    .join('; ')
 }
 
 function shortTeacherName(full: string): string {
@@ -180,13 +121,22 @@ export const teacherMatrixAdapter: MatrixAdapter = {
     return { className: 'mb-1 font-bold text-primary', text: column || '—' }
   },
   getTooltipBlocks(_column, entries) {
-    return mergeTooltipEntries(entries as TeacherSlotEntry[]).map((entry, index): MatrixTooltipBlock => ({
-      key: `${entry.subject}-${entry.room}-${index}`,
+    return buildTooltipSummary(entries as TeacherSlotEntry[], (entry) => ({
+      subject: entry.subject,
+      counterpart: entry.room,
+      type: entry.type,
+      time: entry.time,
+      group: entry.group,
+      subgroup: entry.subgroup || null,
+      course: entry.course,
+      cancelled: entry.cancelled,
+    })).map((entry, index): MatrixTooltipBlock => ({
+      key: `${entry.subject}-${entry.counterpart}-${index}`,
       title: entry.subject || '—',
       titleClass: `font-semibold ${entry.cancelled ? 'text-red-500 line-through' : 'text-amber-400'}`,
       cancelled: entry.cancelled,
       lines: [
-        { className: 'text-emerald-400', text: `Кабинет: ${entry.room || '—'}` },
+        { className: 'text-emerald-400', text: `Кабинет: ${entry.counterpart || '—'}` },
         { className: 'text-emerald-400', text: entry.groups.length > 0 ? formatTooltipGroups(entry.groups) : '—' },
         ...(entry.type ? [{ className: 'text-purple-400', text: LESSON_TYPE_LABELS[entry.type] || entry.type }] : []),
         ...(entry.time ? [{ className: 'text-muted-foreground', text: entry.time }] : []),

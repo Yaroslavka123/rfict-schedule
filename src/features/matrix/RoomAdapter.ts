@@ -1,18 +1,9 @@
 import { filterRoomMatrix, roomSlotKey, type MatrixCellFilter } from '@/features/matrix/matrixFilter'
+import { buildTooltipSummary, formatTooltipGroups } from '@/features/matrix/matrixTooltip'
 import type { MatrixAdapter, MatrixCellBadge, MatrixTooltipBlock } from '@/features/matrix/matrixTypes'
 import { LESSON_TYPE_LABELS } from '@/lib/constants'
 import type { RoomCell, RoomOccupancyIndex, RoomSlotEntry } from '@/stores/scheduleStore'
 import type { LessonType } from '@/types/schedule'
-
-interface TooltipPerSubject {
-  subject: string
-  teacher: string
-  teacherCourses: number[]
-  type: string
-  time: string
-  groups: { name: string; subgroup: string | null; course?: number }[]
-  cancelled: boolean
-}
 
 function summarizeRoomEntries(entries: RoomSlotEntry[]): RoomCell {
   return {
@@ -40,63 +31,6 @@ function buildRoomCellMap(source: RoomOccupancyIndex, cells: MatrixCellFilter | 
     map.set(key, entries.length === cell.entries.length ? cell : summarizeRoomEntries(entries))
   })
   return map
-}
-
-function formatSubgroup(raw: string): string {
-  const trimmed = raw.trim()
-  if (!trimmed) return ''
-  if (/\d/.test(trimmed)) {
-    return trimmed
-      .split(',')
-      .map((part) => `${part.trim().replace(/\s+/g, '')} пг`)
-      .join(', ')
-  }
-  return trimmed
-}
-
-function mergeTooltipEntries(entries: RoomSlotEntry[]): TooltipPerSubject[] {
-  const map = new Map<string, TooltipPerSubject>()
-  entries.forEach((entry) => {
-    const key = [entry.subject, entry.teacher, entry.type, entry.time, entry.cancelled].join('|')
-    const current = map.get(key)
-    if (current) {
-      if (entry.group && !current.groups.some((group) => group.name === entry.group && group.subgroup === entry.subgroup)) {
-        current.groups.push({ name: entry.group, subgroup: entry.subgroup || null, course: entry.course })
-      }
-      if (entry.course && !current.teacherCourses.includes(entry.course)) {
-        current.teacherCourses.push(entry.course)
-      }
-      return
-    }
-    map.set(key, {
-      subject: entry.subject,
-      teacher: entry.teacher,
-      teacherCourses: entry.course ? [entry.course] : [],
-      type: entry.type,
-      time: entry.time,
-      groups: entry.group ? [{ name: entry.group, subgroup: entry.subgroup || null, course: entry.course }] : [],
-      cancelled: entry.cancelled,
-    })
-  })
-  map.forEach((entry) => entry.teacherCourses.sort((a, b) => a - b))
-  return Array.from(map.values())
-}
-
-function formatTooltipGroup(group: TooltipPerSubject['groups'][number]) {
-  return `${group.name}${group.subgroup ? ` (${formatSubgroup(group.subgroup)})` : ''}`
-}
-
-function formatTooltipGroups(groups: TooltipPerSubject['groups']) {
-  const byCourse = new Map<string, string[]>()
-  groups.forEach((group) => {
-    const key = group.course ? String(group.course) : ''
-    if (!byCourse.has(key)) byCourse.set(key, [])
-    byCourse.get(key)!.push(formatTooltipGroup(group))
-  })
-  const courseKeys = Array.from(byCourse.keys()).filter(Boolean)
-  return Array.from(byCourse.entries())
-    .map(([course, values]) => course && courseKeys.length > 1 ? `${course} курс: ${values.join(', ')}` : values.join(', '))
-    .join('; ')
 }
 
 function shortenSubject(subject: string) {
@@ -204,17 +138,26 @@ export const roomMatrixAdapter: MatrixAdapter = {
     return column ? { className: 'mb-1 font-bold text-amber-500', text: `Кабинет: ${column}` } : null
   },
   getTooltipBlocks(_column, entries) {
-    return mergeTooltipEntries(entries as RoomSlotEntry[]).map((entry, index): MatrixTooltipBlock => ({
-      key: `${entry.subject}-${entry.teacher}-${index}`,
+    return buildTooltipSummary(entries as RoomSlotEntry[], (entry) => ({
+      subject: entry.subject,
+      counterpart: entry.teacher,
+      type: entry.type,
+      time: entry.time,
+      group: entry.group,
+      subgroup: entry.subgroup || null,
+      course: entry.course,
+      cancelled: entry.cancelled,
+    })).map((entry, index): MatrixTooltipBlock => ({
+      key: `${entry.subject}-${entry.counterpart}-${index}`,
       title: entry.subject || '—',
       titleClass: `font-bold ${entry.cancelled ? 'text-red-500 line-through' : 'text-primary'}`,
       cancelled: entry.cancelled,
       lines: [
         {
           className: 'text-muted-foreground',
-          text: `${entry.teacher || '—'}${entry.teacherCourses.length > 0 ? ` · ${entry.teacherCourses.map((course) => `${course} курс`).join(', ')}` : ''}`,
+          text: `${entry.counterpart || '—'}${entry.counterpartCourses.length > 0 ? ` · ${entry.counterpartCourses.map((course) => `${course} курс`).join(', ')}` : ''}`,
         },
-        { className: 'text-emerald-400', text: entry.groups.length > 0 ? formatTooltipGroups(entry.groups) : '—' },
+        { className: 'text-emerald-400', text: entry.groups.length > 0 ? formatTooltipGroups(entry.groups, true) : '—' },
         ...(entry.type ? [{ className: 'text-purple-400', text: LESSON_TYPE_LABELS[entry.type as LessonType] || entry.type }] : []),
         ...(entry.time ? [{ className: 'text-muted-foreground', text: entry.time }] : []),
       ],
