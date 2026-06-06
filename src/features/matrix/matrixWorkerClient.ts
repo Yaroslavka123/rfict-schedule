@@ -3,7 +3,7 @@ import {
   filterTeacherMatrix,
   type RoomMatrixFilterResult,
   type TeacherMatrixFilterResult,
-} from '@/lib/matrixFilter'
+} from '@/features/matrix/matrixFilter'
 import type { RoomOccupancyIndex, TeacherOccupancyIndex } from '@/stores/scheduleStore'
 import type { LessonType } from '@/types/schedule'
 

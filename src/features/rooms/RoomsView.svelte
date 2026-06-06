@@ -21,8 +21,8 @@
     type MatrixHitTestCache,
     type MatrixDropSide,
     type MatrixDropTarget,
-  } from '@/lib/matrixDrag'
-  import { filterRoomMatrix, roomSlotKey, type RoomMatrixFilterResult } from '@/lib/matrixFilter'
+  } from '@/features/matrix/matrixDnd'
+  import { filterRoomMatrix, roomSlotKey, type RoomMatrixFilterResult } from '@/features/matrix/matrixFilter'
   import { openGoogleSheet } from '@/lib/googleSheets'
   import { cn, normalizeSearchQuery } from '@/lib/utils'
   import { columnGroupsStore } from '@/stores/columnGroups'
@@ -161,7 +161,7 @@
 
   function getSearchWorker() {
     if (searchWorker) return searchWorker
-    const worker = new Worker(new URL('../../lib/matrixSearchWorker.ts', import.meta.url), { type: 'module' })
+    const worker = new Worker(new URL('../matrix/matrixWorkerClient.ts', import.meta.url), { type: 'module' })
     worker.onmessage = (event: MessageEvent<RoomSearchWorkerMessage>) => {
       const message = event.data
       if (message.type !== 'rooms-result' || message.id !== searchRequestId) return
