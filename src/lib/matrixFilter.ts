@@ -11,12 +11,12 @@ export type MatrixCellFilter = [key: string, entryIndexes: number[]][]
 
 export interface RoomMatrixFilterResult {
   cells: MatrixCellFilter | null
-  matches: string[] | null
+  matches: ReadonlySet<string> | null
 }
 
 export interface TeacherMatrixFilterResult {
   cells: MatrixCellFilter | null
-  matches: string[] | null
+  matches: ReadonlySet<string> | null
 }
 
 export function roomSlotKey(room: string, day: string, pair: number) {
@@ -75,7 +75,7 @@ export function filterRoomMatrix(
 
   return {
     cells,
-    matches: matches ? Array.from(matches) : null,
+    matches: matches ? Object.freeze(matches) : null,
   }
 }
 
@@ -114,6 +114,6 @@ export function filterTeacherMatrix(
 
   return {
     cells,
-    matches: matches ? Array.from(matches) : null,
+    matches: matches ? Object.freeze(matches) : null,
   }
 }

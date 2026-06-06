@@ -87,7 +87,7 @@
 
   let normalizedSearch = $derived(normalizeSearchQuery(search))
   let roomCellByKey = $state<Map<string, RoomCell> | null>(null)
-  let roomMatch = $state<Set<string> | null>(null)
+  let roomMatch = $state<ReadonlySet<string> | null>(null)
   let orderedRooms = $derived(applyColumnOrder(roomData?.orderedRooms || [], $columnOrderStore.rooms))
   let categoryByRoom = $derived(roomData?.categoryByRoom || {})
   let roomGroups = $derived($columnGroupsStore.rooms)
@@ -305,7 +305,7 @@
 
   function applyRoomFilterResult(source: RoomOccupancyIndex | null, result: RoomMatrixFilterResult) {
     roomCellByKey = source ? buildRoomCellMap(source, result.cells) : null
-    roomMatch = result.matches ? new Set(result.matches) : null
+    roomMatch = result.matches
   }
 
   function getVisibleRoomCell(room: string, day: string, pair: number): RoomCell | null {

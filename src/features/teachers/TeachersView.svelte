@@ -91,7 +91,7 @@
   let columnSlots = $derived(buildColumnSlots(columnSections))
   let occupancy = $derived(teacherData?.occupancy || {})
   let normalizedSearch = $derived(normalizeSearchQuery(search.trim()))
-  let teacherMatch = $state<Set<string> | null>(null)
+  let teacherMatch = $state<ReadonlySet<string> | null>(null)
   let tooltipMerged = $derived(tooltip ? mergeTooltipEntries(tooltip.entries) : [])
 
   onDestroy(() => {
@@ -300,7 +300,7 @@
 
   function applyTeacherFilterResult(source: TeacherOccupancyIndex | null, result: TeacherMatrixFilterResult) {
     teacherCellByKey = source ? buildTeacherCellMap(source, result.cells) : null
-    teacherMatch = result.matches ? new Set(result.matches) : null
+    teacherMatch = result.matches
   }
 
   function getVisibleTeacherCell(teacher: string, day: string, pair: number): TeacherCell | null {
