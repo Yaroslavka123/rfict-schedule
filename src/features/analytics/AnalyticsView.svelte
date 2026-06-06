@@ -26,6 +26,7 @@
   } from '@/types/schedule'
 
   interface AnalyticsViewProps {
+    active: boolean
     course: CourseSelection
     groupFilter: string
     groups: (ScheduleGroup | ScheduleGroupWithCourse)[]
@@ -38,6 +39,7 @@
   }
 
   let {
+    active,
     course,
     groupFilter,
     groups,
@@ -58,29 +60,41 @@
   let expandedGroups = $state<Set<string>>(new Set())
 
   $effect(() => {
+    if (!active) return
     const interval = setInterval(() => {
-      today = new Date()
+      const next = new Date()
+      if (dayKey(next) !== dayKey(today)) today = next
     }, 60_000)
     return () => clearInterval(interval)
   })
 
-  let courses = $derived(resolveCourses(course, groups, lessons))
+  let courses = $derived(active ? resolveCourses(course, groups, lessons) : [])
   let filteredLessons = $derived(
-    lessons.filter((lesson) => {
-      if (groupFilter !== 'all' && lesson.group !== groupFilter) return false
-      return lessonTypes.length === 0 || lessonTypes.includes(lesson.type)
-    }),
+    active
+      ? lessons.filter((lesson) => {
+          if (groupFilter !== 'all' && lesson.group !== groupFilter) return false
+          return lessonTypes.length === 0 || lessonTypes.includes(lesson.type)
+        })
+      : [],
   )
-  let filteredGroups = $derived(groupFilter === 'all' ? groups : groups.filter((group) => group.id === groupFilter))
+  let filteredGroups = $derived(
+    active
+      ? groupFilter === 'all'
+        ? groups
+        : groups.filter((group) => group.id === groupFilter)
+      : [],
+  )
   let courseRows = $derived(
-    buildPlanFactHierarchy({
-      courses,
-      groups: filteredGroups,
-      lessons: filteredLessons,
-      plans,
-      today,
-      search,
-    }),
+    active
+      ? buildPlanFactHierarchy({
+          courses,
+          groups: filteredGroups,
+          lessons: filteredLessons,
+          plans,
+          today,
+          search,
+        })
+      : [],
   )
   let visibleRows = $derived(courseRows.filter((row) => row.subjects.length > 0))
   let summary = $derived(summarize(visibleRows))
@@ -101,6 +115,10 @@
       if (lesson.course_number !== undefined) found.add(lesson.course_number)
     })
     return (found.size > 0 ? Array.from(found) : [...COURSES]).sort((a, b) => a - b)
+  }
+
+  function dayKey(value: Date) {
+    return `${value.getFullYear()}-${value.getMonth()}-${value.getDate()}`
   }
 
   function summarize(rows: PlanFactCourse[]) {

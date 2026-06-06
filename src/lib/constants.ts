@@ -24,7 +24,6 @@ export const DAY_ORDER = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'
 export const PAIRS = [1, 2, 3, 4, 5, 6, 7, 8]
 export const ACTIVE_COURSE = 3
 export const COURSES = [1, 2, 3, 4] as const
-export const WEEKS = Array.from({ length: 18 }, (_, index) => index + 1)
 
 export const PAIR_TIMES: Record<number, string> = {
   1: '8:30 – 10:00',

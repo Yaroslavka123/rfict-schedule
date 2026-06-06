@@ -25,7 +25,7 @@
   {...rest}
   {type}
   class={cn(
-    'inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-all duration-200 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 hover:-translate-y-px active:translate-y-0 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:active:scale-100',
+    'inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition duration-200 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 hover:-translate-y-px active:translate-y-0 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:active:scale-100',
     variants[variant],
     className,
   )}

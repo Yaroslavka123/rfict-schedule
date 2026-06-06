@@ -577,21 +577,24 @@ function buildPlanFactSubgroupRow(
   plan: CoursePlanMap,
   today: Date,
 ): PlanFactSubgroupRow | null {
-  const matching = groupLessons.filter((lesson) => matchesPlanFactSubgroup(lesson, subgroup))
-  if (matching.length === 0) return null
-
   const typesMap = new Map<LessonType, AnalyticsCell>()
-  matching.forEach((lesson) => {
+  const weekNumbers: number[] = []
+
+  groupLessons.forEach((lesson) => {
+    if (!matchesPlanFactSubgroup(lesson, subgroup)) return
     const t = getActiveType(lesson.type)
     if (!typesMap.has(t)) typesMap.set(t, emptyCell())
     const cell = typesMap.get(t)!
-    cell.scheduled += pairsFor(lesson)
-    if (isLessonBeforeToday(lesson, today)) cell.done += pairsFor(lesson)
+    const pairCount = pairsFor(lesson)
+    cell.scheduled += pairCount
+    if (isLessonBeforeToday(lesson, today)) cell.done += pairCount
+
+    if (Number.isFinite(lesson.week_number as number)) {
+      weekNumbers.push(lesson.week_number as number)
+    }
   })
 
-  const weekNumbers = matching
-    .map((lesson) => lesson.week_number)
-    .filter((value): value is number => Number.isFinite(value as number))
+  if (typesMap.size === 0) return null
 
   const orderedTypes = Array.from(typesMap.keys()).sort((a, b) =>
     getLessonTypeLabel(a).localeCompare(getLessonTypeLabel(b), 'ru'),
@@ -694,28 +697,58 @@ export function buildPlanFactHierarchy({
   groups.forEach((g) => groupsById.set(g.id, g as ScheduleGroupWithCourse))
 
   const query = search ? normalizeSearchQuery(search) : ''
+  const courseGroupsByCourse = new Map<number, (ScheduleGroup | ScheduleGroupWithCourse)[]>()
+  courses.forEach((course) => {
+    courseGroupsByCourse.set(
+      course,
+      groups.filter((g) => {
+        const wc = g as ScheduleGroupWithCourse
+        if (wc.course !== undefined) return wc.course === course
+        return true
+      }),
+    )
+  })
+
+  const lessonsByCourse = new Map<number, ScheduleLesson[]>()
+  const lessonsWithoutCourse: ScheduleLesson[] = []
+  lessons.forEach((lesson) => {
+    const resolvedCourse = lessonCourse(lesson, groupsById)
+    if (resolvedCourse === undefined) {
+      lessonsWithoutCourse.push(lesson)
+      return
+    }
+    if (!lessonsByCourse.has(resolvedCourse)) lessonsByCourse.set(resolvedCourse, [])
+    lessonsByCourse.get(resolvedCourse)!.push(lesson)
+  })
 
   return courses
     .map<PlanFactCourse>((course) => {
       const coursePlan = plans[course] || {}
-      const courseGroups = groups.filter((g) => {
-        const wc = g as ScheduleGroupWithCourse
-        if (wc.course !== undefined) return wc.course === course
-        return true
-      })
-      const courseLessons = lessons.filter((lesson) => lessonCourse(lesson, groupsById, course) === course)
-      const subjectMap = new Map<string, ScheduleLesson[]>()
+      const courseGroups = courseGroupsByCourse.get(course) || []
+      const courseGroupsById = new Map(courseGroups.map((group) => [group.id, group]))
+      const courseLessons = lessonsWithoutCourse.length > 0
+        ? [...(lessonsByCourse.get(course) || []), ...lessonsWithoutCourse]
+        : lessonsByCourse.get(course) || []
+      const subjectMap = new Map<string, { lessons: ScheduleLesson[]; byGroup: Map<string, ScheduleLesson[]> }>()
 
       courseLessons.forEach((lesson) => {
         if (!lesson.subject) return
-        subjectMap.set(lesson.subject, [...(subjectMap.get(lesson.subject) || []), lesson])
+        let bucket = subjectMap.get(lesson.subject)
+        if (!bucket) {
+          bucket = { lessons: [], byGroup: new Map() }
+          subjectMap.set(lesson.subject, bucket)
+        }
+        bucket.lessons.push(lesson)
+        if (!bucket.byGroup.has(lesson.group)) bucket.byGroup.set(lesson.group, [])
+        bucket.byGroup.get(lesson.group)!.push(lesson)
       })
 
       const subjectResults: PlanFactSubject[] = []
 
       Array.from(subjectMap.entries())
         .sort(([a], [b]) => a.localeCompare(b, 'ru'))
-        .forEach(([subject, subjectLessons]) => {
+        .forEach(([subject, subjectBucket]) => {
+          const subjectLessons = subjectBucket.lessons
           const types = Array.from(
             new Set(subjectLessons.map((lesson) => getActiveType(lesson.type))),
           ).sort((a, b) => getLessonTypeLabel(a).localeCompare(getLessonTypeLabel(b), 'ru'))
@@ -724,7 +757,7 @@ export function buildPlanFactHierarchy({
             const subjectHaystack = buildSearchKey(`${subject} ${types.map(getLessonTypeLabel).join(' ')} ${course} курс`)
             const hasSubjectMatch = subjectHaystack.includes(query)
             const hasNestedMatch = subjectLessons.some((lesson) => {
-              const group = courseGroups.find((item) => item.id === lesson.group)
+              const group = courseGroupsById.get(lesson.group)
               return buildSearchKey(`${group?.name || ''} ${lesson.subgroup || ''}`).includes(query)
             })
             if (!hasSubjectMatch && !hasNestedMatch) return
@@ -733,31 +766,26 @@ export function buildPlanFactHierarchy({
           const groupResults: PlanFactGroup[] = []
 
           courseGroups.forEach((group) => {
-            const groupLessons = subjectLessons.filter((lesson) => lesson.group === group.id)
+            const groupLessons = subjectBucket.byGroup.get(group.id) || []
             if (groupLessons.length === 0) return
 
             const slotNames = planFactSubgroupSlots(groupLessons)
             const hasSubgroups = slotNames.some((slot) => slot !== null)
 
             if (!hasSubgroups) {
-              const cell = emptyCell()
+              const typeMap = new Map<LessonType, AnalyticsCell>()
               groupLessons.forEach((lesson) => {
-                cell.scheduled += pairsFor(lesson)
-                if (isLessonBeforeToday(lesson, today)) cell.done += pairsFor(lesson)
+                const type = getActiveType(lesson.type)
+                if (!typeMap.has(type)) typeMap.set(type, emptyCell())
+                const typeCell = typeMap.get(type)!
+                const pairCount = pairsFor(lesson)
+                typeCell.scheduled += pairCount
+                if (isLessonBeforeToday(lesson, today)) typeCell.done += pairCount
               })
-              const types: PlanFactTypeRowExport[] = Array.from(
-                new Set(groupLessons.map((lesson) => getActiveType(lesson.type))),
-              )
+              const types: PlanFactTypeRowExport[] = Array.from(typeMap.keys())
                 .sort((a, b) => getLessonTypeLabel(a).localeCompare(getLessonTypeLabel(b), 'ru'))
                 .map((type) => {
-                  const typeCell = emptyCell()
-                  groupLessons
-                    .filter((lesson) => getActiveType(lesson.type) === type)
-                    .forEach((lesson) => {
-                      typeCell.scheduled += pairsFor(lesson)
-                      if (isLessonBeforeToday(lesson, today)) typeCell.done += pairsFor(lesson)
-                    })
-                  return buildPlanFactTypeRow(type, subject, group.id, null, coursePlan, typeCell)
+                  return buildPlanFactTypeRow(type, subject, group.id, null, coursePlan, typeMap.get(type)!)
                 })
 
               const aggregated: AnalyticsCell = emptyCell()

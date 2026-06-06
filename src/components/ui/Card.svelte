@@ -17,7 +17,7 @@
   {...rest}
   class={cn(
     'rounded-lg border border-border bg-card text-card-foreground shadow-card animate-fade-in',
-    'transition-all duration-300 ease-spring',
+    'transition duration-300 ease-spring',
     'hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-glow',
     className,
   )}

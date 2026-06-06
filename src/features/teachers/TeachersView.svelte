@@ -8,10 +8,13 @@
   import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
   import {
     autoScrollMatrixWrap,
+    createMatrixHitTestCache,
     resolveMatrixDropTarget,
+    type MatrixHitTestCache,
     type MatrixDropSide,
     type MatrixDropTarget,
   } from '@/lib/matrixDrag'
+  import { filterTeacherMatrix, teacherSlotKey, type TeacherMatrixFilterResult } from '@/lib/matrixFilter'
   import { openGoogleSheet } from '@/lib/googleSheets'
   import { cn, normalizeSearchQuery } from '@/lib/utils'
   import {
@@ -24,6 +27,7 @@
   import type { LessonType } from '@/types/schedule'
 
   interface TeachersViewProps {
+    active: boolean
     teacherData: TeacherOccupancyIndex | null
     groupFilter: string
     search: string
@@ -33,8 +37,15 @@
   type TeacherSearchWorkerMessage = {
     type: 'teachers-result'
     id: number
-    filtered: TeacherOccupancyIndex | null
-    matches: string[] | null
+  } & TeacherMatrixFilterResult
+
+  interface TeacherTooltipBlock {
+    subject: string
+    room: string
+    type: LessonType
+    time: string
+    cancelled: boolean
+    groups: { name: string; subgroup: string | null; course?: number }[]
   }
 
   type IdleWindow = Window & {
@@ -44,7 +55,7 @@
 
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
-  let { teacherData, groupFilter, search, lessonTypes }: TeachersViewProps = $props()
+  let { active, teacherData, groupFilter, search, lessonTypes }: TeachersViewProps = $props()
   let tooltip = $state<{ x: number; y: number; entries: TeacherSlotEntry[]; teacher: string } | null>(null)
   let tooltipKey = $state<string | null>(null)
   let draggedTeacher = $state<string | null>(null)
@@ -62,6 +73,7 @@
   } | null>(null)
   let pendingTooltip = $state<{ x: number; y: number; key: string; entries: TeacherSlotEntry[]; teacher: string } | null>(null)
   let pendingDragPoint: { x: number; y: number } | null = null
+  let dragHitCache: MatrixHitTestCache | null = null
   let tooltipFrame: number | null = null
   let dragFrame: number | null = null
   let dropFlashTimer: ReturnType<typeof setTimeout> | null = null
@@ -72,15 +84,15 @@
   let fallbackSearchCancel: (() => void) | null = null
   let searchRequestId = 0
 
-  let filteredTeacherData = $state<TeacherOccupancyIndex | null>(currentTeacherData())
-  let orderedTeachers = $derived(applyColumnOrder(filteredTeacherData?.orderedTeachers || [], $columnOrderStore.teachers))
+  let teacherCellByKey = $state<Map<string, TeacherCell> | null>(null)
+  let orderedTeachers = $derived(applyColumnOrder(teacherData?.orderedTeachers || [], $columnOrderStore.teachers))
   let teacherGroups = $derived($columnGroupsStore.teachers)
   let columnSections = $derived(buildColumnSections(orderedTeachers, teacherGroups))
   let columnSlots = $derived(buildColumnSlots(columnSections))
-  let occupancy = $derived(filteredTeacherData?.occupancy || {})
-  let tooltipEntriesByKey = $derived(buildTooltipEntriesByKeyFromSlots(columnSlots, occupancy))
+  let occupancy = $derived(teacherData?.occupancy || {})
   let normalizedSearch = $derived(normalizeSearchQuery(search.trim()))
   let teacherMatch = $state<Set<string> | null>(null)
+  let tooltipMerged = $derived(tooltip ? mergeTooltipEntries(tooltip.entries) : [])
 
   onDestroy(() => {
     cancelFallbackSearch()
@@ -89,6 +101,12 @@
   })
 
   $effect(() => {
+    const isActive = active
+    if (!isActive) {
+      cancelFallbackSearch()
+      return
+    }
+
     const source = teacherData
     const activeGroup = groupFilter
     const query = normalizedSearch
@@ -97,13 +115,13 @@
     cancelFallbackSearch()
 
     if (!source) {
-      filteredTeacherData = null
+      teacherCellByKey = null
       teacherMatch = null
       return
     }
 
     if (activeGroup === 'all' && !query && types.length === 0) {
-      filteredTeacherData = source
+      teacherCellByKey = null
       teacherMatch = null
       return
     }
@@ -132,10 +150,6 @@
     })
   })
 
-  function currentTeacherData() {
-    return teacherData
-  }
-
   function getSearchWorker() {
     if (searchWorker) return searchWorker
     const worker = new Worker(new URL('../../lib/matrixSearchWorker.ts', import.meta.url), { type: 'module' })
@@ -143,8 +157,7 @@
       const message = event.data
       if (message.type !== 'teachers-result' || message.id !== searchRequestId) return
       cancelFallbackSearch()
-      filteredTeacherData = message.filtered
-      teacherMatch = message.matches ? new Set(message.matches) : null
+      applyTeacherFilterResult(teacherData, message)
     }
     searchWorker = worker
     return worker
@@ -158,9 +171,7 @@
     types: LessonType[],
   ) {
     if (requestId !== searchRequestId) return
-    const filtered = filterTeacherData(source, activeGroup, types)
-    filteredTeacherData = filtered
-    teacherMatch = buildTeacherMatch(filtered, query)
+    applyTeacherFilterResult(source, filterTeacherMatrix(source, activeGroup, query, types))
   }
 
   function cancelFallbackSearch() {
@@ -192,36 +203,8 @@
     }
   }
 
-  function buildTeacherMatch(data: TeacherOccupancyIndex | null, query: string) {
-    if (!query) return null
-    if (!data) return new Set<string>()
-    const matches = new Set<string>()
-    data.orderedTeachers.forEach((teacher) => {
-      if ((data.searchKeyByTeacher[teacher] || '').includes(query)) matches.add(teacher)
-    })
-    return matches
-  }
-
   function slotKey(teacher: string, day: string, pair: number) {
-    return `${encodeURIComponent(teacher)}|${day}|${pair}`
-  }
-
-  function buildTooltipEntriesByKeyFromSlots(
-    slots: ReturnType<typeof buildColumnSlots>,
-    source: TeacherOccupancyIndex['occupancy'],
-  ) {
-    const map = new Map<string, { entries: TeacherSlotEntry[]; teacher: string }>()
-    slots.forEach((slot) => {
-      if (!slot.column) return
-      const teacher = slot.column
-      DAYS.forEach((day) => {
-        PAIRS.forEach((pair) => {
-          const entries = source[teacher]?.[day]?.[pair]?.entries
-          if (entries?.length) map.set(slotKey(teacher, day, pair), { entries, teacher })
-        })
-      })
-    })
-    return map
+    return teacherSlotKey(teacher, day, pair)
   }
 
   function computeTooltipPos(clientX: number, clientY: number): { x: number; y: number } {
@@ -281,8 +264,11 @@
       queueTooltip(event, tooltip.entries, tooltip.teacher, key)
       return
     }
-    const data = tooltipEntriesByKey.get(key)
-    if (data) queueTooltip(event, data.entries, data.teacher, key)
+    const teacher = cell.dataset.matrixColumn
+    const day = cell.dataset.slotDay
+    const pair = Number(cell.dataset.slotPair)
+    const entries = teacher && day && Number.isFinite(pair) ? getVisibleTeacherCell(teacher, day, pair)?.entries : null
+    if (entries?.length && teacher) queueTooltip(event, entries, teacher, key)
     else hideTooltip()
   }
 
@@ -295,40 +281,31 @@
     }
   }
 
-  function entryMatches(entry: TeacherSlotEntry, activeGroup: string, types: LessonType[]) {
-    if (activeGroup !== 'all' && entry.groupId !== activeGroup) return false
-    if (types.length > 0 && !types.includes(entry.type)) return false
-    return true
+  function buildTeacherCellMap(source: TeacherOccupancyIndex, cells: TeacherMatrixFilterResult['cells']) {
+    if (cells === null) return null
+    const map = new Map<string, TeacherCell>()
+    cells.forEach(([key, entryIndexes]) => {
+      const [encodedTeacher, day, pairValue] = key.split('|')
+      const teacher = decodeURIComponent(encodedTeacher || '')
+      const cell = source.occupancy[teacher]?.[day]?.[Number(pairValue)]
+      if (!cell) return
+      const entries = entryIndexes
+        .map((index) => cell.entries[index])
+        .filter((entry): entry is TeacherSlotEntry => Boolean(entry))
+      if (entries.length === 0) return
+      map.set(key, entries.length === cell.entries.length ? cell : summarizeTeacherEntries(entries))
+    })
+    return map
   }
 
-  function filterTeacherData(
-    source: TeacherOccupancyIndex | null,
-    activeGroup: string,
-    activeTypes: LessonType[],
-  ): TeacherOccupancyIndex | null {
-    if (!source) return null
-    if (activeGroup === 'all' && activeTypes.length === 0) return source
+  function applyTeacherFilterResult(source: TeacherOccupancyIndex | null, result: TeacherMatrixFilterResult) {
+    teacherCellByKey = source ? buildTeacherCellMap(source, result.cells) : null
+    teacherMatch = result.matches ? new Set(result.matches) : null
+  }
 
-    const occupancy: TeacherOccupancyIndex['occupancy'] = {}
-    source.orderedTeachers.forEach((teacher) => {
-      DAYS.forEach((day) => {
-        PAIRS.forEach((pair) => {
-          const cell = source.occupancy[teacher]?.[day]?.[pair]
-          if (!cell) return
-          const entries = cell.entries.filter((entry) => entryMatches(entry, activeGroup, activeTypes))
-          if (entries.length === 0) return
-          if (!occupancy[teacher]) occupancy[teacher] = {}
-          if (!occupancy[teacher][day]) occupancy[teacher][day] = {}
-          occupancy[teacher][day][pair] = summarizeTeacherEntries(entries)
-        })
-      })
-    })
-
-    return {
-      orderedTeachers: source.orderedTeachers,
-      occupancy,
-      searchKeyByTeacher: source.searchKeyByTeacher,
-    }
+  function getVisibleTeacherCell(teacher: string, day: string, pair: number): TeacherCell | null {
+    if (!teacherCellByKey) return occupancy[teacher]?.[day]?.[pair] || null
+    return teacherCellByKey.get(slotKey(teacher, day, pair)) || null
   }
 
   function formatSubgroup(raw: string): string {
@@ -341,6 +318,45 @@
         .join(', ')
     }
     return trimmed
+  }
+
+  function mergeTooltipEntries(entries: TeacherSlotEntry[]): TeacherTooltipBlock[] {
+    const map = new Map<string, TeacherTooltipBlock>()
+    entries.forEach((entry) => {
+      const key = [entry.subject, entry.room, entry.type, entry.time, entry.cancelled].join('|')
+      const current = map.get(key)
+      if (current) {
+        if (entry.group && !current.groups.some((group) => group.name === entry.group && group.subgroup === entry.subgroup)) {
+          current.groups.push({ name: entry.group, subgroup: entry.subgroup || null, course: entry.course })
+        }
+        return
+      }
+      map.set(key, {
+        subject: entry.subject,
+        room: entry.room,
+        type: entry.type,
+        time: entry.time,
+        cancelled: entry.cancelled,
+        groups: entry.group ? [{ name: entry.group, subgroup: entry.subgroup || null, course: entry.course }] : [],
+      })
+    })
+    return Array.from(map.values())
+  }
+
+  function formatTooltipGroup(group: TeacherTooltipBlock['groups'][number]) {
+    return `${group.name}${group.subgroup ? ` (${formatSubgroup(group.subgroup)})` : ''}`
+  }
+
+  function formatTooltipGroups(groups: TeacherTooltipBlock['groups']) {
+    const byCourse = new Map<string, string[]>()
+    groups.forEach((group) => {
+      const key = group.course ? String(group.course) : ''
+      if (!byCourse.has(key)) byCourse.set(key, [])
+      byCourse.get(key)!.push(formatTooltipGroup(group))
+    })
+    return Array.from(byCourse.entries())
+      .map(([course, values]) => course ? `${course} курс: ${values.join(', ')}` : values.join(', '))
+      .join('; ')
   }
 
   function shortTeacherName(full: string): string {
@@ -432,7 +448,7 @@
     pendingDragPoint = null
     dragPreview = { x: point.x, y: point.y, label: pointerDrag.source }
     autoScrollMatrixWrap(matrixWrap, point.x, point.y)
-    applyDropTarget(resolveMatrixDropTarget(point.x, point.y, pointerDrag.source))
+    applyDropTarget(resolveMatrixDropTarget(point.x, point.y, pointerDrag.source, dragHitCache))
   }
 
   function queuePointerDrag(clientX: number, clientY: number) {
@@ -461,6 +477,7 @@
       if (distance < 4) return
       pointerDrag = { ...pointerDrag, active: true }
       draggedTeacher = pointerDrag.source
+      dragHitCache = createMatrixHitTestCache(matrixWrap)
       document.documentElement.classList.add('matrix-dragging-page')
     }
     event.preventDefault()
@@ -471,6 +488,7 @@
     if (dragFrame !== null) cancelAnimationFrame(dragFrame)
     dragFrame = null
     pendingDragPoint = null
+    dragHitCache = null
     dragPreview = null
     pointerDrag = null
     document.documentElement.classList.remove('matrix-dragging-page')
@@ -483,7 +501,7 @@
   function finishColumnPointer(event: PointerEvent) {
     if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return
     const target = pointerDrag.active
-      ? resolveMatrixDropTarget(event.clientX, event.clientY, pointerDrag.source)
+      ? resolveMatrixDropTarget(event.clientX, event.clientY, pointerDrag.source, dragHitCache)
       : null
     const source = pointerDrag.source
     cleanupPointerDrag(event.currentTarget as HTMLElement, event.pointerId)
@@ -652,7 +670,7 @@
                     ></td>
                   {:else if slot.column}
                   {@const teacher = slot.column}
-                  {@const cell = occupancy[teacher]?.[day]?.[pair]}
+                  {@const cell = getVisibleTeacherCell(teacher, day, pair)}
                   {@const isMatch = teacherMatch?.has(teacher)}
                   {@const isDim = teacherMatch && !isMatch}
                   {#if !cell}
@@ -671,6 +689,8 @@
                     <td
                       class={cn('slot-cell slot-busy', typeClass, isMatch && 'slot-match slot-column-match', isDim && 'slot-dim', hasSheet && 'slot-clickable', groupSlotClasses(slot))}
                       data-slot-key={cellKey}
+                      data-slot-day={day}
+                      data-slot-pair={pair}
                       data-matrix-column={teacher}
                       title={hasSheet ? 'Открыть Google Таблицу' : undefined}
                       onpointerdown={(event) => startLessonPress(event, cellKey)}
@@ -711,7 +731,7 @@
         style={`left: 0; top: 0; transform: translate3d(${tooltip.x}px, ${tooltip.y}px, 0)`}
       >
         <div class="mb-1 font-bold text-primary">{tooltip.teacher || '—'}</div>
-        {#each tooltip.entries as entry, idx (idx)}
+        {#each tooltipMerged as entry, idx (`${entry.subject}-${entry.room}-${idx}`)}
           <div>
             {#if idx > 0}
               <hr class="my-1.5 border-border" />
@@ -721,7 +741,11 @@
             </div>
             <div class="text-emerald-400">Кабинет: {entry.room || '—'}</div>
             <div class="text-emerald-400">
-              {entry.group || '—'}{entry.subgroup ? ` · ${formatSubgroup(entry.subgroup)}` : ''}{entry.course ? ` · ${entry.course} курс` : ''}
+              {#if entry.groups.length > 0}
+                {formatTooltipGroups(entry.groups)}
+              {:else}
+                —
+              {/if}
             </div>
             {#if entry.type}
               <div class="text-purple-400">{LESSON_TYPE_LABELS[entry.type] || entry.type}</div>

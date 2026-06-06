@@ -1,6 +1,5 @@
 <script lang="ts">
   import { AlertCircle, Loader2 } from '@lucide/svelte'
-  import { cubicOut } from 'svelte/easing'
 
   import AppShell, { type AppTab } from '@/components/layout/AppShell.svelte'
   import TopFilters from '@/components/layout/TopFilters.svelte'
@@ -36,13 +35,10 @@
   const FETCH_DEBOUNCE_MS = 100
 
   let activeTab = $state<AppTab>('rooms')
-  let renderedTab = $state<AppTab>('rooms')
-  let switchingTab = $state<AppTab | null>(null)
   let filters = $state<FiltersState>({ ...defaultFilters })
   let debouncedSearch = $state('')
   let searchSuggestion = $state('')
   let autoWeekCourse = $state<CourseSelection | null>(null)
-  let tabSwitchTimer: ReturnType<typeof setTimeout> | null = null
 
   let schedule = $derived($scheduleStore.schedule)
   let selectedWeeks = $derived($scheduleStore.index.weeksByNumber[filters.week] || [])
@@ -50,7 +46,7 @@
   let selectedWeekLessons = $derived($scheduleStore.index.lessonsByWeek[filters.week] || [])
   let searchCandidates = $derived(
     buildSearchCandidates(
-      renderedTab,
+      activeTab,
       schedule?.groups || [],
       selectedWeekLessons,
       $scheduleStore.index.roomOccupancyByWeek[filters.week]?.orderedRooms || [],
@@ -66,7 +62,7 @@
     search: debouncedSearch,
   })
   let filteredWeekLessons = $derived(
-    schedule && renderedTab === 'schedule'
+    schedule && activeTab === 'schedule'
       ? applyLessonFilters(selectedWeekLessons, schedule.groups, lessonFilters, debouncedSearch)
       : [],
   )
@@ -121,20 +117,6 @@
   })
 
   $effect(() => {
-    if (renderedTab === activeTab) return
-    let cancelled = false
-    const frame = requestAnimationFrame(() => {
-      setTimeout(() => {
-        if (!cancelled) renderedTab = activeTab
-      }, 0)
-    })
-    return () => {
-      cancelled = true
-      cancelAnimationFrame(frame)
-    }
-  })
-
-  $effect(() => {
     if (!schedule || autoWeekCourse === filters.course) return
     const availableWeeks = Array.from(new Set(schedule.weeks.map((entry) => entry.week_number))).sort((a, b) => a - b)
     const currentWeek = findCurrentWeek(schedule.weeks) || availableWeeks[0] || null
@@ -160,36 +142,10 @@
   function setActiveTab(tab: AppTab) {
     if (tab === activeTab) return
     activeTab = tab
-    switchingTab = tab
-    if (tabSwitchTimer) clearTimeout(tabSwitchTimer)
-    tabSwitchTimer = setTimeout(() => {
-      renderedTab = tab
-      switchingTab = null
-      tabSwitchTimer = null
-    }, 165)
   }
 
-  function tabViewClass(extra = '') {
-    const leaving = switchingTab && switchingTab !== renderedTab ? ' tab-view-leaving' : ''
-    return `tab-view${leaving}${extra ? ` ${extra}` : ''}`
-  }
-
-  function tabEnter(_node: Element) {
-    return {
-      duration: 360,
-      easing: cubicOut,
-      css: (t: number, u: number) =>
-        `opacity: ${t}; transform: translate3d(0, ${u * 12}px, 0) scale(${0.996 + t * 0.004});`,
-    }
-  }
-
-  function tabExit(_node: Element) {
-    return {
-      duration: 170,
-      easing: cubicOut,
-      css: (t: number, u: number) =>
-        `opacity: ${t}; transform: translate3d(0, ${u * -6}px, 0) scale(${0.998 + t * 0.002});`,
-    }
+  function tabViewClass(tab: AppTab, extra = '') {
+    return `tab-view ${activeTab === tab ? 'tab-view-active' : 'tab-view-hidden'}${extra ? ` ${extra}` : ''}`
   }
 
   type IdleWindow = Window & {
@@ -362,29 +318,29 @@
       </Button>
     </Card>
   {:else if schedule}
-    {#if renderedTab === 'rooms'}
-    <div class={tabViewClass('h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0')} in:tabEnter out:tabExit>
+    <div class={tabViewClass('rooms', 'h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0')} aria-hidden={activeTab !== 'rooms'}>
       <RoomsView
+        active={activeTab === 'rooms'}
         roomData={$scheduleStore.index.roomOccupancyByWeek[filters.week] || null}
         groupFilter={filters.group}
         search={debouncedSearch}
         lessonTypes={filters.lessonTypes}
       />
     </div>
-    {:else if renderedTab === 'teachers'}
 
-    <div class={tabViewClass('h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0')} in:tabEnter out:tabExit>
+    <div class={tabViewClass('teachers', 'h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0')} aria-hidden={activeTab !== 'teachers'}>
       <TeachersView
+        active={activeTab === 'teachers'}
         teacherData={$scheduleStore.index.teacherOccupancyByWeek[filters.week] || null}
         groupFilter={filters.group}
         search={debouncedSearch}
         lessonTypes={filters.lessonTypes}
       />
     </div>
-    {:else if renderedTab === 'analytics'}
 
-    <div class={tabViewClass()} in:tabEnter out:tabExit>
+    <div class={tabViewClass('analytics')} aria-hidden={activeTab !== 'analytics'}>
       <AnalyticsView
+        active={activeTab === 'analytics'}
         course={filters.course}
         groupFilter={filters.group}
         groups={schedule.groups}
@@ -396,9 +352,8 @@
         onPlanChange={scheduleStore.updatePlan}
       />
     </div>
-    {:else if renderedTab === 'schedule'}
 
-    <div class={tabViewClass()} in:tabEnter out:tabExit>
+    <div class={tabViewClass('schedule')} aria-hidden={activeTab !== 'schedule'}>
       <ScheduleView
         groups={schedule.groups}
         lessons={filteredWeekLessons}
@@ -406,6 +361,5 @@
         dateRange={week?.date_range || ''}
       />
     </div>
-    {/if}
   {/if}
 </AppShell>

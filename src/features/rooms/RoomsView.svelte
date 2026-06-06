@@ -8,12 +8,15 @@
   import { LESSON_TYPE_LABELS, PAIRS, PAIR_TIMES } from '@/lib/constants'
   import {
     autoScrollMatrixWrap,
+    createMatrixHitTestCache,
     resolveMatrixDropTarget,
+    type MatrixHitTestCache,
     type MatrixDropSide,
     type MatrixDropTarget,
   } from '@/lib/matrixDrag'
+  import { filterRoomMatrix, roomSlotKey, type RoomMatrixFilterResult } from '@/lib/matrixFilter'
   import { openGoogleSheet } from '@/lib/googleSheets'
-  import { buildSearchKey, cn, normalizeSearchQuery } from '@/lib/utils'
+  import { cn, normalizeSearchQuery } from '@/lib/utils'
   import {
     buildColumnSections,
     buildColumnSlots,
@@ -24,6 +27,7 @@
   import type { LessonType } from '@/types/schedule'
 
   interface RoomsViewProps {
+    active: boolean
     roomData: RoomOccupancyIndex | null
     groupFilter: string
     search: string
@@ -43,9 +47,7 @@
   type RoomSearchWorkerMessage = {
     type: 'rooms-result'
     id: number
-    filtered: RoomOccupancyIndex | null
-    matches: string[] | null
-  }
+  } & RoomMatrixFilterResult
 
   type IdleWindow = Window & {
     requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
@@ -54,7 +56,7 @@
 
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
-  let { roomData, groupFilter, search, lessonTypes }: RoomsViewProps = $props()
+  let { active, roomData, groupFilter, search, lessonTypes }: RoomsViewProps = $props()
   let tooltip = $state<{ x: number; y: number; entries: RoomSlotEntry[] } | null>(null)
   let tooltipKey = $state<string | null>(null)
   let draggedRoom = $state<string | null>(null)
@@ -72,6 +74,7 @@
   } | null>(null)
   let pendingTooltip = $state<{ x: number; y: number; key: string; entries: RoomSlotEntry[] } | null>(null)
   let pendingDragPoint: { x: number; y: number } | null = null
+  let dragHitCache: MatrixHitTestCache | null = null
   let tooltipFrame: number | null = null
   let dragFrame: number | null = null
   let dropFlashTimer: ReturnType<typeof setTimeout> | null = null
@@ -83,15 +86,14 @@
   let searchRequestId = 0
 
   let normalizedSearch = $derived(normalizeSearchQuery(search))
-  let filteredRoomData = $state<RoomOccupancyIndex | null>(currentRoomData())
+  let roomCellByKey = $state<Map<string, RoomCell> | null>(null)
   let roomMatch = $state<Set<string> | null>(null)
-  let orderedRooms = $derived(applyColumnOrder(filteredRoomData?.orderedRooms || [], $columnOrderStore.rooms))
-  let categoryByRoom = $derived(filteredRoomData?.categoryByRoom || {})
+  let orderedRooms = $derived(applyColumnOrder(roomData?.orderedRooms || [], $columnOrderStore.rooms))
+  let categoryByRoom = $derived(roomData?.categoryByRoom || {})
   let roomGroups = $derived($columnGroupsStore.rooms)
   let columnSections = $derived(buildColumnSections(orderedRooms, roomGroups))
   let columnSlots = $derived(buildColumnSlots(columnSections))
-  let occupancy = $derived(filteredRoomData?.occupancy || {})
-  let tooltipEntriesByKey = $derived(buildTooltipEntriesByKey(columnSlots.flatMap((slot) => (slot.column ? [slot.column] : [])), occupancy))
+  let occupancy = $derived(roomData?.occupancy || {})
   let tooltipMerged = $derived(tooltip ? mergeTooltipEntries(tooltip.entries) : [])
   let tooltipRoom = $derived(tooltip?.entries[0]?.room || '')
 
@@ -102,6 +104,12 @@
   })
 
   $effect(() => {
+    const isActive = active
+    if (!isActive) {
+      cancelFallbackSearch()
+      return
+    }
+
     const source = roomData
     const activeGroup = groupFilter
     const query = normalizedSearch
@@ -110,13 +118,13 @@
     cancelFallbackSearch()
 
     if (!source) {
-      filteredRoomData = null
+      roomCellByKey = null
       roomMatch = null
       return
     }
 
     if (activeGroup === 'all' && !query && types.length === 0) {
-      filteredRoomData = source
+      roomCellByKey = null
       roomMatch = null
       return
     }
@@ -145,10 +153,6 @@
     })
   })
 
-  function currentRoomData() {
-    return roomData
-  }
-
   function getSearchWorker() {
     if (searchWorker) return searchWorker
     const worker = new Worker(new URL('../../lib/matrixSearchWorker.ts', import.meta.url), { type: 'module' })
@@ -156,8 +160,7 @@
       const message = event.data
       if (message.type !== 'rooms-result' || message.id !== searchRequestId) return
       cancelFallbackSearch()
-      filteredRoomData = message.filtered
-      roomMatch = message.matches ? new Set(message.matches) : null
+      applyRoomFilterResult(roomData, message)
     }
     searchWorker = worker
     return worker
@@ -171,9 +174,7 @@
     types: LessonType[],
   ) {
     if (requestId !== searchRequestId) return
-    const filtered = filterRoomData(source, activeGroup, query, types)
-    filteredRoomData = filtered
-    roomMatch = buildRoomMatch(filtered, query)
+    applyRoomFilterResult(source, filterRoomMatrix(source, activeGroup, query, types))
   }
 
   function cancelFallbackSearch() {
@@ -206,23 +207,7 @@
   }
 
   function slotKey(room: string, day: string, pair: number) {
-    return `${encodeURIComponent(room)}|${day}|${pair}`
-  }
-
-  function buildTooltipEntriesByKey(
-    rooms: string[],
-    source: RoomOccupancyIndex['occupancy'],
-  ) {
-    const map = new Map<string, RoomSlotEntry[]>()
-    rooms.forEach((room) => {
-      DAYS.forEach((day) => {
-        PAIRS.forEach((pair) => {
-          const entries = source[room]?.[day]?.[pair]?.entries
-          if (entries?.length) map.set(slotKey(room, day, pair), entries)
-        })
-      })
-    })
-    return map
+    return roomSlotKey(room, day, pair)
   }
 
   function computeTooltipPos(clientX: number, clientY: number): { x: number; y: number } {
@@ -238,24 +223,6 @@
       x: Math.max(PAD, preferredX),
       y: Math.max(PAD, preferredY),
     }
-  }
-
-  function buildRoomMatch(data: RoomOccupancyIndex | null, query: string) {
-    if (!query) return null
-    if (!data) return new Set<string>()
-    const matches = new Set<string>()
-    data.orderedRooms.forEach((room) => {
-      if (buildSearchKey(room).includes(query)) {
-        matches.add(room)
-        return
-      }
-      const days = data.occupancy[room]
-      if (!days) return
-      if (Object.values(days).some((pairs) => Object.values(pairs).some((cell) => cell.entries.length > 0))) {
-        matches.add(room)
-      }
-    })
-    return matches
   }
 
   function flushTooltip() {
@@ -300,15 +267,12 @@
       queueTooltip(event, tooltip.entries, key)
       return
     }
-    const entries = tooltipEntriesByKey.get(key)
+    const room = cell.dataset.matrixColumn
+    const day = cell.dataset.slotDay
+    const pair = Number(cell.dataset.slotPair)
+    const entries = room && day && Number.isFinite(pair) ? getVisibleRoomCell(room, day, pair)?.entries : null
     if (entries?.length) queueTooltip(event, entries, key)
     else hideTooltip()
-  }
-
-  function entryMatches(entry: RoomSlotEntry, activeGroup: string, query: string, types: LessonType[]) {
-    if (activeGroup !== 'all' && entry.groupId !== activeGroup) return false
-    if (types.length > 0 && !types.includes(entry.type)) return false
-    return !query || entry.searchKey.includes(query)
   }
 
   function summarizeRoomEntries(entries: RoomSlotEntry[]): RoomCell {
@@ -322,37 +286,31 @@
     }
   }
 
-  function filterRoomData(
-    source: RoomOccupancyIndex | null,
-    activeGroup: string,
-    query: string,
-    types: LessonType[],
-  ): RoomOccupancyIndex | null {
-    if (!source) return null
-    if (activeGroup === 'all' && !query && types.length === 0) return source
-
-    const occupancy: RoomOccupancyIndex['occupancy'] = {}
-
-    source.orderedRooms.forEach((room) => {
-      DAYS.forEach((day) => {
-        PAIRS.forEach((pair) => {
-          const cell = source.occupancy[room]?.[day]?.[pair]
-          if (!cell) return
-          const entries = cell.entries.filter((entry) => entryMatches(entry, activeGroup, query, types))
-          if (entries.length === 0) return
-          if (!occupancy[room]) occupancy[room] = {}
-          if (!occupancy[room][day]) occupancy[room][day] = {}
-          occupancy[room][day][pair] = summarizeRoomEntries(entries)
-        })
-      })
+  function buildRoomCellMap(source: RoomOccupancyIndex, cells: RoomMatrixFilterResult['cells']) {
+    if (cells === null) return null
+    const map = new Map<string, RoomCell>()
+    cells.forEach(([key, entryIndexes]) => {
+      const [encodedRoom, day, pairValue] = key.split('|')
+      const room = decodeURIComponent(encodedRoom || '')
+      const cell = source.occupancy[room]?.[day]?.[Number(pairValue)]
+      if (!cell) return
+      const entries = entryIndexes
+        .map((index) => cell.entries[index])
+        .filter((entry): entry is RoomSlotEntry => Boolean(entry))
+      if (entries.length === 0) return
+      map.set(key, entries.length === cell.entries.length ? cell : summarizeRoomEntries(entries))
     })
+    return map
+  }
 
-    return {
-      orderedRooms: source.orderedRooms,
-      categoryByRoom: source.categoryByRoom,
-      categoryStart: source.categoryStart,
-      occupancy,
-    }
+  function applyRoomFilterResult(source: RoomOccupancyIndex | null, result: RoomMatrixFilterResult) {
+    roomCellByKey = source ? buildRoomCellMap(source, result.cells) : null
+    roomMatch = result.matches ? new Set(result.matches) : null
+  }
+
+  function getVisibleRoomCell(room: string, day: string, pair: number): RoomCell | null {
+    if (!roomCellByKey) return occupancy[room]?.[day]?.[pair] || null
+    return roomCellByKey.get(slotKey(room, day, pair)) || null
   }
 
   function formatSubgroup(raw: string): string {
@@ -393,6 +351,23 @@
     })
     map.forEach((entry) => entry.teacherCourses.sort((a, b) => a - b))
     return Array.from(map.values())
+  }
+
+  function formatTooltipGroup(group: TooltipPerSubject['groups'][number]) {
+    return `${group.name}${group.subgroup ? ` (${formatSubgroup(group.subgroup)})` : ''}`
+  }
+
+  function formatTooltipGroups(groups: TooltipPerSubject['groups']) {
+    const byCourse = new Map<string, string[]>()
+    groups.forEach((group) => {
+      const key = group.course ? String(group.course) : ''
+      if (!byCourse.has(key)) byCourse.set(key, [])
+      byCourse.get(key)!.push(formatTooltipGroup(group))
+    })
+    const courseKeys = Array.from(byCourse.keys()).filter(Boolean)
+    return Array.from(byCourse.entries())
+      .map(([course, values]) => course && courseKeys.length > 1 ? `${course} курс: ${values.join(', ')}` : values.join(', '))
+      .join('; ')
   }
 
   function shortenSubject(subject: string) {
@@ -483,7 +458,7 @@
     pendingDragPoint = null
     dragPreview = { x: point.x, y: point.y, label: pointerDrag.source }
     autoScrollMatrixWrap(matrixWrap, point.x, point.y)
-    applyDropTarget(resolveMatrixDropTarget(point.x, point.y, pointerDrag.source))
+    applyDropTarget(resolveMatrixDropTarget(point.x, point.y, pointerDrag.source, dragHitCache))
   }
 
   function queuePointerDrag(clientX: number, clientY: number) {
@@ -512,6 +487,7 @@
       if (distance < 4) return
       pointerDrag = { ...pointerDrag, active: true }
       draggedRoom = pointerDrag.source
+      dragHitCache = createMatrixHitTestCache(matrixWrap)
       document.documentElement.classList.add('matrix-dragging-page')
     }
     event.preventDefault()
@@ -522,6 +498,7 @@
     if (dragFrame !== null) cancelAnimationFrame(dragFrame)
     dragFrame = null
     pendingDragPoint = null
+    dragHitCache = null
     dragPreview = null
     pointerDrag = null
     document.documentElement.classList.remove('matrix-dragging-page')
@@ -534,7 +511,7 @@
   function finishColumnPointer(event: PointerEvent) {
     if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return
     const target = pointerDrag.active
-      ? resolveMatrixDropTarget(event.clientX, event.clientY, pointerDrag.source)
+      ? resolveMatrixDropTarget(event.clientX, event.clientY, pointerDrag.source, dragHitCache)
       : null
     const source = pointerDrag.source
     cleanupPointerDrag(event.currentTarget as HTMLElement, event.pointerId)
@@ -706,7 +683,7 @@
                     ></td>
                   {:else if slot.column}
                   {@const room = slot.column}
-                  {@const cell = occupancy[room]?.[day]?.[pair]}
+                  {@const cell = getVisibleRoomCell(room, day, pair)}
                   {@const category = categoryByRoom[room]}
                   {@const isMatch = roomMatch?.has(room)}
                   {@const isDim = roomMatch && !isMatch}
@@ -726,6 +703,8 @@
                     <td
                       class={cn('slot-cell slot-busy', typeClass, isMatch && 'slot-column-match', isDim && 'slot-dim', hasSheet && 'slot-clickable', groupSlotClasses(slot))}
                       data-slot-key={cellKey}
+                      data-slot-day={day}
+                      data-slot-pair={pair}
                       data-matrix-column={room}
                       title={hasSheet ? 'Открыть Google Таблицу' : undefined}
                       onpointerdown={(event) => startLessonPress(event, cellKey)}
@@ -792,11 +771,7 @@
             </div>
             <div class="text-emerald-400">
               {#if entry.groups.length > 0}
-                {#each entry.groups as group, index (`${group.name}-${group.subgroup}-${index}`)}
-                  <div>
-                    {group.name}{group.subgroup ? ` ${formatSubgroup(group.subgroup)}` : ''}
-                  </div>
-                {/each}
+                {formatTooltipGroups(entry.groups)}
               {:else}
                 —
               {/if}
