@@ -110,6 +110,13 @@
   let summary = $derived(summarize(visibleRows))
   let completion = $derived(summary.planned > 0 ? Math.round((summary.done / summary.planned) * 100) : null)
 
+  function runPrimaryPointer(event: PointerEvent, action: () => void) {
+    if (event.button !== 0) return
+    event.preventDefault()
+    event.stopPropagation()
+    action()
+  }
+
   function resolveCourses(
     selectedCourse: CourseSelection,
     sourceGroups: (ScheduleGroup | ScheduleGroupWithCourse)[],
@@ -543,7 +550,7 @@
                     <button
                       type="button"
                       class="plan-toggle"
-                      onclick={() => toggleSubject(courseRow.course, subject.subject)}
+                      onpointerup={(event) => runPrimaryPointer(event, () => toggleSubject(courseRow.course, subject.subject))}
                       aria-label={subjectExpanded ? 'Свернуть предмет' : 'Развернуть предмет'}
                       title={subjectExpanded ? 'Свернуть' : 'Развернуть'}
                     >
@@ -590,7 +597,9 @@
                         <Button
                           variant="primary"
                           class="plan-input-save"
-                          onclick={() => void saveSubjectPlan(courseRow.course, subject.subject)}
+                          onpointerup={(event) => runPrimaryPointer(event, () => {
+                            void saveSubjectPlan(courseRow.course, subject.subject)
+                          })}
                           title="Сохранить план предмета"
                           aria-label="Сохранить план предмета"
                         >
@@ -649,7 +658,7 @@
                           <button
                             type="button"
                             class="plan-toggle"
-                            onclick={() => toggleGroup(courseRow.course, subject.subject, group.groupId)}
+                            onpointerup={(event) => runPrimaryPointer(event, () => toggleGroup(courseRow.course, subject.subject, group.groupId))}
                             aria-label={groupExpanded ? 'Свернуть группу' : 'Развернуть группу'}
                             title={groupExpanded ? 'Свернуть' : 'Развернуть'}
                           >
@@ -694,7 +703,9 @@
                             <Button
                               variant="primary"
                               class="plan-input-save"
-                              onclick={() => void saveGroupPlan(courseRow.course, subject.subject, group.groupId)}
+                              onpointerup={(event) => runPrimaryPointer(event, () => {
+                                void saveGroupPlan(courseRow.course, subject.subject, group.groupId)
+                              })}
                               title="План для группы (переопределяет план предмета)"
                               aria-label="Сохранить план группы"
                             >
@@ -788,7 +799,9 @@
                                             <Button
                                               variant="primary"
                                               class="plan-input-save"
-                                              onclick={() => void saveGroupTypePlan(courseRow.course, subject.subject, group.groupId, typeRow.type)}
+                                              onpointerup={(event) => runPrimaryPointer(event, () => {
+                                                void saveGroupTypePlan(courseRow.course, subject.subject, group.groupId, typeRow.type)
+                                              })}
                                               title="Сохранить план типа для группы"
                                               aria-label="Сохранить план типа для группы"
                                             >
@@ -877,7 +890,9 @@
                                     <Button
                                       variant="primary"
                                       class="plan-input-save"
-                                      onclick={() => void saveGroupTypePlan(courseRow.course, subject.subject, group.groupId, typeRow.type)}
+                                      onpointerup={(event) => runPrimaryPointer(event, () => {
+                                        void saveGroupTypePlan(courseRow.course, subject.subject, group.groupId, typeRow.type)
+                                      })}
                                       title="Сохранить план типа для группы"
                                       aria-label="Сохранить план типа для группы"
                                     >

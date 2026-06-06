@@ -160,6 +160,7 @@
                         aria-label="Открыть Google Таблицу"
                         onclick={(event) => {
                           event.preventDefault()
+                          event.stopPropagation()
                           openGoogleSheet(lesson.google_sheet_id)
                         }}
                         onpointerdown={(event) => event.stopPropagation()}
