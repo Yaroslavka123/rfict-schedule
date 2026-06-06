@@ -180,6 +180,17 @@ const initialState: ScheduleState = {
 const memoryCache = new Map<string, CachedBundle>()
 const scheduleIndexCache = new WeakMap<CourseSchedule | MergedSchedule, ScheduleIndex>()
 const writeTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const pendingIndexRequests = new Map<number, {
+  resolve: (index: ScheduleIndex) => void
+  reject: () => void
+}>()
+let scheduleIndexWorker: Worker | null | undefined
+let scheduleIndexRequestId = 0
+
+type ScheduleIndexWorkerMessage = {
+  id: number
+  index: ScheduleIndex
+}
 
 function cacheKey(course: CourseSelection) {
   return `rfict-cache-${CACHE_VERSION}-course-${course === 'all' ? 'all' : course}`
@@ -415,6 +426,60 @@ function getCachedScheduleIndex(schedule: CourseSchedule | MergedSchedule): Sche
   return index
 }
 
+function getScheduleIndexWorker() {
+  if (scheduleIndexWorker !== undefined) return scheduleIndexWorker
+  if (typeof Worker === 'undefined') {
+    scheduleIndexWorker = null
+    return null
+  }
+
+  try {
+    const worker = new Worker(new URL('./scheduleIndexWorker.ts', import.meta.url), { type: 'module' })
+    worker.onmessage = (event: MessageEvent<ScheduleIndexWorkerMessage>) => {
+      const pending = pendingIndexRequests.get(event.data.id)
+      if (!pending) return
+      pendingIndexRequests.delete(event.data.id)
+      pending.resolve(event.data.index)
+    }
+    worker.onerror = () => {
+      pendingIndexRequests.forEach((pending) => pending.reject())
+      pendingIndexRequests.clear()
+      scheduleIndexWorker?.terminate()
+      scheduleIndexWorker = null
+    }
+    scheduleIndexWorker = worker
+    return worker
+  } catch {
+    scheduleIndexWorker = null
+    return null
+  }
+}
+
+async function getIndexAsync(schedule: CourseSchedule | MergedSchedule): Promise<ScheduleIndex> {
+  const cached = scheduleIndexCache.get(schedule)
+  if (cached) return cached
+
+  const worker = getScheduleIndexWorker()
+  if (!worker) return getCachedScheduleIndex(schedule)
+
+  try {
+    const id = ++scheduleIndexRequestId
+    const index = await new Promise<ScheduleIndex>((resolve, reject) => {
+      pendingIndexRequests.set(id, { resolve, reject: () => reject(new Error('schedule index worker failed')) })
+      try {
+        worker.postMessage({ id, schedule })
+      } catch (error) {
+        pendingIndexRequests.delete(id)
+        reject(error)
+      }
+    })
+    scheduleIndexCache.set(schedule, index)
+    return index
+  } catch {
+    return getCachedScheduleIndex(schedule)
+  }
+}
+
 function finalizeRoomIndex(index: RoomOccupancyIndex) {
   index.orderedRooms = index.orderedRooms.sort(numericRoomSort)
   const seenCategories = new Set<RoomCategory>()
@@ -426,7 +491,7 @@ function finalizeRoomIndex(index: RoomOccupancyIndex) {
   })
 }
 
-function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): ScheduleIndex {
+export function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): ScheduleIndex {
   if (!schedule) return emptyIndex
   const weeksByNumber: Record<number, WeekSchedule[]> = {}
   const lessonsByWeek: Record<number, ScheduleLesson[]> = {}
@@ -587,11 +652,12 @@ function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | null): S
   }
 }
 
-function stateFromCache(cached: CachedBundle, loading: boolean): ScheduleState {
+async function stateFromCache(cached: CachedBundle, loading: boolean): Promise<ScheduleState> {
   if (cached.kind === 'single') {
+    const index = await getIndexAsync(cached.schedule)
     return {
       schedule: cached.schedule,
-      index: getCachedScheduleIndex(cached.schedule),
+      index,
       plan: cached.plan,
       plans: { [cached.schedule.course]: cached.plan },
       loading,
@@ -600,9 +666,10 @@ function stateFromCache(cached: CachedBundle, loading: boolean): ScheduleState {
     }
   }
 
+  const index = await getIndexAsync(cached.schedule)
   return {
     schedule: cached.schedule,
-    index: getCachedScheduleIndex(cached.schedule),
+    index,
     plan: combinePlans(cached.plans),
     plans: cached.plans,
     loading,
@@ -665,7 +732,9 @@ function createScheduleStore() {
     const isFresh = cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS
 
     if (cached) {
-      store.set(stateFromCache(cached, !isFresh || force))
+      const cachedState = await stateFromCache(cached, !isFresh || force)
+      if (currentCourse !== course) return
+      store.set(cachedState)
       if (isFresh && !force) return
     } else {
       store.update((state) => ({ ...state, loading: true, error: null }))
@@ -679,10 +748,12 @@ function createScheduleStore() {
       if (course === 'all') {
         const bundle = await loadAllCoursesBundle({ signal: controller.signal })
         if (controller.signal.aborted) return
+        const index = await getIndexAsync(bundle.schedule)
+        if (controller.signal.aborted) return
         cacheAll(bundle)
         store.set({
           schedule: bundle.schedule,
-          index: getCachedScheduleIndex(bundle.schedule),
+          index,
           plan: combinePlans(bundle.plans),
           plans: bundle.plans,
           loading: false,
@@ -692,10 +763,12 @@ function createScheduleStore() {
       } else {
         const bundle = await loadCourseBundle(course, { signal: controller.signal })
         if (controller.signal.aborted) return
+        const index = await getIndexAsync(bundle.schedule)
+        if (controller.signal.aborted) return
         cacheCourse(course, bundle)
         store.set({
           schedule: bundle.schedule,
-          index: getCachedScheduleIndex(bundle.schedule),
+          index,
           plan: bundle.plan,
           plans: { [course]: bundle.plan },
           loading: false,
