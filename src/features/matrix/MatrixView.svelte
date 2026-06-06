@@ -1,6 +1,5 @@
 <script lang="ts">
   import { Plus, Trash2 } from '@lucide/svelte'
-  import { flip } from 'svelte/animate'
   import { onDestroy } from 'svelte'
 
   import Card from '@/components/ui/Card.svelte'
@@ -632,7 +631,6 @@
               {@const isDim = Boolean(column && columnMatch && !isMatch)}
               {@const labelClass = column ? adapter.getColumnLabelClass(column) : null}
               <th
-                animate:flip={{ duration: 170 }}
                 class={cn(
                   slot.type === 'group-empty' ? 'matrix-empty-group-slot' : adapter.headerClass,
                   matrixColumnClass(slotIndex),
