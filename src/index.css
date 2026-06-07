@@ -621,9 +621,25 @@
   .teachers-matrix {
     @apply border-collapse text-[11px];
     table-layout: fixed;
-    width: 100%;
+    width: max-content;
+    min-width: 100%;
     height: 100%;
     flex: 1 1 auto;
+  }
+
+  .room-matrix col[class^="matrix-col-"],
+  .teachers-matrix col[class^="matrix-col-"] {
+    width: 20px;
+    min-width: 20px;
+  }
+
+  .room-matrix th[class*="matrix-col-"],
+  .room-matrix td[class*="matrix-col-"],
+  .teachers-matrix th[class*="matrix-col-"],
+  .teachers-matrix td[class*="matrix-col-"] {
+    width: 20px;
+    min-width: 20px;
+    max-width: 20px;
   }
 
   .room-matrix th,
@@ -753,7 +769,7 @@
 
   .room-matrix .th-room {
     @apply px-1 text-[10px] leading-none align-middle;
-    min-width: 3.25rem;
+    min-width: 20px;
   }
 
   .room-matrix .th-room-match {
@@ -906,7 +922,7 @@
   .teachers-matrix .th-teacher {
     @apply px-0 align-bottom text-[10px] leading-none;
     height: 9rem;
-    min-width: 2rem;
+    min-width: 20px;
     vertical-align: bottom;
   }
   .teachers-matrix .th-teacher-label {
@@ -982,14 +998,18 @@
   }
 
   .slot-main {
-    @apply truncate font-semibold w-full;
+    @apply font-semibold w-full;
     font-size: 10px;
     line-height: 1.05;
+    overflow: hidden;
+    white-space: nowrap;
   }
   .slot-meta {
-    @apply truncate w-full opacity-75;
+    @apply w-full opacity-75;
     font-size: 9px;
     line-height: 1;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   /* Hide secondary text on narrow viewports. */

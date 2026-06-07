@@ -323,11 +323,11 @@ function matrixSlotKey(column: string, day: string, pair: number) {
 
 function shortenSubject(subject: string) {
   if (!subject) return 'Занято'
-  return subject.length > 16 ? `${subject.slice(0, 15)}...` : subject
+  return subject
 }
 
 function shortenLabel(value: string) {
-  return value.length > 12 ? `${value.slice(0, 11)}...` : value
+  return value
 }
 
 function compactList(values: string[], fallback: string) {
