@@ -96,14 +96,14 @@ export function filterRoomMatrix(
         const pairs = days[day]
         const pairKeys = Object.keys(pairs)
         for (let pairIndex = 0; pairIndex < pairKeys.length; pairIndex += 1) {
-          const pair = pairKeys[pairIndex]
+          const pair = Number(pairKeys[pairIndex])
           const cell = pairs[pair]
           const { matchedCount, entryIndexes } = collectMatchingEntryIndexes(cell.entries, (entry) => (
             roomEntryMatches(entry, activeGroup, query, types)
           ))
           if (matchedCount === 0) continue
           hasMatchingCell = true
-          cells.push([roomSlotKey(room, day, Number(pair)), entryIndexes])
+          cells.push([roomSlotKey(room, day, pair), entryIndexes])
         }
       }
     }
@@ -146,12 +146,12 @@ export function filterTeacherMatrix(
       const pairs = days[day]
       const pairKeys = Object.keys(pairs)
       for (let pairIndex = 0; pairIndex < pairKeys.length; pairIndex += 1) {
-        const pair = pairKeys[pairIndex]
+        const pair = Number(pairKeys[pairIndex])
         const cell = pairs[pair]
         const { matchedCount, entryIndexes } = collectMatchingEntryIndexes(cell.entries, (entry) => (
           teacherEntryMatches(entry, activeGroup, types)
         ))
-        if (matchedCount > 0) cells.push([teacherSlotKey(teacher, day, Number(pair)), entryIndexes])
+        if (matchedCount > 0) cells.push([teacherSlotKey(teacher, day, pair), entryIndexes])
       }
     }
   }

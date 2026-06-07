@@ -736,7 +736,6 @@
                       ></td>
                     {:else}
                       {@const cellKey = cell.precomputedKey}
-                      {@const entries = cell.entries}
                       {@const hasSheet = cell.precomputedHasSheet}
                       <td
                         class={[
