@@ -59,7 +59,7 @@
   type MatrixFilterResult = ReturnType<MatrixAdapter['filter']>
 
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
-  const SEARCH_CACHE_TTL_MS = 5000
+  const SEARCH_CACHE_TTL_MS = 30_000
   const WORKER_POST_THROTTLE_MS = 50
 
   let { active, source, groupFilter, search, lessonTypes, adapter }: MatrixViewProps = $props()
