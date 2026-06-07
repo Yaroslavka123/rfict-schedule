@@ -636,20 +636,19 @@
 
   .room-matrix thead th,
   .teachers-matrix thead th {
-    @apply sticky top-0 z-30 bg-muted py-1.5 text-center font-bold text-muted-foreground;
+    @apply bg-muted py-1.5 text-center font-bold text-muted-foreground;
   }
 
   .room-matrix .th-day,
   .teachers-matrix .th-day {
-    @apply sticky left-0 z-40 bg-muted;
+    @apply bg-muted;
     width: 2rem;
     min-width: 2rem;
   }
 
   .room-matrix .th-pair,
   .teachers-matrix .th-pair {
-    @apply sticky z-40 bg-muted;
-    left: 2rem;
+    @apply bg-muted;
     width: 2rem;
     min-width: 2rem;
   }
@@ -663,17 +662,12 @@
 
   .room-matrix thead .matrix-group-row th,
   .teachers-matrix thead .matrix-group-row th {
-    @apply sticky top-0 z-40 border-b-2 border-b-primary/35 bg-card py-1 text-xs;
-  }
-
-  .room-matrix thead .matrix-column-row th,
-  .teachers-matrix thead .matrix-column-row th {
-    top: 2rem;
+    @apply border-b-2 border-b-primary/35 bg-card py-1 text-xs;
   }
 
   .room-matrix thead .matrix-group-corner,
   .teachers-matrix thead .matrix-group-corner {
-    @apply sticky left-0 z-50 text-[10px] uppercase text-muted-foreground;
+    @apply text-[10px] uppercase text-muted-foreground;
     width: 4rem;
     min-width: 4rem;
   }
@@ -882,17 +876,14 @@
 
   .room-matrix .td-day,
   .teachers-matrix .td-day {
-    @apply sticky left-0 bg-card text-center align-middle text-sm font-bold text-foreground;
-    z-index: 1;
+    @apply bg-card text-center align-middle text-sm font-bold text-foreground;
     width: 2rem;
     min-width: 2rem;
   }
 
   .room-matrix .td-pair,
   .teachers-matrix .td-pair {
-    @apply sticky bg-card text-center align-middle text-xs font-bold text-muted-foreground;
-    left: 2rem;
-    z-index: 1;
+    @apply bg-card text-center align-middle text-xs font-bold text-muted-foreground;
     width: 2rem;
     min-width: 2rem;
   }
@@ -959,6 +950,7 @@
     @apply relative min-w-0 align-middle text-center;
     padding: 0;
     height: 2rem;
+    contain: paint;
   }
 
   .slot-free {
@@ -1016,16 +1008,16 @@
 
   /* Lesson-type backgrounds (these win over category banding because they are set
    * directly on the cell.) */
-  .slot-type-lecture     { background-color: #d9ead3; color: #111827; }
-  .slot-type-lab         { background-color: #fce5cd; color: #111827; }
-  .slot-type-practice    { background-color: #c9daf8; color: #111827; }
-  .slot-type-seminar     { background-color: #ffffff; color: #111827; }
-  .slot-type-curator_hour { background-color: #fff2cc; color: #111827; }
-  .slot-type-additional  { background-color: #d9d2e9; color: #111827; }
-  .slot-type-unknown     { background-color: #eeeeee; color: #374151; }
-  .slot-type-multi {
+  .slot-cell.slot-type-lecture     { background-color: #d9ead3 !important; color: #111827; }
+  .slot-cell.slot-type-lab         { background-color: #fce5cd !important; color: #111827; }
+  .slot-cell.slot-type-practice    { background-color: #c9daf8 !important; color: #111827; }
+  .slot-cell.slot-type-seminar     { background-color: #ffffff !important; color: #111827; }
+  .slot-cell.slot-type-curator_hour { background-color: #fff2cc !important; color: #111827; }
+  .slot-cell.slot-type-additional  { background-color: #d9d2e9 !important; color: #111827; }
+  .slot-cell.slot-type-unknown     { background-color: #eeeeee !important; color: #374151; }
+  .slot-cell.slot-type-multi {
     background:
-      linear-gradient(135deg, #d9ead3 0 25%, #fce5cd 25% 50%, #c9daf8 50% 75%, #d9d2e9 75% 100%);
+      linear-gradient(135deg, #d9ead3 0 25%, #fce5cd 25% 50%, #c9daf8 50% 75%, #d9d2e9 75% 100%) !important;
     color: #111827;
   }
 
@@ -1042,6 +1034,8 @@
     top: 0;
     background-color: hsl(var(--popover));
     backdrop-filter: none;
+    font-size: 13px;
+    line-height: 1.35;
     opacity: 1;
     max-height: calc(100vh - 1rem);
     overflow-y: auto;

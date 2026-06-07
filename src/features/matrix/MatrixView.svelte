@@ -789,7 +789,7 @@
 
     {#if tooltip}
       <div
-        class="slot-tooltip pointer-events-none fixed z-50 max-w-xs rounded-lg border border-border px-3 py-2 text-xs shadow-xl"
+        class="slot-tooltip pointer-events-none fixed z-50 max-w-sm rounded-lg border border-border px-3.5 py-2.5 text-sm shadow-xl"
         style={`left: 0; top: 0; transform: translate3d(${tooltip.x}px, ${tooltip.y}px, 0)`}
       >
         {#if tooltipHeader}
