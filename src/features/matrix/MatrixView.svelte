@@ -64,6 +64,7 @@
 
   let { active, source, groupFilter, search, lessonTypes, adapter }: MatrixViewProps = $props()
   let tooltip = $state<{ x: number; y: number; entries: unknown[]; column: string } | null>(null)
+  let columnTooltip = $state<{ x: number; y: number; label: string } | null>(null)
   let tooltipKey = $state<string | null>(null)
   let draggedColumn = $state<string | null>(null)
   let dragOverColumn = $state<string | null>(null)
@@ -113,6 +114,7 @@
   onDestroy(() => {
     cancelHoverFrame()
     hideTooltip()
+    hideColumnTooltip()
     if (dragFrame !== null) cancelAnimationFrame(dragFrame)
     if (dropFlashTimer) clearTimeout(dropFlashTimer)
     cancelFallbackSearch()
@@ -364,6 +366,21 @@
     tooltip = null
   }
 
+  function showColumnTooltip(event: PointerEvent, column: string) {
+    if (adapter.kind !== 'teachers' || !column || draggedColumn || pointerDrag) {
+      hideColumnTooltip()
+      return
+    }
+
+    hideTooltip()
+    const { x, y } = computeTooltipPos(event.clientX, event.clientY)
+    columnTooltip = { x, y, label: column }
+  }
+
+  function hideColumnTooltip() {
+    columnTooltip = null
+  }
+
   function cancelHoverFrame() {
     if (hoverFrame !== null) cancelAnimationFrame(hoverFrame)
     hoverFrame = null
@@ -373,6 +390,7 @@
   function clearHoverState() {
     cancelHoverFrame()
     hideTooltip()
+    hideColumnTooltip()
   }
 
   function handleTableHover(event: MouseEvent) {
@@ -514,6 +532,7 @@
   function startColumnPointer(event: PointerEvent, column: string) {
     if (event.button !== 0) return
     hideTooltip()
+    hideColumnTooltip()
     pointerDrag = {
       pointerId: event.pointerId,
       source: column,
@@ -686,7 +705,8 @@
                   recentlyDropped === column && 'matrix-just-dropped',
                 )}
                 role={slot.type === 'group-empty' ? 'columnheader' : undefined}
-                title={slot.type === 'group-empty' ? adapter.emptyGroupTitle : adapter.getColumnTitle(column)}
+                title={slot.type === 'group-empty' ? adapter.emptyGroupTitle : adapter.kind === 'teachers' ? null : adapter.getColumnTitle(column)}
+                aria-label={column ? adapter.getColumnTitle(column) : undefined}
                 data-matrix-column={column || null}
                 data-matrix-group-id={slot.type === 'group-empty' ? slot.groupId : null}
                 data-drag-over={slot.type === 'group-empty' && dragOverGroupId === slot.groupId ? 'true' : null}
@@ -694,7 +714,14 @@
                 onpointerdown={(event) => {
                   if (column) startColumnPointer(event, column)
                 }}
-                onpointermove={moveColumnPointer}
+                onpointerenter={(event) => {
+                  if (column) showColumnTooltip(event, column)
+                }}
+                onpointermove={(event) => {
+                  moveColumnPointer(event)
+                  if (column) showColumnTooltip(event, column)
+                }}
+                onpointerleave={hideColumnTooltip}
                 onpointerup={finishColumnPointer}
                 onpointercancel={cancelColumnPointer}
               >
@@ -782,6 +809,15 @@
         style={`transform: translate3d(${dragPreview.x + 12}px, ${dragPreview.y + 12}px, 0)`}
       >
         {dragPreview.label}
+      </div>
+    {/if}
+
+    {#if columnTooltip}
+      <div
+        class="matrix-column-tooltip pointer-events-none fixed left-0 top-0 z-[155] rounded-lg border border-border px-3.5 py-2.5 text-base font-semibold shadow-xl"
+        style={`transform: translate3d(${columnTooltip.x}px, ${columnTooltip.y}px, 0)`}
+      >
+        {columnTooltip.label}
       </div>
     {/if}
 

@@ -763,6 +763,18 @@
     box-shadow: 0 0 0 1px hsl(var(--background) / 0.6);
   }
 
+  .matrix-column-tooltip {
+    background-color: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+    max-width: min(24rem, calc(100vw - 1rem));
+    line-height: 1.25;
+    opacity: 0.98;
+    box-shadow:
+      0 14px 32px hsl(var(--foreground) / 0.18),
+      0 0 0 1px hsl(var(--border));
+    animation: tooltip-fade-in 110ms var(--ease) both;
+  }
+
   html.matrix-dragging-page,
   html.matrix-dragging-page * {
     cursor: grabbing !important;
