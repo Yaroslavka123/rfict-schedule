@@ -617,6 +617,21 @@
     scrollbar-gutter: stable;
   }
 
+  .room-matrix-wrap,
+  .teachers-matrix-wrap {
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .room-matrix-wrap.matrix-pan-active,
+  .teachers-matrix-wrap.matrix-pan-active,
+  html.matrix-panning-page,
+  html.matrix-panning-page * {
+    cursor: grabbing !important;
+    user-select: none !important;
+  }
+
   .room-matrix,
   .teachers-matrix {
     @apply border-collapse text-[11px];

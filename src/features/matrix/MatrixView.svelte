@@ -79,6 +79,13 @@
     startY: number
     active: boolean
   } | null>(null)
+  let middlePan = $state<{
+    pointerId: number
+    startX: number
+    startY: number
+    scrollLeft: number
+    scrollTop: number
+  } | null>(null)
   let pendingTooltip = $state<{ x: number; y: number; key: string; entries: unknown[]; column: string } | null>(null)
   let pendingHoverEvent: HoverSnapshot | null = null
   let pendingDragPoint: { x: number; y: number } | null = null
@@ -115,6 +122,7 @@
     cancelHoverFrame()
     hideTooltip()
     hideColumnTooltip()
+    cleanupMiddlePan()
     if (dragFrame !== null) cancelAnimationFrame(dragFrame)
     if (dropFlashTimer) clearTimeout(dropFlashTimer)
     cancelFallbackSearch()
@@ -367,7 +375,7 @@
   }
 
   function showColumnTooltip(event: PointerEvent, column: string) {
-    if (adapter.kind !== 'teachers' || !column || draggedColumn || pointerDrag) {
+    if (adapter.kind !== 'teachers' || !column || draggedColumn || pointerDrag || middlePan) {
       hideColumnTooltip()
       return
     }
@@ -394,7 +402,7 @@
   }
 
   function handleTableHover(event: MouseEvent) {
-    if (draggedColumn) {
+    if (draggedColumn || middlePan) {
       clearHoverState()
       return
     }
@@ -460,6 +468,39 @@
 
   function cancelLessonPress() {
     lessonPress = null
+  }
+
+  function startMiddlePan(event: PointerEvent) {
+    if (event.button !== 1 || !matrixWrap) return
+    event.preventDefault()
+    event.stopPropagation()
+    clearHoverState()
+    middlePan = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: matrixWrap.scrollLeft,
+      scrollTop: matrixWrap.scrollTop,
+    }
+    matrixWrap.setPointerCapture(event.pointerId)
+    document.documentElement.classList.add('matrix-panning-page')
+  }
+
+  function moveMiddlePan(event: PointerEvent) {
+    if (!middlePan || event.pointerId !== middlePan.pointerId || !matrixWrap) return
+    event.preventDefault()
+    matrixWrap.scrollLeft = middlePan.scrollLeft - (event.clientX - middlePan.startX)
+    matrixWrap.scrollTop = middlePan.scrollTop - (event.clientY - middlePan.startY)
+  }
+
+  function cleanupMiddlePan(event?: PointerEvent) {
+    if (!middlePan) return
+    if (event && event.pointerId !== middlePan.pointerId) return
+    if (event && matrixWrap?.hasPointerCapture(event.pointerId)) {
+      matrixWrap.releasePointerCapture(event.pointerId)
+    }
+    middlePan = null
+    document.documentElement.classList.remove('matrix-panning-page')
   }
 
   function clearColumnDrag() {
@@ -630,7 +671,19 @@
       </Button>
     </div>
 
-    <div class={adapter.wrapClass} bind:this={matrixWrap}>
+    <div
+      class={cn(adapter.wrapClass, middlePan && 'matrix-pan-active')}
+      bind:this={matrixWrap}
+      role="region"
+      aria-label={adapter.kind === 'rooms' ? 'Таблица аудиторий' : 'Таблица преподавателей'}
+      onpointerdown={startMiddlePan}
+      onpointermove={moveMiddlePan}
+      onpointerup={cleanupMiddlePan}
+      onpointercancel={cleanupMiddlePan}
+      onauxclick={(event) => {
+        if (event.button === 1) event.preventDefault()
+      }}
+    >
       <table
         class={adapter.tableClass}
         data-highlight={highlightColumns || null}
