@@ -77,7 +77,7 @@ export function createMatrixHitTestCache(root: HTMLElement | null): MatrixHitTes
     })
   })
 
-  const groups = Array.from(root.querySelectorAll<HTMLElement>('[data-matrix-group-id]'))
+  const groups = Array.from(root.querySelectorAll<HTMLElement>('thead [data-matrix-group-id]'))
     .map((element) => {
       const groupId = element.dataset.matrixGroupId
       if (!groupId) return null

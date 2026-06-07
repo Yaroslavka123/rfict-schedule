@@ -467,10 +467,6 @@
     letter-spacing: 0;
   }
 
-  .dense-table tbody tr {
-    content-visibility: auto;
-    contain-intrinsic-size: 0 2.5rem;
-  }
   .dense-table tbody tr:hover {
     background-color: hsl(var(--muted) / 0.55);
   }
@@ -746,8 +742,8 @@
   }
 
   .matrix-drag-preview {
-    @apply max-w-56 truncate rounded-md border border-primary/40 bg-popover px-2.5 py-1.5 text-xs font-bold text-primary shadow-xl;
-    box-shadow: 0 12px 32px -14px hsl(var(--primary) / 0.5), 0 0 0 1px hsl(var(--background) / 0.6);
+    @apply max-w-56 truncate rounded-md border border-primary/40 bg-popover px-2.5 py-1.5 text-xs font-bold text-primary;
+    box-shadow: 0 0 0 1px hsl(var(--background) / 0.6);
   }
 
   html.matrix-dragging-page,
@@ -799,21 +795,20 @@
 
   .matrix-drag-over-col {
     background-color: hsl(var(--primary) / 0.14) !important;
-    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.35);
+    outline: 2px solid hsl(var(--primary) / 0.55);
+    outline-offset: -2px;
   }
 
   .matrix-drag-over-before::before,
   .matrix-drag-over-after::before {
     content: '';
     position: absolute;
-    top: -0.35rem;
-    bottom: -999rem;
+    top: 0;
+    bottom: 0;
     z-index: 6;
     width: 3px;
     border-radius: 999px;
     background: hsl(var(--primary));
-    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.16), 0 0 14px hsl(var(--primary) / 0.35);
-    animation: drag-marker-in 130ms var(--ease) both;
   }
 
   .matrix-drag-over-before::before {
@@ -822,11 +817,6 @@
 
   .matrix-drag-over-after::before {
     right: -2px;
-  }
-
-  @keyframes drag-marker-in {
-    from { opacity: 0; transform: scaleY(0.92); }
-    to { opacity: 1; transform: scaleY(1); }
   }
 
   .matrix-drag-over-group {
@@ -965,12 +955,6 @@
     background-color: hsl(var(--background) / 0.32);
   }
 
-  .room-matrix tbody tr,
-  .teachers-matrix tbody tr {
-    content-visibility: auto;
-    contain-intrinsic-size: 0 2rem;
-  }
-
   .slot-cell {
     @apply relative min-w-0 align-middle text-center;
     padding: 0;
@@ -1000,17 +984,20 @@
   }
 
   .slot-busy .slot-content {
-    @apply flex h-full w-full items-center justify-center text-center;
-    padding: 1px;
+    @apply flex h-full w-full flex-col items-center justify-center text-center;
+    gap: 1px;
+    padding: 2px;
   }
 
   .slot-main {
     @apply truncate font-semibold w-full;
     font-size: 10px;
+    line-height: 1.05;
   }
   .slot-meta {
-    @apply truncate w-full opacity-80 mt-0.5;
+    @apply truncate w-full opacity-75;
     font-size: 9px;
+    line-height: 1;
   }
 
   /* Hide secondary text on narrow viewports. */
@@ -1029,22 +1016,18 @@
 
   /* Lesson-type backgrounds (these win over category banding because they are set
    * directly on the cell.) */
-  .slot-type-lecture     { background-color: hsl(160 70% 45% / 0.30); color: hsl(160 70% 30%); }
-  .slot-type-lab         { background-color: hsl(38  92% 50% / 0.35); color: hsl(28  90% 40%); }
-  .slot-type-practice    { background-color: hsl(210 90% 55% / 0.30); color: hsl(210 90% 40%); }
-  .slot-type-seminar     { background-color: hsl(220 14% 55% / 0.30); color: hsl(220 14% 35%); }
-  .slot-type-curator_hour,
-  .slot-type-additional  { background-color: hsl(280 70% 60% / 0.30); color: hsl(280 70% 40%); }
-  .slot-type-unknown     { background-color: hsl(220 14% 55% / 0.18); color: hsl(220 14% 40%); }
-  .slot-type-multi       { background-color: hsl(280 80% 60% / 0.30); color: hsl(280 80% 40%); }
-
-  .dark .slot-type-lecture     { background-color: hsl(160 70% 45% / 0.30); color: hsl(160 70% 70%); }
-  .dark .slot-type-lab         { background-color: hsl(38  92% 50% / 0.35); color: hsl(38  92% 65%); }
-  .dark .slot-type-practice    { background-color: hsl(210 90% 55% / 0.30); color: hsl(210 90% 75%); }
-  .dark .slot-type-seminar     { background-color: hsl(220 14% 60% / 0.30); color: hsl(220 14% 80%); }
-  .dark .slot-type-curator_hour,
-  .dark .slot-type-additional  { background-color: hsl(280 70% 60% / 0.30); color: hsl(280 70% 75%); }
-  .dark .slot-type-multi       { background-color: hsl(280 80% 60% / 0.35); color: hsl(280 80% 80%); }
+  .slot-type-lecture     { background-color: #d9ead3; color: #111827; }
+  .slot-type-lab         { background-color: #fce5cd; color: #111827; }
+  .slot-type-practice    { background-color: #c9daf8; color: #111827; }
+  .slot-type-seminar     { background-color: #ffffff; color: #111827; }
+  .slot-type-curator_hour { background-color: #fff2cc; color: #111827; }
+  .slot-type-additional  { background-color: #d9d2e9; color: #111827; }
+  .slot-type-unknown     { background-color: #eeeeee; color: #374151; }
+  .slot-type-multi {
+    background:
+      linear-gradient(135deg, #d9ead3 0 25%, #fce5cd 25% 50%, #c9daf8 50% 75%, #d9d2e9 75% 100%);
+    color: #111827;
+  }
 
   /* Cancelled — bright red, wins over type colour */
   .slot-cancelled {

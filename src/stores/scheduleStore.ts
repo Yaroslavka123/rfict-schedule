@@ -323,7 +323,41 @@ function matrixSlotKey(column: string, day: string, pair: number) {
 
 function shortenSubject(subject: string) {
   if (!subject) return 'Занято'
-  return subject.length > 14 ? `${subject.slice(0, 13)}...` : subject
+  return subject.length > 16 ? `${subject.slice(0, 15)}...` : subject
+}
+
+function shortenLabel(value: string) {
+  return value.length > 12 ? `${value.slice(0, 11)}...` : value
+}
+
+function compactList(values: string[], fallback: string) {
+  if (values.length === 0) return fallback
+  if (values.length === 1) return shortenLabel(values[0])
+  return `${shortenLabel(values[0])} +${values.length - 1}`
+}
+
+function lessonTypeShort(types: LessonType[]) {
+  if (types.length > 1) return 'mix'
+  switch (types[0]) {
+    case 'lecture':
+      return 'LK'
+    case 'lab':
+      return 'LB'
+    case 'practice':
+      return 'PZ'
+    case 'seminar':
+      return 'SEM'
+    case 'curator_hour':
+      return 'KCH'
+    case 'additional':
+      return 'DO'
+    default:
+      return '??'
+  }
+}
+
+function cellMain(types: LessonType[], subject: string) {
+  return `${lessonTypeShort(types)} | ${shortenSubject(subject)}`
 }
 
 function getSheetId(entries: Array<{ googleSheetId?: string | null }>) {
@@ -372,9 +406,9 @@ export function roomCell(entries: RoomSlotEntry[], key: string): RoomCell {
     teachers,
     first,
     precomputedKey: key,
-    precomputedMain: shortenSubject(first.subject),
+    precomputedMain: cellMain(types, first.subject),
     precomputedMainClass: allCancelled ? 'line-through' : null,
-    precomputedMeta: groups[0] || null,
+    precomputedMeta: `${compactList(groups, 'group')} / ${compactList(teachers, 'teacher')}`,
     precomputedBadgeKey: isMultiTeacher || isMultiGroup ? `${teacherCount}-${groupCount}` : null,
     precomputedBadges,
     precomputedBusyClasses: [matrixTypeClass(allCancelled, types)],
@@ -389,8 +423,10 @@ export function roomCell(entries: RoomSlotEntry[], key: string): RoomCell {
 
 export function teacherCell(entries: TeacherSlotEntry[], key: string): TeacherCell {
   const rooms = Array.from(new Set(entries.map((entry) => entry.room).filter(Boolean)))
+  const groups = Array.from(new Set(entries.map((entry) => entry.group).filter(Boolean)))
   const types = Array.from(new Set(entries.map((entry) => entry.type)))
   const allCancelled = entries.every((entry) => entry.cancelled)
+  const first = entries[0]
   const sheetId = getSheetId(entries)
   const precomputedBadges: MatrixCellBadge[] = []
 
@@ -408,9 +444,9 @@ export function teacherCell(entries: TeacherSlotEntry[], key: string): TeacherCe
     types,
     rooms,
     precomputedKey: key,
-    precomputedMain: rooms[0] || '—',
+    precomputedMain: cellMain(types, first.subject),
     precomputedMainClass: allCancelled ? 'line-through' : null,
-    precomputedMeta: null,
+    precomputedMeta: `${compactList(rooms, 'room')} / ${compactList(groups, 'group')}`,
     precomputedBadges,
     precomputedBusyClasses: [matrixTypeClass(allCancelled, types)],
     precomputedSheetId: sheetId,
