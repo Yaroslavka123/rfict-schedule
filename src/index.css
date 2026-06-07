@@ -468,7 +468,8 @@
   }
 
   .dense-table tbody tr {
-    transition: background-color 200ms var(--ease), box-shadow 200ms var(--ease);
+    content-visibility: auto;
+    contain-intrinsic-size: 0 2.5rem;
   }
   .dense-table tbody tr:hover {
     background-color: hsl(var(--muted) / 0.55);
