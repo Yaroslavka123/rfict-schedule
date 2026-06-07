@@ -485,10 +485,6 @@
     box-shadow: inset 3px 0 0 hsl(var(--primary) / 0.75);
   }
 
-  .dense-table tbody tr td {
-    transition: color 200ms var(--ease);
-  }
-
   .dense-table .day-header td {
     @apply bg-primary/10 text-sm font-bold uppercase text-primary;
     letter-spacing: 0;
@@ -751,7 +747,6 @@
   .matrix-drag-preview {
     @apply max-w-56 truncate rounded-md border border-primary/40 bg-popover px-2.5 py-1.5 text-xs font-bold text-primary shadow-xl;
     box-shadow: 0 12px 32px -14px hsl(var(--primary) / 0.5), 0 0 0 1px hsl(var(--background) / 0.6);
-    will-change: transform;
   }
 
   html.matrix-dragging-page,
@@ -787,8 +782,6 @@
     @apply cursor-grab select-none;
     position: relative;
     transition:
-      background-color 120ms var(--ease),
-      color 120ms var(--ease),
       opacity 120ms var(--ease),
       box-shadow 140ms var(--ease),
       outline-color 140ms var(--ease);
@@ -898,15 +891,17 @@
 
   .room-matrix .td-day,
   .teachers-matrix .td-day {
-    @apply sticky left-0 z-20 bg-card text-center align-middle text-sm font-bold text-foreground;
+    @apply sticky left-0 bg-card text-center align-middle text-sm font-bold text-foreground;
+    z-index: 1;
     width: 2rem;
     min-width: 2rem;
   }
 
   .room-matrix .td-pair,
   .teachers-matrix .td-pair {
-    @apply sticky z-20 bg-card text-center align-middle text-xs font-bold text-muted-foreground;
+    @apply sticky bg-card text-center align-middle text-xs font-bold text-muted-foreground;
     left: 2rem;
+    z-index: 1;
     width: 2rem;
     min-width: 2rem;
   }
@@ -969,6 +964,12 @@
     background-color: hsl(var(--background) / 0.32);
   }
 
+  .room-matrix tbody tr,
+  .teachers-matrix tbody tr {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 2rem;
+  }
+
   .slot-cell {
     @apply relative min-w-0 align-middle text-center;
     padding: 0;
@@ -982,12 +983,10 @@
 
   .slot-busy {
     @apply cursor-help overflow-hidden text-[10px] leading-tight;
-    transition:
-      background-color 160ms var(--ease),
-      box-shadow 180ms var(--ease);
   }
   .slot-busy:hover {
-    @apply ring-2 ring-inset ring-primary/60 z-10;
+    outline: 2px solid hsl(var(--primary) / 0.6);
+    outline-offset: -2px;
   }
 
   .slot-clickable {
@@ -995,7 +994,8 @@
   }
 
   .slot-clickable:hover {
-    @apply ring-2 ring-inset ring-primary/80 z-10;
+    outline: 2px solid hsl(var(--primary) / 0.8);
+    outline-offset: -2px;
   }
 
   .slot-busy .slot-content {
@@ -1021,7 +1021,7 @@
   }
 
   .slot-badge {
-    @apply pointer-events-none absolute inline-flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full px-1 text-[9px] font-bold text-white shadow-md;
+    @apply pointer-events-none absolute inline-flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full px-1 text-[9px] font-bold text-white;
   }
   .slot-badge-teacher { @apply right-0.5 top-0.5 bg-sky-500; }
   .slot-badge-group { @apply right-0.5 bottom-0.5 bg-emerald-500; }
