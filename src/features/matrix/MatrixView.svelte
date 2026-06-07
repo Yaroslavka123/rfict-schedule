@@ -626,7 +626,7 @@
           <col style="width: 2rem" />
           {#each columnSlots as slot, slotIndex (slot.id)}
             <col
-              style="width: 23px; min-width: 23px"
+              style="width: 30px; min-width: 30px"
               class={cn(
                 matrixColumnClass(slotIndex),
                 slot.column && columnMatch?.has(slot.column) && 'matrix-col-match',

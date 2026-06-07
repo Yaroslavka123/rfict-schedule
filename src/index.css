@@ -629,17 +629,17 @@
 
   .room-matrix col[class^="matrix-col-"],
   .teachers-matrix col[class^="matrix-col-"] {
-    width: 23px;
-    min-width: 23px;
+    width: 30px;
+    min-width: 30px;
   }
 
   .room-matrix th[class*="matrix-col-"],
   .room-matrix td[class*="matrix-col-"],
   .teachers-matrix th[class*="matrix-col-"],
   .teachers-matrix td[class*="matrix-col-"] {
-    width: 23px;
-    min-width: 23px;
-    max-width: 23px;
+    width: 30px;
+    min-width: 30px;
+    max-width: 30px;
   }
 
   .room-matrix thead,
@@ -776,7 +776,7 @@
 
   .room-matrix .th-room {
     @apply px-1 text-[10px] leading-none align-middle;
-    min-width: 23px;
+    min-width: 30px;
   }
 
   .room-matrix .th-room-match {
@@ -929,7 +929,7 @@
   .teachers-matrix .th-teacher {
     @apply px-0 align-bottom text-[10px] leading-none;
     height: 9rem;
-    min-width: 23px;
+    min-width: 30px;
     vertical-align: bottom;
   }
   .teachers-matrix .th-teacher-label {
