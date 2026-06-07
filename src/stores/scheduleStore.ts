@@ -96,6 +96,7 @@ export interface RoomSlotEntry {
   subgroup: string
   time: string
   pair: number
+  duration: number
   cancelled: boolean
   room: string
   searchKey: string
@@ -140,6 +141,7 @@ export interface TeacherSlotEntry {
   subgroup: string
   time: string
   pair: number
+  duration: number
   cancelled: boolean
   course?: number
   searchKey: string
@@ -569,6 +571,7 @@ export function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | n
           subgroup: activeSubgroups,
           time: PAIR_TIMES[pair] || '',
           pair,
+          duration,
           cancelled: Boolean(lesson.cancelled),
           room,
           searchKey,
@@ -597,6 +600,7 @@ export function buildScheduleIndex(schedule: CourseSchedule | MergedSchedule | n
           subgroup: activeSubgroups,
           time: PAIR_TIMES[pair] || '',
           pair,
+          duration,
           cancelled: Boolean(lesson.cancelled),
           course,
           searchKey,

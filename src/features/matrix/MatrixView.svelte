@@ -336,6 +336,48 @@
     return cellByKey.get(adapter.slotKey(column, day, pair)) || null
   }
 
+  function entrySpanKey(entry: unknown) {
+    const value = entry as Record<string, unknown>
+    return [
+      value.subject,
+      value.teacher,
+      value.room,
+      value.group,
+      value.groupId,
+      value.course,
+      value.type,
+      value.subgroup,
+      value.duration,
+      value.cancelled,
+      value.googleSheetId,
+    ].join('\u0001')
+  }
+
+  function cellSpanKey(cell: MatrixRenderCell) {
+    return adapter.getCellEntries(cell).map(entrySpanKey).sort().join('\u0002')
+  }
+
+  function canMergeCells(current: MatrixRenderCell | null, next: MatrixRenderCell | null) {
+    return Boolean(current && next && cellSpanKey(current) === cellSpanKey(next))
+  }
+
+  function isCellSpanContinuation(column: string, day: string, pair: number, cell: MatrixRenderCell) {
+    if (pair <= PAIRS[0]) return false
+    return canMergeCells(getVisibleCell(column, day, pair - 1), cell)
+  }
+
+  function getCellRowSpan(column: string, day: string, pair: number, cell: MatrixRenderCell) {
+    const pairIndex = PAIRS.indexOf(pair)
+    if (pairIndex === -1) return 1
+
+    let span = 1
+    for (let index = pairIndex + 1; index < PAIRS.length; index += 1) {
+      if (!canMergeCells(cell, getVisibleCell(column, day, PAIRS[index]))) break
+      span += 1
+    }
+    return span
+  }
+
   function computeTooltipPos(clientX: number, clientY: number): { x: number; y: number } {
     const TIP_W = 320
     const TIP_H = 180
@@ -817,14 +859,18 @@
                     {:else}
                       {@const cellKey = cell.precomputedKey}
                       {@const hasSheet = cell.precomputedHasSheet}
+                      {@const cellSpan = getCellRowSpan(column, day, pair, cell)}
+                      {#if !isCellSpanContinuation(column, day, pair, cell)}
                       <td
                         class={[
                           'slot-cell slot-busy',
+                          cellSpan > 1 && 'slot-rowspan',
                           matrixColumnClass(slotIndex),
                           ...cell.precomputedBusyClasses,
                           hasSheet && 'slot-clickable',
                           groupSlotClasses(slot),
                         ].filter(Boolean).join(' ')}
+                        rowspan={cellSpan}
                         data-slot-key={cellKey}
                         data-slot-day={day}
                         data-slot-pair={pair}
@@ -846,6 +892,7 @@
                           </span>
                         {/each}
                       </td>
+                      {/if}
                     {/if}
                   {/if}
                 {/each}

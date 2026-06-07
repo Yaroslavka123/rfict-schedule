@@ -78,7 +78,11 @@
   ])
   let searchCompletion = $derived(completionFor(searchDraft, searchSuggestion))
   let hasActiveFilters = $derived(
-    filters.group !== 'all' || filters.subgroup !== 'all' || filters.lessonTypes.length > 0 || Boolean(searchDraft),
+    filters.course !== 'all' ||
+      filters.group !== 'all' ||
+      filters.subgroup !== 'all' ||
+      filters.lessonTypes.length > 0 ||
+      Boolean(searchDraft.trim()),
   )
 
   $effect(() => {
@@ -167,13 +171,20 @@
       value={filters.course === 'all' ? 'all' : String(filters.course)}
       options={courseOptions}
       ariaLabel="Курс"
+      class={filters.course !== 'all' ? 'filter-control-active' : ''}
       onChange={setCourse}
     />
   </div>
 
   {#if showGroup}
     <div class="filter-field filter-field-group">
-      <FilterSelect value={filters.group} options={groupOptions} ariaLabel="Группа" onChange={setGroup} />
+      <FilterSelect
+        value={filters.group}
+        options={groupOptions}
+        ariaLabel="Группа"
+        class={filters.group !== 'all' ? 'filter-control-active' : ''}
+        onChange={setGroup}
+      />
     </div>
   {/if}
 
@@ -182,15 +193,22 @@
       value={String(filters.week)}
       options={weekOptions}
       ariaLabel="Неделя"
+      class={showWeek && availableWeeks.length > 0 ? 'filter-control-active' : ''}
       onChange={(value) => update({ week: Number(value) })}
     />
   </div>
 
   <div class="filter-field filter-field-type">
-    <FilterSelect value={selectedType} options={typeOptions} ariaLabel="Тип занятия" onChange={setType} />
+    <FilterSelect
+      value={selectedType}
+      options={typeOptions}
+      ariaLabel="Тип занятия"
+      class={filters.lessonTypes.length > 0 ? 'filter-control-active' : ''}
+      onChange={setType}
+    />
   </div>
 
-  <label class="filter-field filter-field-search">
+  <label class={`filter-field filter-field-search ${searchDraft.trim() ? 'filter-field-active' : ''}`}>
     <div class="filter-search-wrap">
       <Search class="filter-search-icon pointer-events-none absolute left-3 top-2 z-30 h-4 w-4 text-muted-foreground" />
       <input
@@ -217,7 +235,7 @@
       class="filter-reset h-9 w-9 p-0"
       onclick={() => {
         commitSearch('')
-        update({ group: 'all', subgroup: 'all', lessonTypes: [], search: '' })
+        update({ course: 'all', group: 'all', subgroup: 'all', lessonTypes: [], search: '' })
       }}
       title="Сбросить фильтры"
       aria-label="Сбросить фильтры"
