@@ -259,6 +259,17 @@
     @apply max-w-3xl text-sm text-muted-foreground;
   }
 
+  .app-main {
+    @apply w-full px-3 py-4 md:px-5;
+  }
+
+  .app-main-matrix {
+    padding: 0;
+    height: calc(100dvh - var(--header-h));
+    min-height: 0;
+    overflow: hidden;
+  }
+
   .header-actions {
     @apply ml-auto flex items-center gap-1;
   }
@@ -520,6 +531,10 @@
     min-width: 0;
   }
 
+  .matrix-tab-view {
+    height: 100%;
+  }
+
   .tab-view-active {
     display: block;
   }
@@ -581,9 +596,10 @@
   /* Rooms page wraps the toolbar + matrix; matrix stretches to fill the viewport. */
   .rooms-page,
   .teachers-page {
-    @apply flex flex-col gap-2;
+    @apply flex flex-col;
     position: relative;
     height: 100%;
+    width: 100%;
   }
 
   .matrix-groups-toolbar {
@@ -608,9 +624,10 @@
    */
   .room-matrix-wrap,
   .teachers-matrix-wrap {
-    @apply rounded-lg border border-border bg-card shadow-card;
+    @apply border-y border-border bg-card;
     flex: 1 1 auto;
     min-height: 0;
+    width: 100%;
     overflow: auto;
     display: flex;
     overscroll-behavior: contain;
@@ -682,6 +699,7 @@
     @apply bg-muted;
     width: 2rem;
     min-width: 2rem;
+    max-width: 2rem;
   }
 
   .room-matrix .th-pair,
@@ -689,6 +707,41 @@
     @apply bg-muted;
     width: 2rem;
     min-width: 2rem;
+    max-width: 2rem;
+  }
+
+  .room-matrix .th-day,
+  .room-matrix .td-day,
+  .teachers-matrix .th-day,
+  .teachers-matrix .td-day {
+    position: sticky;
+    left: 0;
+    z-index: 24;
+  }
+
+  .room-matrix .th-pair,
+  .room-matrix .td-pair,
+  .teachers-matrix .th-pair,
+  .teachers-matrix .td-pair {
+    position: sticky;
+    left: 2rem;
+    z-index: 24;
+    box-shadow: 1px 0 0 hsl(var(--border));
+  }
+
+  .room-matrix thead .th-day,
+  .room-matrix thead .th-pair,
+  .teachers-matrix thead .th-day,
+  .teachers-matrix thead .th-pair {
+    z-index: 42;
+  }
+
+  .room-matrix thead .matrix-group-corner,
+  .teachers-matrix thead .matrix-group-corner {
+    position: sticky;
+    left: 0;
+    z-index: 43;
+    box-shadow: 1px 0 0 hsl(var(--border));
   }
 
   .matrix-group-tone-0 { --matrix-group-color: 176 72% 32%; }
@@ -929,6 +982,8 @@
     @apply bg-card text-center align-middle text-sm font-bold text-foreground;
     width: 2rem;
     min-width: 2rem;
+    max-width: 2rem;
+    z-index: 26;
   }
 
   .room-matrix .td-pair,
@@ -936,6 +991,8 @@
     @apply bg-card text-center align-middle text-xs font-bold text-muted-foreground;
     width: 2rem;
     min-width: 2rem;
+    max-width: 2rem;
+    z-index: 25;
   }
 
   .room-matrix tr.day-separator > td,

@@ -351,7 +351,7 @@
       </Button>
     </Card>
   {:else if schedule}
-    <div class={tabViewClass('rooms', 'h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0')} aria-hidden={activeTab !== 'rooms'}>
+    <div class={tabViewClass('rooms', 'matrix-tab-view min-w-0')} aria-hidden={activeTab !== 'rooms'}>
       <RoomsView
         active={activeTab === 'rooms'}
         roomData={$scheduleStore.index.roomOccupancyByWeek[filters.week] || null}
@@ -361,7 +361,7 @@
       />
     </div>
 
-    <div class={tabViewClass('teachers', 'h-[calc(100vh-var(--header-h)-0.75rem)] min-w-0')} aria-hidden={activeTab !== 'teachers'}>
+    <div class={tabViewClass('teachers', 'matrix-tab-view min-w-0')} aria-hidden={activeTab !== 'teachers'}>
       <TeachersView
         active={activeTab === 'teachers'}
         teacherData={$scheduleStore.index.teacherOccupancyByWeek[filters.week] || null}

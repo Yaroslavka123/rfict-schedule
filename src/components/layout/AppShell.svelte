@@ -161,7 +161,7 @@
     </div>
   </header>
 
-  <main class="w-full px-3 py-4 md:px-5">
+  <main class={cn('app-main', (activeTab === 'rooms' || activeTab === 'teachers') && 'app-main-matrix')}>
     {@render children?.()}
   </main>
 </div>
