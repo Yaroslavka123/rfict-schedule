@@ -49,6 +49,13 @@
     matches: ReadonlySet<string> | null
   }
 
+  type HoverSnapshot = {
+    target: EventTarget | null
+    currentTarget: HTMLElement
+    clientX: number
+    clientY: number
+  }
+
   type MatrixFilterResult = ReturnType<MatrixAdapter['filter']>
 
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
@@ -72,8 +79,10 @@
     active: boolean
   } | null>(null)
   let pendingTooltip = $state<{ x: number; y: number; key: string; entries: unknown[]; column: string } | null>(null)
+  let pendingHoverEvent: HoverSnapshot | null = null
   let pendingDragPoint: { x: number; y: number } | null = null
   let dragHitCache: MatrixHitTestCache | null = null
+  let hoverFrame: number | null = null
   let tooltipFrame: number | null = null
   let dragFrame: number | null = null
   let dropFlashTimer: ReturnType<typeof setTimeout> | null = null
@@ -103,6 +112,10 @@
   let tooltipBlocks = $derived(tooltip ? adapter.getTooltipBlocks(tooltip.column, tooltip.entries) : [])
 
   onDestroy(() => {
+    cancelHoverFrame()
+    hideTooltip()
+    if (dragFrame !== null) cancelAnimationFrame(dragFrame)
+    if (dropFlashTimer) clearTimeout(dropFlashTimer)
     cancelFallbackSearch()
     cancelWorkerRequest()
     searchWorker?.terminate()
@@ -339,8 +352,8 @@
     pendingTooltip = null
   }
 
-  function queueTooltip(event: MouseEvent, entries: unknown[], column: string, key: string) {
-    pendingTooltip = { x: event.clientX, y: event.clientY, entries, column, key }
+  function queueTooltip(clientX: number, clientY: number, entries: unknown[], column: string, key: string) {
+    pendingTooltip = { x: clientX, y: clientY, entries, column, key }
     if (tooltipFrame !== null) return
     tooltipFrame = requestAnimationFrame(flushTooltip)
   }
@@ -353,13 +366,44 @@
     tooltip = null
   }
 
+  function cancelHoverFrame() {
+    if (hoverFrame !== null) cancelAnimationFrame(hoverFrame)
+    hoverFrame = null
+    pendingHoverEvent = null
+  }
+
+  function clearHoverState() {
+    cancelHoverFrame()
+    hideTooltip()
+  }
+
   function handleTableHover(event: MouseEvent) {
     if (draggedColumn) {
-      hideTooltip()
+      clearHoverState()
       return
     }
-    const cell = (event.target as HTMLElement).closest('td[data-slot-key]') as HTMLTableCellElement | null
-    if (!cell || !(event.currentTarget as HTMLElement).contains(cell)) {
+
+    pendingHoverEvent = {
+      target: event.target,
+      currentTarget: event.currentTarget as HTMLElement,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    }
+    if (hoverFrame !== null) return
+    hoverFrame = requestAnimationFrame(flushTableHover)
+  }
+
+  function flushTableHover() {
+    hoverFrame = null
+    const event = pendingHoverEvent
+    pendingHoverEvent = null
+    if (!event) return
+
+    const target = event.target
+    const cell = target instanceof HTMLElement
+      ? target.closest('td[data-slot-key]') as HTMLTableCellElement | null
+      : null
+    if (!cell || !event.currentTarget.contains(cell)) {
       hideTooltip()
       return
     }
@@ -369,7 +413,7 @@
       return
     }
     if (key === tooltipKey && tooltip) {
-      queueTooltip(event, tooltip.entries, tooltip.column, key)
+      queueTooltip(event.clientX, event.clientY, tooltip.entries, tooltip.column, key)
       return
     }
     const column = cell.dataset.matrixColumn
@@ -377,7 +421,7 @@
     const pair = Number(cell.dataset.slotPair)
     const visibleCell = column && day && Number.isFinite(pair) ? getVisibleCell(column, day, pair) : null
     const entries = visibleCell ? adapter.getCellEntries(visibleCell) : []
-    if (entries.length && column) queueTooltip(event, entries, column, key)
+    if (entries.length && column) queueTooltip(event.clientX, event.clientY, entries, column, key)
     else hideTooltip()
   }
 
@@ -575,7 +619,7 @@
         data-highlight={highlightColumns || null}
         data-dim={hasDimmedColumns ? 'true' : null}
         onpointermove={handleTableHover}
-        onmouseleave={hideTooltip}
+        onmouseleave={clearHoverState}
       >
         <colgroup>
           <col style="width: 2rem" />
