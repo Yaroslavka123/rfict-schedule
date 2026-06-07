@@ -1,0 +1,4244 @@
+[
+  {
+    "Name": "InputLatency::MouseMove",
+    "COUNT": "19797",
+    "SUM(Wall Duration)": "1223420561000",
+    "SUM(Self Duration)": "1223420561000",
+    "AVG(Wall Duration)": "61798280.59807041"
+  },
+  {
+    "Name": "Animation",
+    "COUNT": "6136",
+    "SUM(Wall Duration)": "364714760000",
+    "SUM(Self Duration)": "364714760000",
+    "AVG(Wall Duration)": "59438520.208604954"
+  },
+  {
+    "Name": "EventTiming",
+    "COUNT": "6392",
+    "SUM(Wall Duration)": "307084882000",
+    "SUM(Self Duration)": "212621611000",
+    "AVG(Wall Duration)": "48042065.3942428"
+  },
+  {
+    "Name": "PipelineReporter",
+    "COUNT": "7421",
+    "SUM(Wall Duration)": "180791359000",
+    "SUM(Self Duration)": "2942212000",
+    "AVG(Wall Duration)": "24362128.958361406"
+  },
+  {
+    "Name": "RunTask",
+    "COUNT": "190013",
+    "SUM(Wall Duration)": "139777333000",
+    "SUM(Self Duration)": "87557006000",
+    "AVG(Wall Duration)": "735619.8418002978"
+  },
+  {
+    "Name": "SubmitCompositorFrameToPresentationCompositorFrame",
+    "COUNT": "4716",
+    "SUM(Wall Duration)": "91333346000",
+    "SUM(Self Duration)": "21713000",
+    "AVG(Wall Duration)": "19366697.62510602"
+  },
+  {
+    "Name": "SwapEndToPresentationCompositorFrame",
+    "COUNT": "4709",
+    "SUM(Wall Duration)": "48720511000",
+    "SUM(Self Duration)": "48720511000",
+    "AVG(Wall Duration)": "10346254.19409641"
+  },
+  {
+    "Name": "AnimationFrame",
+    "COUNT": "3189",
+    "SUM(Wall Duration)": "44944894000",
+    "SUM(Self Duration)": "26720919000",
+    "AVG(Wall Duration)": "14093726.560050173"
+  },
+  {
+    "Name": "SendBeginMainFrameToCommit",
+    "COUNT": "3399",
+    "SUM(Wall Duration)": "41480273000",
+    "SUM(Self Duration)": "41480273000",
+    "AVG(Wall Duration)": "12203669.608708443"
+  },
+  {
+    "Name": "BeginImplFrameToSendBeginMainFrame",
+    "COUNT": "7398",
+    "SUM(Wall Duration)": "34603914000",
+    "SUM(Self Duration)": "34603914000",
+    "AVG(Wall Duration)": "4677468.7753446875"
+  },
+  {
+    "Name": "v8.callFunction",
+    "COUNT": "7362",
+    "SUM(Wall Duration)": "27406456000",
+    "SUM(Self Duration)": "112736000",
+    "AVG(Wall Duration)": "3722691.659875034"
+  },
+  {
+    "Name": "ReceiveCompositorFrameToStartDraw",
+    "COUNT": "4715",
+    "SUM(Wall Duration)": "27004868000",
+    "SUM(Self Duration)": "27004868000",
+    "AVG(Wall Duration)": "5727437.539766702"
+  },
+  {
+    "Name": "FunctionCall",
+    "COUNT": "7292",
+    "SUM(Wall Duration)": "15145413000",
+    "SUM(Self Duration)": "14404779000",
+    "AVG(Wall Duration)": "2076990.2633022491"
+  },
+  {
+    "Name": "StartDrawToSwapStart",
+    "COUNT": "4715",
+    "SUM(Wall Duration)": "14301843000",
+    "SUM(Self Duration)": "14301843000",
+    "AVG(Wall Duration)": "3033264.6871686107"
+  },
+  {
+    "Name": "Paint",
+    "COUNT": "30933",
+    "SUM(Wall Duration)": "14250223000",
+    "SUM(Self Duration)": "12408163000",
+    "AVG(Wall Duration)": "460680.2767271199"
+  },
+  {
+    "Name": "AnimationFrame::Script::Execute",
+    "COUNT": "94",
+    "SUM(Wall Duration)": "13968492000",
+    "SUM(Self Duration)": "13968492000",
+    "AVG(Wall Duration)": "148600978.72340426"
+  },
+  {
+    "Name": "RunMicrotasks",
+    "COUNT": "1522",
+    "SUM(Wall Duration)": "12758813000",
+    "SUM(Self Duration)": "264672000",
+    "AVG(Wall Duration)": "8382925.755584757"
+  },
+  {
+    "Name": "WidgetBaseInputHandler::OnHandleInputEvent",
+    "COUNT": "2365",
+    "SUM(Wall Duration)": "10857662000",
+    "SUM(Self Duration)": "77551000",
+    "AVG(Wall Duration)": "4590977.589852008"
+  },
+  {
+    "Name": "WebFrameWidgetImpl::HandleInputEvent",
+    "COUNT": "2365",
+    "SUM(Wall Duration)": "10780111000",
+    "SUM(Self Duration)": "455123000",
+    "AVG(Wall Duration)": "4558186.4693446085"
+  },
+  {
+    "Name": "GPUTask",
+    "COUNT": "4273",
+    "SUM(Wall Duration)": "9961802000",
+    "SUM(Self Duration)": "9961802000",
+    "AVG(Wall Duration)": "2331336.7657383573"
+  },
+  {
+    "Name": "EventDispatch",
+    "COUNT": "13875",
+    "SUM(Wall Duration)": "9510869000",
+    "SUM(Self Duration)": "197583000",
+    "AVG(Wall Duration)": "685468.0360360361"
+  },
+  {
+    "Name": "InputLatency::MouseUp",
+    "COUNT": "59",
+    "SUM(Wall Duration)": "8328327000",
+    "SUM(Self Duration)": "8328327000",
+    "AVG(Wall Duration)": "141158084.7457627"
+  },
+  {
+    "Name": "EndActivateToSubmitCompositorFrame",
+    "COUNT": "4805",
+    "SUM(Wall Duration)": "7417344000",
+    "SUM(Self Duration)": "7417344000",
+    "AVG(Wall Duration)": "1543672.0083246618"
+  },
+  {
+    "Name": "AnimationFrame::Render",
+    "COUNT": "3187",
+    "SUM(Wall Duration)": "4572072000",
+    "SUM(Self Duration)": "1317915000",
+    "AVG(Wall Duration)": "1434600.5647944775"
+  },
+  {
+    "Name": "v8::Debugger::AsyncTaskRun",
+    "COUNT": "6202",
+    "SUM(Wall Duration)": "3260029000",
+    "SUM(Self Duration)": "45553000",
+    "AVG(Wall Duration)": "525641.5672363754"
+  },
+  {
+    "Name": "UpdateLayoutTree",
+    "COUNT": "3254",
+    "SUM(Wall Duration)": "3152953000",
+    "SUM(Self Duration)": "3150909000",
+    "AVG(Wall Duration)": "968946.8346650277"
+  },
+  {
+    "Name": "InputLatency::MouseDown",
+    "COUNT": "60",
+    "SUM(Wall Duration)": "3070461000",
+    "SUM(Self Duration)": "3070461000",
+    "AVG(Wall Duration)": "51174350"
+  },
+  {
+    "Name": "AnimationFrame::StyleAndLayout",
+    "COUNT": "3187",
+    "SUM(Wall Duration)": "2931231000",
+    "SUM(Self Duration)": "2931231000",
+    "AVG(Wall Duration)": "919746.1562598054"
+  },
+  {
+    "Name": "Layerize",
+    "COUNT": "3187",
+    "SUM(Wall Duration)": "2753233000",
+    "SUM(Self Duration)": "2751971000",
+    "AVG(Wall Duration)": "863894.885472231"
+  },
+  {
+    "Name": "InputLatency::Char",
+    "COUNT": "26",
+    "SUM(Wall Duration)": "2681528000",
+    "SUM(Self Duration)": "2681528000",
+    "AVG(Wall Duration)": "103135692.3076923"
+  },
+  {
+    "Name": "Layout",
+    "COUNT": "548",
+    "SUM(Wall Duration)": "2533671000",
+    "SUM(Self Duration)": "92046000",
+    "AVG(Wall Duration)": "4623487.226277372"
+  },
+  {
+    "Name": "LocalFrameView::performLayout",
+    "COUNT": "548",
+    "SUM(Wall Duration)": "2441625000",
+    "SUM(Self Duration)": "2441440000",
+    "AVG(Wall Duration)": "4455520.072992701"
+  },
+  {
+    "Name": "EndCommitToActivation",
+    "COUNT": "2290",
+    "SUM(Wall Duration)": "2378230000",
+    "SUM(Self Duration)": "2378230000",
+    "AVG(Wall Duration)": "1038528.384279476"
+  },
+  {
+    "Name": "HandlePostMessage",
+    "COUNT": "11",
+    "SUM(Wall Duration)": "2058795000",
+    "SUM(Self Duration)": "690000",
+    "AVG(Wall Duration)": "187163181.8181818"
+  },
+  {
+    "Name": "TimerFire",
+    "COUNT": "250",
+    "SUM(Wall Duration)": "1879149000",
+    "SUM(Self Duration)": "3759000",
+    "AVG(Wall Duration)": "7516596"
+  },
+  {
+    "Name": "Active",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1839020000",
+    "SUM(Self Duration)": "1839020000",
+    "AVG(Wall Duration)": "1839020000"
+  },
+  {
+    "Name": "InputLatency::RawKeyDown",
+    "COUNT": "31",
+    "SUM(Wall Duration)": "1683055000",
+    "SUM(Self Duration)": "1683055000",
+    "AVG(Wall Duration)": "54292096.77419355"
+  },
+  {
+    "Name": "Commit",
+    "COUNT": "5676",
+    "SUM(Wall Duration)": "1656513000",
+    "SUM(Self Duration)": "1397855000",
+    "AVG(Wall Duration)": "291845.1374207188"
+  },
+  {
+    "Name": "HitTest",
+    "COUNT": "2747",
+    "SUM(Wall Duration)": "1410428000",
+    "SUM(Self Duration)": "1410428000",
+    "AVG(Wall Duration)": "513443.0287586458"
+  },
+  {
+    "Name": "InputLatency::GestureScrollUpdate",
+    "COUNT": "68",
+    "SUM(Wall Duration)": "1350372000",
+    "SUM(Self Duration)": "1350372000",
+    "AVG(Wall Duration)": "19858411.76470588"
+  },
+  {
+    "Name": "PrePaint",
+    "COUNT": "6005",
+    "SUM(Wall Duration)": "1329122000",
+    "SUM(Self Duration)": "1329122000",
+    "AVG(Wall Duration)": "221335.88676103248"
+  },
+  {
+    "Name": "RasterTask",
+    "COUNT": "5373",
+    "SUM(Wall Duration)": "1236935000",
+    "SUM(Self Duration)": "1236935000",
+    "AVG(Wall Duration)": "230213.10254978598"
+  },
+  {
+    "Name": "SubmitToReceiveCompositorFrame",
+    "COUNT": "4716",
+    "SUM(Wall Duration)": "1223306000",
+    "SUM(Self Duration)": "1223306000",
+    "AVG(Wall Duration)": "259394.82612383374"
+  },
+  {
+    "Name": "V8.GC_MC_BACKGROUND_MARKING",
+    "COUNT": "276",
+    "SUM(Wall Duration)": "1125733000",
+    "SUM(Self Duration)": "1124651000",
+    "AVG(Wall Duration)": "4078742.7536231885"
+  },
+  {
+    "Name": "PageAnimator::serviceScriptedAnimations",
+    "COUNT": "3187",
+    "SUM(Wall Duration)": "1015802000",
+    "SUM(Self Duration)": "215819000",
+    "AVG(Wall Duration)": "318732.9777219956"
+  },
+  {
+    "Name": "InputLatency::KeyUp",
+    "COUNT": "31",
+    "SUM(Wall Duration)": "944559000",
+    "SUM(Self Duration)": "944559000",
+    "AVG(Wall Duration)": "30469645.16129032"
+  },
+  {
+    "Name": "PageLoadMetrics.NavigationToLargestContentfulPaint",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "886000000",
+    "SUM(Self Duration)": "886000000",
+    "AVG(Wall Duration)": "886000000"
+  },
+  {
+    "Name": "ParseStartToLCP",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "859000000",
+    "SUM(Self Duration)": "859000000",
+    "AVG(Wall Duration)": "859000000"
+  },
+  {
+    "Name": "PageLoadMetrics.NavigationToFirstContentfulPaint",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "766000000",
+    "SUM(Self Duration)": "766000000",
+    "AVG(Wall Duration)": "766000000"
+  },
+  {
+    "Name": "WebContentsImpl Loading",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "743971000",
+    "SUM(Self Duration)": "743971000",
+    "AVG(Wall Duration)": "743971000"
+  },
+  {
+    "Name": "ParseStartToFCP",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "739000000",
+    "SUM(Self Duration)": "739000000",
+    "AVG(Wall Duration)": "739000000"
+  },
+  {
+    "Name": "ParseStartToDOMContentLoaded",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "701000000",
+    "SUM(Self Duration)": "701000000",
+    "AVG(Wall Duration)": "701000000"
+  },
+  {
+    "Name": "FireAnimationFrame",
+    "COUNT": "462",
+    "SUM(Wall Duration)": "695929000",
+    "SUM(Self Duration)": "5363000",
+    "AVG(Wall Duration)": "1506339.8268398268"
+  },
+  {
+    "Name": "SoftNavigation",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "672673000",
+    "SUM(Self Duration)": "672673000",
+    "AVG(Wall Duration)": "336336500"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_BACKGROUND_SCAVENGE_PARALLEL",
+    "COUNT": "349",
+    "SUM(Wall Duration)": "591388000",
+    "SUM(Self Duration)": "591388000",
+    "AVG(Wall Duration)": "1694521.4899713467"
+  },
+  {
+    "Name": "V8.StackGuard",
+    "COUNT": "650",
+    "SUM(Wall Duration)": "530971000",
+    "SUM(Self Duration)": "5100000",
+    "AVG(Wall Duration)": "816878.4615384615"
+  },
+  {
+    "Name": "V8.HandleInterrupts",
+    "COUNT": "662",
+    "SUM(Wall Duration)": "526812000",
+    "SUM(Self Duration)": "102944000",
+    "AVG(Wall Duration)": "795788.5196374622"
+  },
+  {
+    "Name": "FireIdleCallback",
+    "COUNT": "43",
+    "SUM(Wall Duration)": "501954000",
+    "SUM(Self Duration)": "1291000",
+    "AVG(Wall Duration)": "11673348.837209303"
+  },
+  {
+    "Name": "EvaluateScript",
+    "COUNT": "23",
+    "SUM(Wall Duration)": "496749000",
+    "SUM(Self Duration)": "2312000",
+    "AVG(Wall Duration)": "21597782.608695652"
+  },
+  {
+    "Name": "InputLatency::MouseLeave",
+    "COUNT": "8",
+    "SUM(Wall Duration)": "444085000",
+    "SUM(Self Duration)": "444085000",
+    "AVG(Wall Duration)": "55510625"
+  },
+  {
+    "Name": "V8.InvokeApiInterruptCallbacks",
+    "COUNT": "5",
+    "SUM(Wall Duration)": "334032000",
+    "SUM(Self Duration)": "197000",
+    "AVG(Wall Duration)": "66806400"
+  },
+  {
+    "Name": "CpuProfiler::StartProfiling",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "333835000",
+    "SUM(Self Duration)": "316922000",
+    "AVG(Wall Duration)": "166917500"
+  },
+  {
+    "Name": "Activation",
+    "COUNT": "2290",
+    "SUM(Wall Duration)": "300818000",
+    "SUM(Self Duration)": "300818000",
+    "AVG(Wall Duration)": "131361.57205240175"
+  },
+  {
+    "Name": "CppGC.IncrementalSweep",
+    "COUNT": "238",
+    "SUM(Wall Duration)": "265780000",
+    "SUM(Self Duration)": "1404000",
+    "AVG(Wall Duration)": "1116722.6890756302"
+  },
+  {
+    "Name": "CppGC.SweepInLowPriorityTask",
+    "COUNT": "214",
+    "SUM(Wall Duration)": "264376000",
+    "SUM(Self Duration)": "245237000",
+    "AVG(Wall Duration)": "1235401.8691588785"
+  },
+  {
+    "Name": "CppGC.ConcurrentMark",
+    "COUNT": "299",
+    "SUM(Wall Duration)": "196573000",
+    "SUM(Self Duration)": "196573000",
+    "AVG(Wall Duration)": "657434.7826086957"
+  },
+  {
+    "Name": "CppGC.ConcurrentSweep",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "181557000",
+    "SUM(Self Duration)": "181557000",
+    "AVG(Wall Duration)": "25936714.285714287"
+  },
+  {
+    "Name": "MajorGC",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "181413000",
+    "SUM(Self Duration)": "433000",
+    "AVG(Wall Duration)": "25916142.85714286"
+  },
+  {
+    "Name": "V8.GC_MARK_COMPACTOR",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "180826000",
+    "SUM(Self Duration)": "726000",
+    "AVG(Wall Duration)": "25832285.714285713"
+  },
+  {
+    "Name": "MinorGC",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "177415000",
+    "SUM(Self Duration)": "2056000",
+    "AVG(Wall Duration)": "4327195.12195122"
+  },
+  {
+    "Name": "V8.GCScavenger",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "175051000",
+    "SUM(Self Duration)": "661000",
+    "AVG(Wall Duration)": "4269536.585365853"
+  },
+  {
+    "Name": "V8.GCFinalizeMC",
+    "COUNT": "5",
+    "SUM(Wall Duration)": "174357000",
+    "SUM(Self Duration)": "81000",
+    "AVG(Wall Duration)": "34871400"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "172848000",
+    "SUM(Self Duration)": "737000",
+    "AVG(Wall Duration)": "4215804.87804878"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_SCAVENGE",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "171792000",
+    "SUM(Self Duration)": "39366000",
+    "AVG(Wall Duration)": "4190048.7804878047"
+  },
+  {
+    "Name": "V8.GC_MC_BACKGROUND_SWEEPING",
+    "COUNT": "99",
+    "SUM(Wall Duration)": "141857000",
+    "SUM(Self Duration)": "141363000",
+    "AVG(Wall Duration)": "1432898.98989899"
+  },
+  {
+    "Name": "ParseHTML",
+    "COUNT": "118",
+    "SUM(Wall Duration)": "129809000",
+    "SUM(Self Duration)": "25784000",
+    "AVG(Wall Duration)": "1100076.2711864407"
+  },
+  {
+    "Name": "v8.compile",
+    "COUNT": "22",
+    "SUM(Wall Duration)": "103636000",
+    "SUM(Self Duration)": "102462000",
+    "AVG(Wall Duration)": "4710727.2727272725"
+  },
+  {
+    "Name": "V8.GC_MC_MARK",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "103565000",
+    "SUM(Self Duration)": "933000",
+    "AVG(Wall Duration)": "14795000"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_SCAVENGE_PARALLEL_PHASE",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "99157000",
+    "SUM(Self Duration)": "73787000",
+    "AVG(Wall Duration)": "2418463.4146341463"
+  },
+  {
+    "Name": "UpdateLayer",
+    "COUNT": "45703",
+    "SUM(Wall Duration)": "97552000",
+    "SUM(Self Duration)": "97552000",
+    "AVG(Wall Duration)": "2134.4769489967834"
+  },
+  {
+    "Name": "v8.compileModule",
+    "COUNT": "83",
+    "SUM(Wall Duration)": "86463000",
+    "SUM(Self Duration)": "86463000",
+    "AVG(Wall Duration)": "1041722.891566265"
+  },
+  {
+    "Name": "V8.GC_MC_BACKGROUND_EVACUATE_COPY",
+    "COUNT": "56",
+    "SUM(Wall Duration)": "84545000",
+    "SUM(Self Duration)": "81243000",
+    "AVG(Wall Duration)": "1509732.142857143"
+  },
+  {
+    "Name": "WorkerScriptFetcher CreateAndStart",
+    "COUNT": "12",
+    "SUM(Wall Duration)": "75278000",
+    "SUM(Self Duration)": "75278000",
+    "AVG(Wall Duration)": "6273166.666666667"
+  },
+  {
+    "Name": "ScriptCompiled",
+    "COUNT": "22",
+    "SUM(Wall Duration)": "68992000",
+    "SUM(Self Duration)": "458000",
+    "AVG(Wall Duration)": "3136000"
+  },
+  {
+    "Name": "v8.run",
+    "COUNT": "22",
+    "SUM(Wall Duration)": "68496000",
+    "SUM(Self Duration)": "63145000",
+    "AVG(Wall Duration)": "3113454.5454545454"
+  },
+  {
+    "Name": "V8.GCIncrementalMarking",
+    "COUNT": "445",
+    "SUM(Wall Duration)": "67519000",
+    "SUM(Self Duration)": "1817000",
+    "AVG(Wall Duration)": "151728.08988764044"
+  },
+  {
+    "Name": "v8.evaluateModule",
+    "COUNT": "5",
+    "SUM(Wall Duration)": "67327000",
+    "SUM(Self Duration)": "59085000",
+    "AVG(Wall Duration)": "13465400"
+  },
+  {
+    "Name": "V8.GC_MC_INCREMENTAL",
+    "COUNT": "445",
+    "SUM(Wall Duration)": "65702000",
+    "SUM(Self Duration)": "43622000",
+    "AVG(Wall Duration)": "147644.94382022473"
+  },
+  {
+    "Name": "Swap",
+    "COUNT": "4713",
+    "SUM(Wall Duration)": "61178000",
+    "SUM(Self Duration)": "61178000",
+    "AVG(Wall Duration)": "12980.691703798006"
+  },
+  {
+    "Name": "V8.GC_MC_MARK_FULL_CLOSURE_SERIAL",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "60258000",
+    "SUM(Self Duration)": "30656000",
+    "AVG(Wall Duration)": "8608285.714285715"
+  },
+  {
+    "Name": "PaintImage",
+    "COUNT": "2214",
+    "SUM(Wall Duration)": "53472000",
+    "SUM(Self Duration)": "53472000",
+    "AVG(Wall Duration)": "24151.761517615178"
+  },
+  {
+    "Name": "NavigationTotal",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "46783000",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "46783000"
+  },
+  {
+    "Name": "Navigation: http://localhost:5173/",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "46783000",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "46783000"
+  },
+  {
+    "Name": "TotalExcludingBeforeUnload",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "46146000",
+    "SUM(Self Duration)": "40299000",
+    "AVG(Wall Duration)": "46146000"
+  },
+  {
+    "Name": "NavigationRequest",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "43664000",
+    "SUM(Self Duration)": "20000",
+    "AVG(Wall Duration)": "43664000"
+  },
+  {
+    "Name": "V8.GC_MC_MARK_FULL_CLOSURE_PARALLEL",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "41323000",
+    "SUM(Self Duration)": "28229000",
+    "AVG(Wall Duration)": "5903285.714285715"
+  },
+  {
+    "Name": "v8::Debugger::AsyncTaskCanceled",
+    "COUNT": "12674",
+    "SUM(Wall Duration)": "38368000",
+    "SUM(Self Duration)": "38368000",
+    "AVG(Wall Duration)": "3027.2999842196623"
+  },
+  {
+    "Name": "URL: http://localhost:5173/",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "33924000",
+    "SUM(Self Duration)": "21418000",
+    "AVG(Wall Duration)": "33924000"
+  },
+  {
+    "Name": "Renderer Navigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "33924000",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "33924000"
+  },
+  {
+    "Name": "InputLatency::GestureScrollBegin",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "31502000",
+    "SUM(Self Duration)": "31502000",
+    "AVG(Wall Duration)": "10500666.666666666"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE",
+    "COUNT": "14",
+    "SUM(Wall Duration)": "30625000",
+    "SUM(Self Duration)": "173000",
+    "AVG(Wall Duration)": "2187500"
+  },
+  {
+    "Name": "v8::Debugger::AsyncTaskScheduled",
+    "COUNT": "6223",
+    "SUM(Wall Duration)": "29827000",
+    "SUM(Self Duration)": "29827000",
+    "AVG(Wall Duration)": "4793.025871766029"
+  },
+  {
+    "Name": "CommitSentToFirstSubresourceLoadStart",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "29561000",
+    "SUM(Self Duration)": "29561000",
+    "AVG(Wall Duration)": "29561000"
+  },
+  {
+    "Name": "CppGC.MarkTransitiveClosureWithDeadline",
+    "COUNT": "584",
+    "SUM(Wall Duration)": "28004000",
+    "SUM(Self Duration)": "4767000",
+    "AVG(Wall Duration)": "47952.05479452055"
+  },
+  {
+    "Name": "V8.GC_MC_MARK_WEAK_CLOSURE_EPHEMERON_LINEAR",
+    "COUNT": "5",
+    "SUM(Wall Duration)": "26390000",
+    "SUM(Self Duration)": "25912000",
+    "AVG(Wall Duration)": "5278000"
+  },
+  {
+    "Name": "RenderFrameImpl::CommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "25170000",
+    "SUM(Self Duration)": "90000",
+    "AVG(Wall Duration)": "25170000"
+  },
+  {
+    "Name": "RenderFrameImpl::CommitNavigationWithParams",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "25080000",
+    "SUM(Self Duration)": "320000",
+    "AVG(Wall Duration)": "25080000"
+  },
+  {
+    "Name": "FrameLoader::CommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "24760000",
+    "SUM(Self Duration)": "129000",
+    "AVG(Wall Duration)": "24760000"
+  },
+  {
+    "Name": "BackgroundJSStreamManager::RunScriptStreamingTask",
+    "COUNT": "40",
+    "SUM(Wall Duration)": "23883000",
+    "SUM(Self Duration)": "784000",
+    "AVG(Wall Duration)": "597075"
+  },
+  {
+    "Name": "LargeScriptCatchup",
+    "COUNT": "16",
+    "SUM(Wall Duration)": "23298000",
+    "SUM(Self Duration)": "23298000",
+    "AVG(Wall Duration)": "1456125"
+  },
+  {
+    "Name": "CppGC.IncrementalMark",
+    "COUNT": "480",
+    "SUM(Wall Duration)": "23298000",
+    "SUM(Self Duration)": "1897000",
+    "AVG(Wall Duration)": "48537.5"
+  },
+  {
+    "Name": "CppGC.MarkTransitiveClosure",
+    "COUNT": "584",
+    "SUM(Wall Duration)": "23237000",
+    "SUM(Self Duration)": "22951000",
+    "AVG(Wall Duration)": "39789.38356164384"
+  },
+  {
+    "Name": "v8.parseOnBackground",
+    "COUNT": "40",
+    "SUM(Wall Duration)": "23099000",
+    "SUM(Self Duration)": "404000",
+    "AVG(Wall Duration)": "577475"
+  },
+  {
+    "Name": "StartToCommit",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "22972000",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "22972000"
+  },
+  {
+    "Name": "ReadyToCommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "22785000",
+    "SUM(Self Duration)": "22785000",
+    "AVG(Wall Duration)": "22785000"
+  },
+  {
+    "Name": "CommitToDidCommit",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "21576000",
+    "SUM(Self Duration)": "11082000",
+    "AVG(Wall Duration)": "10788000"
+  },
+  {
+    "Name": "v8.parseOnBackgroundParsing",
+    "COUNT": "42",
+    "SUM(Wall Duration)": "21563000",
+    "SUM(Self Duration)": "21563000",
+    "AVG(Wall Duration)": "513404.7619047619"
+  },
+  {
+    "Name": "V8.GC_MC_BACKGROUND_EVACUATE_UPDATE_POINTERS",
+    "COUNT": "37",
+    "SUM(Wall Duration)": "21155000",
+    "SUM(Self Duration)": "21155000",
+    "AVG(Wall Duration)": "571756.7567567568"
+  },
+  {
+    "Name": "V8.GC_MC_INCREMENTAL_EMBEDDER_TRACING",
+    "COUNT": "445",
+    "SUM(Wall Duration)": "20710000",
+    "SUM(Self Duration)": "1499000",
+    "AVG(Wall Duration)": "46539.32584269663"
+  },
+  {
+    "Name": "Speculative",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "19749000",
+    "SUM(Self Duration)": "19749000",
+    "AVG(Wall Duration)": "19749000"
+  },
+  {
+    "Name": "ThrottlingURLLoader::OnReceiveResponse",
+    "COUNT": "86",
+    "SUM(Wall Duration)": "19355000",
+    "SUM(Self Duration)": "2818000",
+    "AVG(Wall Duration)": "225058.13953488372"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_UPDATE_POINTERS",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "17882000",
+    "SUM(Self Duration)": "252000",
+    "AVG(Wall Duration)": "2554571.4285714286"
+  },
+  {
+    "Name": "FrameLoader::CommitDocumentLoader",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "16766000",
+    "SUM(Self Duration)": "295000",
+    "AVG(Wall Duration)": "5588666.666666667"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "16710000",
+    "SUM(Self Duration)": "2053000",
+    "AVG(Wall Duration)": "2387142.8571428573"
+  },
+  {
+    "Name": "NavigationStartToNavigationCommitSent",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "16522000",
+    "SUM(Self Duration)": "16522000",
+    "AVG(Wall Duration)": "16522000"
+  },
+  {
+    "Name": "DocumentLoader::CommitNavigation",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "16471000",
+    "SUM(Self Duration)": "784000",
+    "AVG(Wall Duration)": "5490333.333333333"
+  },
+  {
+    "Name": "V8.GC_MC_MARK_WEAK_CLOSURE_EPHEMERON_MARKING",
+    "COUNT": "106",
+    "SUM(Wall Duration)": "16288000",
+    "SUM(Self Duration)": "8894000",
+    "AVG(Wall Duration)": "153660.37735849057"
+  },
+  {
+    "Name": "LoaderStartToReceiveResponse",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "16208000",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "8104000"
+  },
+  {
+    "Name": "DocumentLoader::StartLoadingResponse",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "14834000",
+    "SUM(Self Duration)": "24000",
+    "AVG(Wall Duration)": "4944666.666666667"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_JOIN_JOB",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "14545000",
+    "SUM(Self Duration)": "759000",
+    "AVG(Wall Duration)": "2077857.142857143"
+  },
+  {
+    "Name": "DocumentLoader::CreateParserPostCommit",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "14456000",
+    "SUM(Self Duration)": "197000",
+    "AVG(Wall Duration)": "4818666.666666667"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_SCAVENGE_PARALLEL",
+    "COUNT": "45",
+    "SUM(Wall Duration)": "14107000",
+    "SUM(Self Duration)": "14107000",
+    "AVG(Wall Duration)": "313488.8888888889"
+  },
+  {
+    "Name": "PendingCommit",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "13947000",
+    "SUM(Self Duration)": "13947000",
+    "AVG(Wall Duration)": "13947000"
+  },
+  {
+    "Name": "V8.BytecodeBudgetInterrupt",
+    "COUNT": "1672",
+    "SUM(Wall Duration)": "13444000",
+    "SUM(Self Duration)": "13444000",
+    "AVG(Wall Duration)": "8040.66985645933"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_WEAK_COLLECTIONS",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "13320000",
+    "SUM(Self Duration)": "13320000",
+    "AVG(Wall Duration)": "1902857.142857143"
+  },
+  {
+    "Name": "DedicatedWorkerHostFactoryImpl::CreateWorkerHostAndStartScriptLoad",
+    "COUNT": "12",
+    "SUM(Wall Duration)": "13258000",
+    "SUM(Self Duration)": "5062000",
+    "AVG(Wall Duration)": "1104833.3333333333"
+  },
+  {
+    "Name": "LocalWindowProxy::Initialize",
+    "COUNT": "8",
+    "SUM(Wall Duration)": "13170000",
+    "SUM(Self Duration)": "521000",
+    "AVG(Wall Duration)": "1646250"
+  },
+  {
+    "Name": "RenderFrameHostImpl::DidCommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "12847000",
+    "SUM(Self Duration)": "1898000",
+    "AVG(Wall Duration)": "12847000"
+  },
+  {
+    "Name": "DidCommitToFinish",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "12744000",
+    "SUM(Self Duration)": "12744000",
+    "AVG(Wall Duration)": "12744000"
+  },
+  {
+    "Name": "ResourceRequestSender::OnRequestComplete",
+    "COUNT": "72",
+    "SUM(Wall Duration)": "11789000",
+    "SUM(Self Duration)": "1342000",
+    "AVG(Wall Duration)": "163736.11111111112"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_SCAVENGE_ROOTS",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "11141000",
+    "SUM(Self Duration)": "11141000",
+    "AVG(Wall Duration)": "271731.7073170732"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_BACKGROUND_TRACED_HANDLES_COMPUTE_WEAKNESS_PARALLEL",
+    "COUNT": "47",
+    "SUM(Wall Duration)": "11082000",
+    "SUM(Self Duration)": "11082000",
+    "AVG(Wall Duration)": "235787.2340425532"
+  },
+  {
+    "Name": "Navigation timeToResponseStarted",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "11026000",
+    "SUM(Self Duration)": "11026000",
+    "AVG(Wall Duration)": "11026000"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_COPY",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "10974000",
+    "SUM(Self Duration)": "2278000",
+    "AVG(Wall Duration)": "1567714.2857142857"
+  },
+  {
+    "Name": "ResourceRequestSender::OnReceivedResponse",
+    "COUNT": "73",
+    "SUM(Wall Duration)": "10947000",
+    "SUM(Self Duration)": "2110000",
+    "AVG(Wall Duration)": "149958.90410958903"
+  },
+  {
+    "Name": "V8.GC_MC_FINISH",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "10909000",
+    "SUM(Self Duration)": "10611000",
+    "AVG(Wall Duration)": "1558428.5714285714"
+  },
+  {
+    "Name": "RendererCommitToDidCommit",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "10494000",
+    "SUM(Self Duration)": "10494000",
+    "AVG(Wall Duration)": "10494000"
+  },
+  {
+    "Name": "NavigationCommitSentToParseStart",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "10478000",
+    "SUM(Self Duration)": "10478000",
+    "AVG(Wall Duration)": "10478000"
+  },
+  {
+    "Name": "URLLoader::Context::OnCompletedRequest",
+    "COUNT": "30",
+    "SUM(Wall Duration)": "10447000",
+    "SUM(Self Duration)": "2366000",
+    "AVG(Wall Duration)": "348233.3333333333"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_SCAVENGE_WEAK_GLOBAL_HANDLES_IDENTIFY",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "9814000",
+    "SUM(Self Duration)": "2723000",
+    "AVG(Wall Duration)": "239365.8536585366"
+  },
+  {
+    "Name": "MojoURLLoaderClient::OnReceiveResponse",
+    "COUNT": "73",
+    "SUM(Wall Duration)": "9668000",
+    "SUM(Self Duration)": "346000",
+    "AVG(Wall Duration)": "132438.35616438356"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_UPDATE_POINTERS_TO_NEW_ROOTS",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "9376000",
+    "SUM(Self Duration)": "9376000",
+    "AVG(Wall Duration)": "1339428.5714285714"
+  },
+  {
+    "Name": "WillStartRequest",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "9334000",
+    "SUM(Self Duration)": "9334000",
+    "AVG(Wall Duration)": "9334000"
+  },
+  {
+    "Name": "LocalFrame::SwapIn",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "8932000",
+    "SUM(Self Duration)": "39000",
+    "AVG(Wall Duration)": "8932000"
+  },
+  {
+    "Name": "Frame::SwapImpl",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "8893000",
+    "SUM(Self Duration)": "1045000",
+    "AVG(Wall Duration)": "8893000"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_COPY_PARALLEL",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "8664000",
+    "SUM(Self Duration)": "8400000",
+    "AVG(Wall Duration)": "1237714.2857142857"
+  },
+  {
+    "Name": "LocalWindowProxy::CreateContext",
+    "COUNT": "8",
+    "SUM(Wall Duration)": "8483000",
+    "SUM(Self Duration)": "3851000",
+    "AVG(Wall Duration)": "1060375"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_FREE_REMEMBERED_SET",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "8388000",
+    "SUM(Self Duration)": "8388000",
+    "AVG(Wall Duration)": "204585.36585365853"
+  },
+  {
+    "Name": "DedicatedWorkerHost::StartScriptLoad",
+    "COUNT": "12",
+    "SUM(Wall Duration)": "8196000",
+    "SUM(Self Duration)": "2711000",
+    "AVG(Wall Duration)": "683000"
+  },
+  {
+    "Name": "V8.GC_HEAP_EMBEDDER_TRACING_EPILOGUE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "8013000",
+    "SUM(Self Duration)": "72000",
+    "AVG(Wall Duration)": "1144714.2857142857"
+  },
+  {
+    "Name": "CppGC.AtomicSweep",
+    "COUNT": "16",
+    "SUM(Wall Duration)": "7982000",
+    "SUM(Self Duration)": "3634000",
+    "AVG(Wall Duration)": "498875"
+  },
+  {
+    "Name": "CppGC.AtomicMark",
+    "COUNT": "125",
+    "SUM(Wall Duration)": "7935000",
+    "SUM(Self Duration)": "466000",
+    "AVG(Wall Duration)": "63480"
+  },
+  {
+    "Name": "V8.GC_MC_MARK_EMBEDDER_TRACING",
+    "COUNT": "111",
+    "SUM(Wall Duration)": "7844000",
+    "SUM(Self Duration)": "337000",
+    "AVG(Wall Duration)": "70666.66666666667"
+  },
+  {
+    "Name": "ThrottlingURLLoader::Start",
+    "COUNT": "86",
+    "SUM(Wall Duration)": "7769000",
+    "SUM(Self Duration)": "2364000",
+    "AVG(Wall Duration)": "90337.20930232559"
+  },
+  {
+    "Name": "NavigationStartAdjustment",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "7337000",
+    "SUM(Self Duration)": "7337000",
+    "AVG(Wall Duration)": "7337000"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_BACKGROUND_TRACED_HANDLES_RESET_PARALLEL",
+    "COUNT": "39",
+    "SUM(Wall Duration)": "7333000",
+    "SUM(Self Duration)": "7333000",
+    "AVG(Wall Duration)": "188025.64102564103"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_SCAVENGE_WEAK_GLOBAL_HANDLES_PROCESS",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "7134000",
+    "SUM(Self Duration)": "2214000",
+    "AVG(Wall Duration)": "174000"
+  },
+  {
+    "Name": "LocalFrame::DetachImpl",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "7037000",
+    "SUM(Self Duration)": "544000",
+    "AVG(Wall Duration)": "3518500"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_TRACED_HANDLES_COMPUTE_WEAKNESS_PARALLEL",
+    "COUNT": "37",
+    "SUM(Wall Duration)": "6973000",
+    "SUM(Self Duration)": "6973000",
+    "AVG(Wall Duration)": "188459.45945945947"
+  },
+  {
+    "Name": "CppGC.AtomicWeak",
+    "COUNT": "14",
+    "SUM(Wall Duration)": "6883000",
+    "SUM(Self Duration)": "395000",
+    "AVG(Wall Duration)": "491642.85714285716"
+  },
+  {
+    "Name": "URLLoader::Context::OnReceivedResponse",
+    "COUNT": "30",
+    "SUM(Wall Duration)": "6870000",
+    "SUM(Self Duration)": "6778000",
+    "AVG(Wall Duration)": "229000"
+  },
+  {
+    "Name": "RenderFrameHostManager::CommitPending",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "6655000",
+    "SUM(Self Duration)": "4826000",
+    "AVG(Wall Duration)": "6655000"
+  },
+  {
+    "Name": "V8.GCFinalizeMCReduceMemory",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "6571000",
+    "SUM(Self Duration)": "11000",
+    "AVG(Wall Duration)": "3285500"
+  },
+  {
+    "Name": "ActualNavigationStartToNavigationStart",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "6484000",
+    "SUM(Self Duration)": "6484000",
+    "AVG(Wall Duration)": "6484000"
+  },
+  {
+    "Name": "AnimationFrame::Script::Compile",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "6337000",
+    "SUM(Self Duration)": "6337000",
+    "AVG(Wall Duration)": "3168500"
+  },
+  {
+    "Name": "LocalDOMWindow::FrameDestroyed",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "5950000",
+    "SUM(Self Duration)": "5918000",
+    "AVG(Wall Duration)": "1983333.3333333333"
+  },
+  {
+    "Name": "DidCreateScriptLoader",
+    "COUNT": "12",
+    "SUM(Wall Duration)": "5935000",
+    "SUM(Self Duration)": "154000",
+    "AVG(Wall Duration)": "494583.3333333333"
+  },
+  {
+    "Name": "FetchStartToReceiveHeaders",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "5903000",
+    "SUM(Self Duration)": "5903000",
+    "AVG(Wall Duration)": "5903000"
+  },
+  {
+    "Name": "NavigationControllerImpl::NavigateToExistingPendingEntry",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "5869000",
+    "SUM(Self Duration)": "165000",
+    "AVG(Wall Duration)": "5869000"
+  },
+  {
+    "Name": "IncorrectlyIgnored",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "5847000",
+    "SUM(Self Duration)": "5847000",
+    "AVG(Wall Duration)": "5847000"
+  },
+  {
+    "Name": "DedicatedWorkerHost::DidStartScriptLoad",
+    "COUNT": "12",
+    "SUM(Wall Duration)": "5781000",
+    "SUM(Self Duration)": "5781000",
+    "AVG(Wall Duration)": "481750"
+  },
+  {
+    "Name": "NavigationRequestToBeforeUnloadPhase2",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "5655000",
+    "SUM(Self Duration)": "5655000",
+    "AVG(Wall Duration)": "5655000"
+  },
+  {
+    "Name": "Initializing",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "5598000",
+    "SUM(Self Duration)": "5598000",
+    "AVG(Wall Duration)": "5598000"
+  },
+  {
+    "Name": "ReceiveResponseToCommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "5491000",
+    "SUM(Self Duration)": "5491000",
+    "AVG(Wall Duration)": "5491000"
+  },
+  {
+    "Name": "ReceiveResponseToCommit",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "5491000",
+    "SUM(Self Duration)": "5491000",
+    "AVG(Wall Duration)": "5491000"
+  },
+  {
+    "Name": "Navigator::Navigate",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "5490000",
+    "SUM(Self Duration)": "83000",
+    "AVG(Wall Duration)": "5490000"
+  },
+  {
+    "Name": "WorkerScriptFetcher::CreateScriptLoader",
+    "COUNT": "12",
+    "SUM(Wall Duration)": "5485000",
+    "SUM(Self Duration)": "3786000",
+    "AVG(Wall Duration)": "457083.3333333333"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_SCAVENGE_FINALIZE",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "5396000",
+    "SUM(Self Duration)": "5396000",
+    "AVG(Wall Duration)": "131609.75609756098"
+  },
+  {
+    "Name": "V8.GCIncrementalMarkingStart",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "5288000",
+    "SUM(Self Duration)": "167000",
+    "AVG(Wall Duration)": "755428.5714285715"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_UPDATE_POINTERS_SLOTS_MAIN",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "5280000",
+    "SUM(Self Duration)": "1679000",
+    "AVG(Wall Duration)": "754285.7142857143"
+  },
+  {
+    "Name": "ThrottlingURLLoader::StartNow",
+    "COUNT": "86",
+    "SUM(Wall Duration)": "5274000",
+    "SUM(Self Duration)": "5257000",
+    "AVG(Wall Duration)": "61325.58139534884"
+  },
+  {
+    "Name": "ScriptCatchup",
+    "COUNT": "417",
+    "SUM(Wall Duration)": "5267000",
+    "SUM(Self Duration)": "5267000",
+    "AVG(Wall Duration)": "12630.695443645083"
+  },
+  {
+    "Name": "V8.DeserializeContext",
+    "COUNT": "10",
+    "SUM(Wall Duration)": "5191000",
+    "SUM(Self Duration)": "5191000",
+    "AVG(Wall Duration)": "519100"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_STRING_TABLE",
+    "COUNT": "56",
+    "SUM(Wall Duration)": "4906000",
+    "SUM(Self Duration)": "4906000",
+    "AVG(Wall Duration)": "87607.14285714286"
+  },
+  {
+    "Name": "V8.GC_MC_INCREMENTAL_START",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "4872000",
+    "SUM(Self Duration)": "3303000",
+    "AVG(Wall Duration)": "696000"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_TRACED_HANDLES_RESET_PARALLEL",
+    "COUNT": "37",
+    "SUM(Wall Duration)": "4781000",
+    "SUM(Self Duration)": "4781000",
+    "AVG(Wall Duration)": "129216.21621621621"
+  },
+  {
+    "Name": "CppGC.WeakContainerCallbacksProcessing",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "4515000",
+    "SUM(Self Duration)": "4515000",
+    "AVG(Wall Duration)": "645000"
+  },
+  {
+    "Name": "CppGC.SweepInvokePreFinalizers",
+    "COUNT": "8",
+    "SUM(Wall Duration)": "4348000",
+    "SUM(Self Duration)": "4318000",
+    "AVG(Wall Duration)": "543500"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_WEAK_GLOBAL_HANDLES",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "4318000",
+    "SUM(Self Duration)": "4318000",
+    "AVG(Wall Duration)": "616857.1428571428"
+  },
+  {
+    "Name": "RenderFrameHostManager::GetFrameHostForNavigation",
+    "COUNT": "4",
+    "SUM(Wall Duration)": "4278000",
+    "SUM(Self Duration)": "234000",
+    "AVG(Wall Duration)": "1069500"
+  },
+  {
+    "Name": "BeginNavigationToLoaderStart",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "4080000",
+    "SUM(Self Duration)": "4080000",
+    "AVG(Wall Duration)": "2040000"
+  },
+  {
+    "Name": "StubScriptCatchup",
+    "COUNT": "67",
+    "SUM(Wall Duration)": "4047000",
+    "SUM(Self Duration)": "4047000",
+    "AVG(Wall Duration)": "60402.985074626864"
+  },
+  {
+    "Name": "v8.produceModuleCache",
+    "COUNT": "96",
+    "SUM(Wall Duration)": "3974000",
+    "SUM(Self Duration)": "2272000",
+    "AVG(Wall Duration)": "41395.833333333336"
+  },
+  {
+    "Name": "RenderFrameHostManager::DidCreateNavigationRequest",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "3926000",
+    "SUM(Self Duration)": "16000",
+    "AVG(Wall Duration)": "3926000"
+  },
+  {
+    "Name": "ScrollLayer",
+    "COUNT": "39",
+    "SUM(Wall Duration)": "3921000",
+    "SUM(Self Duration)": "3395000",
+    "AVG(Wall Duration)": "100538.46153846153"
+  },
+  {
+    "Name": "URLLoader::loadAsynchronously",
+    "COUNT": "30",
+    "SUM(Wall Duration)": "3612000",
+    "SUM(Self Duration)": "452000",
+    "AVG(Wall Duration)": "120400"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_UPDATE_POINTERS_PARALLEL",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "3568000",
+    "SUM(Self Duration)": "3568000",
+    "AVG(Wall Duration)": "509714.28571428574"
+  },
+  {
+    "Name": "NavigationThrottleRunner::ProcessInternal",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "3505000",
+    "SUM(Self Duration)": "178000",
+    "AVG(Wall Duration)": "1168333.3333333333"
+  },
+  {
+    "Name": "RenderFrameHostManager::CreateSpeculativeRenderFrameHost",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "3493000",
+    "SUM(Self Duration)": "21000",
+    "AVG(Wall Duration)": "3493000"
+  },
+  {
+    "Name": "RenderFrameHostManager::CreateSpeculativeRenderFrame",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "3472000",
+    "SUM(Self Duration)": "104000",
+    "AVG(Wall Duration)": "3472000"
+  },
+  {
+    "Name": "ReceiveHeaders",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "3313000",
+    "SUM(Self Duration)": "3313000",
+    "AVG(Wall Duration)": "3313000"
+  },
+  {
+    "Name": "WebContentsImpl::CreateRenderViewForRenderManager",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "3308000",
+    "SUM(Self Duration)": "2479000",
+    "AVG(Wall Duration)": "3308000"
+  },
+  {
+    "Name": "URLLoader::Context::Start",
+    "COUNT": "30",
+    "SUM(Wall Duration)": "3160000",
+    "SUM(Self Duration)": "864000",
+    "AVG(Wall Duration)": "105333.33333333333"
+  },
+  {
+    "Name": "CppGC.MarkOnAllocation",
+    "COUNT": "21",
+    "SUM(Wall Duration)": "2901000",
+    "SUM(Self Duration)": "97000",
+    "AVG(Wall Duration)": "138142.85714285713"
+  },
+  {
+    "Name": "v8.deserializeOnBackground",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2851000",
+    "SUM(Self Duration)": "2851000",
+    "AVG(Wall Duration)": "2851000"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_UPDATE_POINTERS_POINTER_TABLES",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "2818000",
+    "SUM(Self Duration)": "2818000",
+    "AVG(Wall Duration)": "402571.4285714286"
+  },
+  {
+    "Name": "V8.GC_HEAP_ENSURE_SWEEPING_COMPLETED",
+    "COUNT": "47",
+    "SUM(Wall Duration)": "2753000",
+    "SUM(Self Duration)": "2555000",
+    "AVG(Wall Duration)": "58574.46808510638"
+  },
+  {
+    "Name": "NavigationRequest::~NavigationRequest",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2739000",
+    "SUM(Self Duration)": "42000",
+    "AVG(Wall Duration)": "2739000"
+  },
+  {
+    "Name": "WebContentsImpl::DidFinishNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2697000",
+    "SUM(Self Duration)": "2649000",
+    "AVG(Wall Duration)": "2697000"
+  },
+  {
+    "Name": "ReceiveHeadersToReceiveResponse",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "2638000",
+    "SUM(Self Duration)": "2638000",
+    "AVG(Wall Duration)": "1319000"
+  },
+  {
+    "Name": "FetchStart",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2590000",
+    "SUM(Self Duration)": "2590000",
+    "AVG(Wall Duration)": "2590000"
+  },
+  {
+    "Name": "LookalikeUrlService::OnUpdateEngagedSitesCompleted",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2559000",
+    "SUM(Self Duration)": "27000",
+    "AVG(Wall Duration)": "2559000"
+  },
+  {
+    "Name": "WebContentsImpl::NotifyNavigationStateChanged",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "2468000",
+    "SUM(Self Duration)": "2468000",
+    "AVG(Wall Duration)": "352571.4285714286"
+  },
+  {
+    "Name": "NavigationRequest::CommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2468000",
+    "SUM(Self Duration)": "268000",
+    "AVG(Wall Duration)": "2468000"
+  },
+  {
+    "Name": "V8.DeoptimizeCode",
+    "COUNT": "124",
+    "SUM(Wall Duration)": "2375000",
+    "SUM(Self Duration)": "2369000",
+    "AVG(Wall Duration)": "19153.225806451614"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_SWEEP_EXTERNAL_POINTER_TABLE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "2359000",
+    "SUM(Self Duration)": "2359000",
+    "AVG(Wall Duration)": "337000"
+  },
+  {
+    "Name": "WillProcessResponse",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2244000",
+    "SUM(Self Duration)": "2244000",
+    "AVG(Wall Duration)": "2244000"
+  },
+  {
+    "Name": "V8.GC_HEAP_EPILOGUE_SAFEPOINT",
+    "COUNT": "48",
+    "SUM(Wall Duration)": "2239000",
+    "SUM(Self Duration)": "2239000",
+    "AVG(Wall Duration)": "46645.833333333336"
+  },
+  {
+    "Name": "InstallConditionalFeatures",
+    "COUNT": "8",
+    "SUM(Wall Duration)": "2157000",
+    "SUM(Self Duration)": "2157000",
+    "AVG(Wall Duration)": "269625"
+  },
+  {
+    "Name": "RenderFrameHostImpl::SendBeforeUnload.before_unload_ack",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2083000",
+    "SUM(Self Duration)": "5000",
+    "AVG(Wall Duration)": "2083000"
+  },
+  {
+    "Name": "RenderFrameHostImpl::ProcessBeforeUnloadCompleted",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2078000",
+    "SUM(Self Duration)": "10000",
+    "AVG(Wall Duration)": "2078000"
+  },
+  {
+    "Name": "NavigationRequest::BeginNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2068000",
+    "SUM(Self Duration)": "11000",
+    "AVG(Wall Duration)": "2068000"
+  },
+  {
+    "Name": "NavigationRequest::BeginNavigationImpl",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2036000",
+    "SUM(Self Duration)": "9000",
+    "AVG(Wall Duration)": "2036000"
+  },
+  {
+    "Name": "CppGC.CustomCallbacksProcessing",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "1973000",
+    "SUM(Self Duration)": "1973000",
+    "AVG(Wall Duration)": "281857.14285714284"
+  },
+  {
+    "Name": "BackgroundProcessor::MaybeStartProcessingResponse",
+    "COUNT": "40",
+    "SUM(Wall Duration)": "1967000",
+    "SUM(Self Duration)": "675000",
+    "AVG(Wall Duration)": "49175"
+  },
+  {
+    "Name": "CreateView",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1963000",
+    "SUM(Self Duration)": "384000",
+    "AVG(Wall Duration)": "1963000"
+  },
+  {
+    "Name": "AgentSchedulingGroup::CreateWebView",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1954000",
+    "SUM(Self Duration)": "914000",
+    "AVG(Wall Duration)": "1954000"
+  },
+  {
+    "Name": "ContextCreatedNotification",
+    "COUNT": "8",
+    "SUM(Wall Duration)": "1915000",
+    "SUM(Self Duration)": "565000",
+    "AVG(Wall Duration)": "239375"
+  },
+  {
+    "Name": "RenderFrameHostManager::UnloadOldFrame",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1821000",
+    "SUM(Self Duration)": "71000",
+    "AVG(Wall Duration)": "1821000"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_WEAK_REFERENCES_TRIVIAL",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "1803000",
+    "SUM(Self Duration)": "1803000",
+    "AVG(Wall Duration)": "257571.42857142858"
+  },
+  {
+    "Name": "URLLoader::Context::Cancel",
+    "COUNT": "30",
+    "SUM(Wall Duration)": "1792000",
+    "SUM(Self Duration)": "1754000",
+    "AVG(Wall Duration)": "59733.333333333336"
+  },
+  {
+    "Name": "LoaderStartToFetchStart",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "1764000",
+    "SUM(Self Duration)": "1764000",
+    "AVG(Wall Duration)": "882000"
+  },
+  {
+    "Name": "v8.newInstance",
+    "COUNT": "186",
+    "SUM(Wall Duration)": "1705000",
+    "SUM(Self Duration)": "1705000",
+    "AVG(Wall Duration)": "9166.666666666666"
+  },
+  {
+    "Name": "PaintTimingDetector::NotifyScroll",
+    "COUNT": "39",
+    "SUM(Wall Duration)": "1702000",
+    "SUM(Self Duration)": "1702000",
+    "AVG(Wall Duration)": "43641.02564102564"
+  },
+  {
+    "Name": "RenderFrameHostImpl::PendingDeletionCheckCompletedOnSubtree",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1681000",
+    "SUM(Self Duration)": "405000",
+    "AVG(Wall Duration)": "1681000"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_SCAVENGE_COLLECT_OLD_TO_NEW_PAGES",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "1668000",
+    "SUM(Self Duration)": "1668000",
+    "AVG(Wall Duration)": "40682.92682926829"
+  },
+  {
+    "Name": "LookalikeUrlService UpdateEngagedSitesOnWorkerThread",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1661000",
+    "SUM(Self Duration)": "1323000",
+    "AVG(Wall Duration)": "1661000"
+  },
+  {
+    "Name": "CreateFrame",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1579000",
+    "SUM(Self Duration)": "1579000",
+    "AVG(Wall Duration)": "1579000"
+  },
+  {
+    "Name": "V8PerIsolateData::Initialize",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1535000",
+    "SUM(Self Duration)": "810000",
+    "AVG(Wall Duration)": "1535000"
+  },
+  {
+    "Name": "WaitingForRendererResponse",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1528000",
+    "SUM(Self Duration)": "1528000",
+    "AVG(Wall Duration)": "1528000"
+  },
+  {
+    "Name": "RenderFrameHostImpl::DidStopLoading",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1483000",
+    "SUM(Self Duration)": "41000",
+    "AVG(Wall Duration)": "1483000"
+  },
+  {
+    "Name": "FrameTreeNode::DidStartLoading",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1464000",
+    "SUM(Self Duration)": "1174000",
+    "AVG(Wall Duration)": "1464000"
+  },
+  {
+    "Name": "FrameTreeNode::DidStopLoading",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1442000",
+    "SUM(Self Duration)": "1052000",
+    "AVG(Wall Duration)": "1442000"
+  },
+  {
+    "Name": "Responsiveness.Renderer.UserInteraction",
+    "COUNT": "242",
+    "SUM(Wall Duration)": "1429000",
+    "SUM(Self Duration)": "1429000",
+    "AVG(Wall Duration)": "5904.9586776859505"
+  },
+  {
+    "Name": "Major concurrent marking rescheduled",
+    "COUNT": "411",
+    "SUM(Wall Duration)": "1416000",
+    "SUM(Self Duration)": "1416000",
+    "AVG(Wall Duration)": "3445.2554744525546"
+  },
+  {
+    "Name": "V8.BytecodeBudgetInterruptWithStackCheck",
+    "COUNT": "116",
+    "SUM(Wall Duration)": "1360000",
+    "SUM(Self Duration)": "1054000",
+    "AVG(Wall Duration)": "11724.137931034482"
+  },
+  {
+    "Name": "RenderFrameImpl::DidCreateScriptContext",
+    "COUNT": "8",
+    "SUM(Wall Duration)": "1350000",
+    "SUM(Self Duration)": "1350000",
+    "AVG(Wall Duration)": "168750"
+  },
+  {
+    "Name": "RenderFrameHostImpl::CommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1313000",
+    "SUM(Self Duration)": "921000",
+    "AVG(Wall Duration)": "1313000"
+  },
+  {
+    "Name": "ReadyToBeDeleted",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1310000",
+    "SUM(Self Duration)": "1310000",
+    "AVG(Wall Duration)": "1310000"
+  },
+  {
+    "Name": "BackgroundJSStreamManager::TryStartStreamingTask",
+    "COUNT": "40",
+    "SUM(Wall Duration)": "1292000",
+    "SUM(Self Duration)": "1292000",
+    "AVG(Wall Duration)": "32300"
+  },
+  {
+    "Name": "RenderFrameHostImpl::~RenderFrameHostImpl",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1276000",
+    "SUM(Self Duration)": "6000",
+    "AVG(Wall Duration)": "1276000"
+  },
+  {
+    "Name": "~RenderFrameHostImpl()",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1270000",
+    "SUM(Self Duration)": "1114000",
+    "AVG(Wall Duration)": "1270000"
+  },
+  {
+    "Name": "InputLatency::GestureScrollEnd",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "1264000",
+    "SUM(Self Duration)": "1264000",
+    "AVG(Wall Duration)": "421333.3333333333"
+  },
+  {
+    "Name": "V8.DeoptimizeAllOptimizedCodeWithFunction",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "1238000",
+    "SUM(Self Duration)": "286000",
+    "AVG(Wall Duration)": "619000"
+  },
+  {
+    "Name": "DecodedDataDocumentParser::AppendBytes",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "1238000",
+    "SUM(Self Duration)": "473000",
+    "AVG(Wall Duration)": "619000"
+  },
+  {
+    "Name": "V8.GC_MC_MARK_ROOTS",
+    "COUNT": "21",
+    "SUM(Wall Duration)": "1179000",
+    "SUM(Self Duration)": "1159000",
+    "AVG(Wall Duration)": "56142.857142857145"
+  },
+  {
+    "Name": "NavigationRequest::WillStartRequest",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1163000",
+    "SUM(Self Duration)": "20000",
+    "AVG(Wall Duration)": "1163000"
+  },
+  {
+    "Name": "v8.parseOnBackgroundWaiting",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "1132000",
+    "SUM(Self Duration)": "1132000",
+    "AVG(Wall Duration)": "566000"
+  },
+  {
+    "Name": "V8.GC_MC_SWEEP",
+    "COUNT": "29",
+    "SUM(Wall Duration)": "1099000",
+    "SUM(Self Duration)": "1071000",
+    "AVG(Wall Duration)": "37896.55172413793"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_EPILOGUE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "1081000",
+    "SUM(Self Duration)": "1081000",
+    "AVG(Wall Duration)": "154428.57142857142"
+  },
+  {
+    "Name": "NavigationBodyLoader::StartLoadingBody",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1078000",
+    "SUM(Self Duration)": "28000",
+    "AVG(Wall Duration)": "1078000"
+  },
+  {
+    "Name": "ConcurrentMarking::RunMajor Finished",
+    "COUNT": "276",
+    "SUM(Wall Duration)": "1078000",
+    "SUM(Self Duration)": "1078000",
+    "AVG(Wall Duration)": "3905.7971014492755"
+  },
+  {
+    "Name": "NavigationBodyLoader::OnReadable",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1050000",
+    "SUM(Self Duration)": "4000",
+    "AVG(Wall Duration)": "1050000"
+  },
+  {
+    "Name": "RenderFrameImpl::DidObserveNewFeatureUsage",
+    "COUNT": "302",
+    "SUM(Wall Duration)": "1046000",
+    "SUM(Self Duration)": "1046000",
+    "AVG(Wall Duration)": "3463.5761589403974"
+  },
+  {
+    "Name": "NavigationBodyLoader::ReadFromDataPipe",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1046000",
+    "SUM(Self Duration)": "10000",
+    "AVG(Wall Duration)": "1046000"
+  },
+  {
+    "Name": "DocumentLoader::BodyDataReceivedImpl",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1036000",
+    "SUM(Self Duration)": "44000",
+    "AVG(Wall Duration)": "1036000"
+  },
+  {
+    "Name": "DocumentLoader::HandleData",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "992000",
+    "SUM(Self Duration)": "4000",
+    "AVG(Wall Duration)": "992000"
+  },
+  {
+    "Name": "DocumentLoader::CommitData",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "988000",
+    "SUM(Self Duration)": "5000",
+    "AVG(Wall Duration)": "988000"
+  },
+  {
+    "Name": "RenderFrameImpl::FrameDetached",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "932000",
+    "SUM(Self Duration)": "200000",
+    "AVG(Wall Duration)": "932000"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_SWEEP_JS_DISPATCH_TABLE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "931000",
+    "SUM(Self Duration)": "931000",
+    "AVG(Wall Duration)": "133000"
+  },
+  {
+    "Name": "BeginNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "903000",
+    "SUM(Self Duration)": "903000",
+    "AVG(Wall Duration)": "903000"
+  },
+  {
+    "Name": "NavigationURLLoaderImpl::OnReceiveResponse",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "899000",
+    "SUM(Self Duration)": "37000",
+    "AVG(Wall Duration)": "899000"
+  },
+  {
+    "Name": "NavigationRequest::ReadyToCommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "887000",
+    "SUM(Self Duration)": "51000",
+    "AVG(Wall Duration)": "887000"
+  },
+  {
+    "Name": "BeforeUnloadPhase2ToBeginNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "887000",
+    "SUM(Self Duration)": "887000",
+    "AVG(Wall Duration)": "887000"
+  },
+  {
+    "Name": "CppGC.SweepFinish",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "884000",
+    "SUM(Self Duration)": "884000",
+    "AVG(Wall Duration)": "884000"
+  },
+  {
+    "Name": "V8.GC_HEAP_EXTERNAL_PROLOGUE",
+    "COUNT": "48",
+    "SUM(Wall Duration)": "874000",
+    "SUM(Self Duration)": "874000",
+    "AVG(Wall Duration)": "18208.333333333332"
+  },
+  {
+    "Name": "NavigationRequest::StartNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "864000",
+    "SUM(Self Duration)": "137000",
+    "AVG(Wall Duration)": "864000"
+  },
+  {
+    "Name": "NavigationURLLoaderImpl::ParseHeaders",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "859000",
+    "SUM(Self Duration)": "6000",
+    "AVG(Wall Duration)": "859000"
+  },
+  {
+    "Name": "NavigationURLLoaderImpl::NotifyResponseStarted",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "853000",
+    "SUM(Self Duration)": "9000",
+    "AVG(Wall Duration)": "853000"
+  },
+  {
+    "Name": "NavigationRequest::OnResponseStarted",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "844000",
+    "SUM(Self Duration)": "182000",
+    "AVG(Wall Duration)": "844000"
+  },
+  {
+    "Name": "WebContentsImpl::ReadyToCommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "836000",
+    "SUM(Self Duration)": "836000",
+    "AVG(Wall Duration)": "836000"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_EXTERNAL_STRING_TABLE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "832000",
+    "SUM(Self Duration)": "832000",
+    "AVG(Wall Duration)": "118857.14285714286"
+  },
+  {
+    "Name": "NavigationRequest::OnStartChecksComplete",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "831000",
+    "SUM(Self Duration)": "180000",
+    "AVG(Wall Duration)": "831000"
+  },
+  {
+    "Name": "RenderViewHostImpl::CreateRenderView",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "829000",
+    "SUM(Self Duration)": "829000",
+    "AVG(Wall Duration)": "829000"
+  },
+  {
+    "Name": "HTMLDocumentParser::MaybeFetchQueuedPreloads",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "765000",
+    "SUM(Self Duration)": "765000",
+    "AVG(Wall Duration)": "765000"
+  },
+  {
+    "Name": "WebContentsImpl::DidStartNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "727000",
+    "SUM(Self Duration)": "618000",
+    "AVG(Wall Duration)": "727000"
+  },
+  {
+    "Name": "V8.DeserializeIsolate",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "725000",
+    "SUM(Self Duration)": "725000",
+    "AVG(Wall Duration)": "725000"
+  },
+  {
+    "Name": "V8.GC_HEAP_EXTERNAL_EPILOGUE",
+    "COUNT": "48",
+    "SUM(Wall Duration)": "659000",
+    "SUM(Self Duration)": "659000",
+    "AVG(Wall Duration)": "13729.166666666666"
+  },
+  {
+    "Name": "NavigationRequest::SelectFrameHostForOnResponseStarted",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "658000",
+    "SUM(Self Duration)": "195000",
+    "AVG(Wall Duration)": "658000"
+  },
+  {
+    "Name": "OnResponseStarted",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "657000",
+    "SUM(Self Duration)": "657000",
+    "AVG(Wall Duration)": "657000"
+  },
+  {
+    "Name": "CorrectlyIgnored",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "637000",
+    "SUM(Self Duration)": "637000",
+    "AVG(Wall Duration)": "637000"
+  },
+  {
+    "Name": "BeforeUnloadPhase2",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "637000",
+    "SUM(Self Duration)": "637000",
+    "AVG(Wall Duration)": "637000"
+  },
+  {
+    "Name": "FrameLoader::ShouldClose",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "626000",
+    "SUM(Self Duration)": "10000",
+    "AVG(Wall Duration)": "626000"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_MAPS",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "580000",
+    "SUM(Self Duration)": "580000",
+    "AVG(Wall Duration)": "82857.14285714286"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_SCAVENGE_RESTORE_AND_QUARANTINE_PINNED",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "562000",
+    "SUM(Self Duration)": "562000",
+    "AVG(Wall Duration)": "13707.317073170732"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_SWEEP_TRUSTED_POINTER_TABLE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "547000",
+    "SUM(Self Duration)": "547000",
+    "AVG(Wall Duration)": "78142.85714285714"
+  },
+  {
+    "Name": "V8.GC_MC_MARK_EMBEDDER_PROLOGUE",
+    "COUNT": "14",
+    "SUM(Wall Duration)": "545000",
+    "SUM(Self Duration)": "106000",
+    "AVG(Wall Duration)": "38928.57142857143"
+  },
+  {
+    "Name": "DocumentLoader::FinishedLoading",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "534000",
+    "SUM(Self Duration)": "404000",
+    "AVG(Wall Duration)": "178000"
+  },
+  {
+    "Name": "NavigationURLLoaderImpl::Start",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "523000",
+    "SUM(Self Duration)": "14000",
+    "AVG(Wall Duration)": "523000"
+  },
+  {
+    "Name": "WebFrameWidgetImpl::Close",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "522000",
+    "SUM(Self Duration)": "522000",
+    "AVG(Wall Duration)": "522000"
+  },
+  {
+    "Name": "InputLatency::MouseWheel",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "497000",
+    "SUM(Self Duration)": "497000",
+    "AVG(Wall Duration)": "248500"
+  },
+  {
+    "Name": "Sweeper::ConcurrentMajorSweeper Finished",
+    "COUNT": "155",
+    "SUM(Wall Duration)": "494000",
+    "SUM(Self Duration)": "494000",
+    "AVG(Wall Duration)": "3187.0967741935483"
+  },
+  {
+    "Name": "RenderProcessHostImpl::GetProcessHostForSiteInstance",
+    "COUNT": "6",
+    "SUM(Wall Duration)": "494000",
+    "SUM(Self Duration)": "151000",
+    "AVG(Wall Duration)": "82333.33333333333"
+  },
+  {
+    "Name": "BackgroundJSStreamManager::OnFinishStreaming",
+    "COUNT": "40",
+    "SUM(Wall Duration)": "488000",
+    "SUM(Self Duration)": "488000",
+    "AVG(Wall Duration)": "12200"
+  },
+  {
+    "Name": "NavigationURLLoaderImpl::Restart",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "485000",
+    "SUM(Self Duration)": "49000",
+    "AVG(Wall Duration)": "485000"
+  },
+  {
+    "Name": "InputLatency::GestureFlingStart",
+    "COUNT": "12",
+    "SUM(Wall Duration)": "478000",
+    "SUM(Self Duration)": "478000",
+    "AVG(Wall Duration)": "39833.333333333336"
+  },
+  {
+    "Name": "DidCommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "459000",
+    "SUM(Self Duration)": "459000",
+    "AVG(Wall Duration)": "459000"
+  },
+  {
+    "Name": "FrameLoader::DispatchUnloadEventAndFillOldDocInfo",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "438000",
+    "SUM(Self Duration)": "111000",
+    "AVG(Wall Duration)": "146000"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_PROLOGUE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "434000",
+    "SUM(Self Duration)": "434000",
+    "AVG(Wall Duration)": "62000"
+  },
+  {
+    "Name": "ThrottlingURLLoader::ThrottlingURLLoader",
+    "COUNT": "86",
+    "SUM(Wall Duration)": "434000",
+    "SUM(Self Duration)": "434000",
+    "AVG(Wall Duration)": "5046.511627906977"
+  },
+  {
+    "Name": "V8StackTraceImpl::capture",
+    "COUNT": "16",
+    "SUM(Wall Duration)": "408000",
+    "SUM(Self Duration)": "219000",
+    "AVG(Wall Duration)": "25500"
+  },
+  {
+    "Name": "SearchPrefetchURLLoaderInterceptor::MaybeCreateLoader",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "407000",
+    "SUM(Self Duration)": "25000",
+    "AVG(Wall Duration)": "407000"
+  },
+  {
+    "Name": "RenderFrameImpl::DidCommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "403000",
+    "SUM(Self Duration)": "6000",
+    "AVG(Wall Duration)": "403000"
+  },
+  {
+    "Name": "CppGC.MarkIncrementalStart",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "401000",
+    "SUM(Self Duration)": "249000",
+    "AVG(Wall Duration)": "57285.71428571428"
+  },
+  {
+    "Name": "RenderFrameImpl::didStartProvisionalLoad",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "397000",
+    "SUM(Self Duration)": "44000",
+    "AVG(Wall Duration)": "397000"
+  },
+  {
+    "Name": "RenderFrameHostManager::GetSiteInstanceForNavigationRequest",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "394000",
+    "SUM(Self Duration)": "266000",
+    "AVG(Wall Duration)": "197000"
+  },
+  {
+    "Name": "CppGC.MarkVisitRoots",
+    "COUNT": "14",
+    "SUM(Wall Duration)": "393000",
+    "SUM(Self Duration)": "393000",
+    "AVG(Wall Duration)": "28071.428571428572"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_WEAK_REFERENCES_NON_TRIVIAL",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "382000",
+    "SUM(Self Duration)": "382000",
+    "AVG(Wall Duration)": "54571.42857142857"
+  },
+  {
+    "Name": "NavigationURLLoaderImpl::CreateThrottlingLoaderAndStart",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "382000",
+    "SUM(Self Duration)": "8000",
+    "AVG(Wall Duration)": "382000"
+  },
+  {
+    "Name": "SiteInstanceImpl::SetSite",
+    "COUNT": "6",
+    "SUM(Wall Duration)": "369000",
+    "SUM(Self Duration)": "369000",
+    "AVG(Wall Duration)": "61500"
+  },
+  {
+    "Name": "RenderFrameHostImpl::SendCommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "367000",
+    "SUM(Self Duration)": "367000",
+    "AVG(Wall Duration)": "367000"
+  },
+  {
+    "Name": "RenderFrameImpl::didCommitProvisionalLoad",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "353000",
+    "SUM(Self Duration)": "298000",
+    "AVG(Wall Duration)": "353000"
+  },
+  {
+    "Name": "ResourceRequest::TrustedParams.copy",
+    "COUNT": "51",
+    "SUM(Wall Duration)": "348000",
+    "SUM(Self Duration)": "129000",
+    "AVG(Wall Duration)": "6823.529411764706"
+  },
+  {
+    "Name": "RenderProcessHostImpl::MayReuseAndIsSuitable",
+    "COUNT": "24",
+    "SUM(Wall Duration)": "343000",
+    "SUM(Self Duration)": "182000",
+    "AVG(Wall Duration)": "14291.666666666666"
+  },
+  {
+    "Name": "LookalikeUrlService SiteEngagementService",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "338000",
+    "SUM(Self Duration)": "29000",
+    "AVG(Wall Duration)": "338000"
+  },
+  {
+    "Name": "CppGC.MarkAtomicPrologue",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "334000",
+    "SUM(Self Duration)": "93000",
+    "AVG(Wall Duration)": "47714.28571428572"
+  },
+  {
+    "Name": "V8Console::Debug",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "330000",
+    "SUM(Self Duration)": "294000",
+    "AVG(Wall Duration)": "165000"
+  },
+  {
+    "Name": "V8.GC_HEAP_EXTERNAL_WEAK_GLOBAL_HANDLES",
+    "COUNT": "10",
+    "SUM(Wall Duration)": "322000",
+    "SUM(Self Duration)": "322000",
+    "AVG(Wall Duration)": "32200"
+  },
+  {
+    "Name": "GetDomainInfo",
+    "COUNT": "12",
+    "SUM(Wall Duration)": "309000",
+    "SUM(Self Duration)": "309000",
+    "AVG(Wall Duration)": "25750"
+  },
+  {
+    "Name": "CppGC.MarkFlushEphemerons",
+    "COUNT": "120",
+    "SUM(Wall Duration)": "286000",
+    "SUM(Self Duration)": "286000",
+    "AVG(Wall Duration)": "2383.3333333333335"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_SWEEP_CODE_POINTER_TABLE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "281000",
+    "SUM(Self Duration)": "281000",
+    "AVG(Wall Duration)": "40142.857142857145"
+  },
+  {
+    "Name": "ThrottlingURLLoader::~ThrottlingURLLoader",
+    "COUNT": "86",
+    "SUM(Wall Duration)": "278000",
+    "SUM(Self Duration)": "278000",
+    "AVG(Wall Duration)": "3232.5581395348836"
+  },
+  {
+    "Name": "DocumentLoader::InitializeWindow",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "275000",
+    "SUM(Self Duration)": "216000",
+    "AVG(Wall Duration)": "91666.66666666667"
+  },
+  {
+    "Name": "V8.GC_MC_INCREMENTAL_EXTERNAL_PROLOGUE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "270000",
+    "SUM(Self Duration)": "270000",
+    "AVG(Wall Duration)": "38571.42857142857"
+  },
+  {
+    "Name": "NavigationThrottleRegistryImpl::RegisterNavigationThrottles",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "254000",
+    "SUM(Self Duration)": "254000",
+    "AVG(Wall Duration)": "254000"
+  },
+  {
+    "Name": "DocumentLoader::BodyLoadingFinished",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "238000",
+    "SUM(Self Duration)": "58000",
+    "AVG(Wall Duration)": "238000"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_RESIZE_NEW_SPACE",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "221000",
+    "SUM(Self Duration)": "221000",
+    "AVG(Wall Duration)": "5390.243902439024"
+  },
+  {
+    "Name": "V8.GC_HEAP_EPILOGUE",
+    "COUNT": "48",
+    "SUM(Wall Duration)": "219000",
+    "SUM(Self Duration)": "219000",
+    "AVG(Wall Duration)": "4562.5"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_WEAK_LISTS",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "217000",
+    "SUM(Self Duration)": "217000",
+    "AVG(Wall Duration)": "31000"
+  },
+  {
+    "Name": "InputLatency::GestureFlingCancel",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "216000",
+    "SUM(Self Duration)": "216000",
+    "AVG(Wall Duration)": "108000"
+  },
+  {
+    "Name": "SiteInstanceImpl::IsSuitableForUrlInfo",
+    "COUNT": "4",
+    "SUM(Wall Duration)": "211000",
+    "SUM(Self Duration)": "161000",
+    "AVG(Wall Duration)": "52750"
+  },
+  {
+    "Name": "RenderProcessHostImpl::IsSuitableHost",
+    "COUNT": "28",
+    "SUM(Wall Duration)": "211000",
+    "SUM(Self Duration)": "211000",
+    "AVG(Wall Duration)": "7535.714285714285"
+  },
+  {
+    "Name": "RenderFrameImpl::~RenderFrameImpl",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "210000",
+    "SUM(Self Duration)": "210000",
+    "AVG(Wall Duration)": "210000"
+  },
+  {
+    "Name": "StartToNavigationRequestCreation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "192000",
+    "SUM(Self Duration)": "192000",
+    "AVG(Wall Duration)": "192000"
+  },
+  {
+    "Name": "NavigationRequest::Create",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "192000",
+    "SUM(Self Duration)": "26000",
+    "AVG(Wall Duration)": "192000"
+  },
+  {
+    "Name": "toFramesVector",
+    "COUNT": "16",
+    "SUM(Wall Duration)": "189000",
+    "SUM(Self Duration)": "189000",
+    "AVG(Wall Duration)": "11812.5"
+  },
+  {
+    "Name": "V8.GCPhantomHandleProcessingCallback",
+    "COUNT": "10",
+    "SUM(Wall Duration)": "188000",
+    "SUM(Self Duration)": "58000",
+    "AVG(Wall Duration)": "18800"
+  },
+  {
+    "Name": "RenderFrameImpl::Initialize",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "188000",
+    "SUM(Self Duration)": "47000",
+    "AVG(Wall Duration)": "188000"
+  },
+  {
+    "Name": "V8.GC_MC_SWEEP_START_JOBS",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "178000",
+    "SUM(Self Duration)": "178000",
+    "AVG(Wall Duration)": "25428.571428571428"
+  },
+  {
+    "Name": "V8.GC_TIME_TO_SAFEPOINT",
+    "COUNT": "65",
+    "SUM(Wall Duration)": "174000",
+    "SUM(Self Duration)": "174000",
+    "AVG(Wall Duration)": "2676.923076923077"
+  },
+  {
+    "Name": "NavigationRequest::NavigationRequest",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "166000",
+    "SUM(Self Duration)": "166000",
+    "AVG(Wall Duration)": "166000"
+  },
+  {
+    "Name": "V8.GC_MC_PROLOGUE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "154000",
+    "SUM(Self Duration)": "154000",
+    "AVG(Wall Duration)": "22000"
+  },
+  {
+    "Name": "FrameLoader::DetachDocument",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "154000",
+    "SUM(Self Duration)": "109000",
+    "AVG(Wall Duration)": "154000"
+  },
+  {
+    "Name": "V8.GC_MC_COMPLETE_SWEEPING",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "142000",
+    "SUM(Self Duration)": "127000",
+    "AVG(Wall Duration)": "20285.714285714286"
+  },
+  {
+    "Name": "CppGC.ConcurrentWeakCallback",
+    "COUNT": "5",
+    "SUM(Wall Duration)": "142000",
+    "SUM(Self Duration)": "142000",
+    "AVG(Wall Duration)": "28400"
+  },
+  {
+    "Name": "V8.GC_HEAP_PROLOGUE",
+    "COUNT": "48",
+    "SUM(Wall Duration)": "141000",
+    "SUM(Self Duration)": "141000",
+    "AVG(Wall Duration)": "2937.5"
+  },
+  {
+    "Name": "ContentRendererClient::RenderFrameCreated",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "141000",
+    "SUM(Self Duration)": "141000",
+    "AVG(Wall Duration)": "141000"
+  },
+  {
+    "Name": "ClearWeaknessProcessor start",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "139000",
+    "SUM(Self Duration)": "139000",
+    "AVG(Wall Duration)": "3390.243902439024"
+  },
+  {
+    "Name": "Resume",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "136000",
+    "SUM(Self Duration)": "136000",
+    "AVG(Wall Duration)": "136000"
+  },
+  {
+    "Name": "V8.GC_HEAP_EXTERNAL_SECOND_PASS_CALLBACKS",
+    "COUNT": "10",
+    "SUM(Wall Duration)": "130000",
+    "SUM(Self Duration)": "130000",
+    "AVG(Wall Duration)": "13000"
+  },
+  {
+    "Name": "RenderFrameHostManager::DetermineSiteInstanceForURL",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "128000",
+    "SUM(Self Duration)": "51000",
+    "AVG(Wall Duration)": "64000"
+  },
+  {
+    "Name": "NavigationURLLoader::Create",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "128000",
+    "SUM(Self Duration)": "9000",
+    "AVG(Wall Duration)": "128000"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_UPDATE_POINTERS_WEAK",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "126000",
+    "SUM(Self Duration)": "126000",
+    "AVG(Wall Duration)": "18000"
+  },
+  {
+    "Name": "DocumentAssociatedData::~DocumentAssociatedData",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "126000",
+    "SUM(Self Duration)": "126000",
+    "AVG(Wall Duration)": "126000"
+  },
+  {
+    "Name": "Parallel scavenge started",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "122000",
+    "SUM(Self Duration)": "122000",
+    "AVG(Wall Duration)": "2975.609756097561"
+  },
+  {
+    "Name": "V8.GC_MC_FINISH_SWEEP_ARRAY_BUFFERS",
+    "COUNT": "5",
+    "SUM(Wall Duration)": "120000",
+    "SUM(Self Duration)": "120000",
+    "AVG(Wall Duration)": "24000"
+  },
+  {
+    "Name": "NavigationURLLoaderImpl::NavigationURLLoaderImpl",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "119000",
+    "SUM(Self Duration)": "119000",
+    "AVG(Wall Duration)": "119000"
+  },
+  {
+    "Name": "ComputeWeaknessProcessor start",
+    "COUNT": "41",
+    "SUM(Wall Duration)": "118000",
+    "SUM(Self Duration)": "118000",
+    "AVG(Wall Duration)": "2878.048780487805"
+  },
+  {
+    "Name": "LoadingPredictorTabHelper::DidStartNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "109000",
+    "SUM(Self Duration)": "14000",
+    "AVG(Wall Duration)": "109000"
+  },
+  {
+    "Name": "V8.GC_MC_INCREMENTAL_EXTERNAL_EPILOGUE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "101000",
+    "SUM(Self Duration)": "101000",
+    "AVG(Wall Duration)": "14428.57142857143"
+  },
+  {
+    "Name": "NavigationRequest::WillProcessResponse",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "95000",
+    "SUM(Self Duration)": "11000",
+    "AVG(Wall Duration)": "95000"
+  },
+  {
+    "Name": "ModuleEvaluated",
+    "COUNT": "5",
+    "SUM(Wall Duration)": "95000",
+    "SUM(Self Duration)": "95000",
+    "AVG(Wall Duration)": "19000"
+  },
+  {
+    "Name": "V8.GC_BACKGROUND_YOUNG_ARRAY_BUFFER_SWEEP",
+    "COUNT": "5",
+    "SUM(Wall Duration)": "93000",
+    "SUM(Self Duration)": "81000",
+    "AVG(Wall Duration)": "18600"
+  },
+  {
+    "Name": "RenderFrameImpl::DidDispatchDOMContentLoadedEvent",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "91000",
+    "SUM(Self Duration)": "91000",
+    "AVG(Wall Duration)": "91000"
+  },
+  {
+    "Name": "V8.GC_HEAP_PROLOGUE_SAFEPOINT",
+    "COUNT": "48",
+    "SUM(Wall Duration)": "90000",
+    "SUM(Self Duration)": "90000",
+    "AVG(Wall Duration)": "1875"
+  },
+  {
+    "Name": "V8.GC_BACKGROUND_FULL_ARRAY_BUFFER_SWEEP",
+    "COUNT": "5",
+    "SUM(Wall Duration)": "90000",
+    "SUM(Self Duration)": "76000",
+    "AVG(Wall Duration)": "18000"
+  },
+  {
+    "Name": "NavigationURLLoaderImpl::CreateURLLoaderThrottles",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "88000",
+    "SUM(Self Duration)": "88000",
+    "AVG(Wall Duration)": "88000"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_SWEEP_ARRAY_BUFFERS",
+    "COUNT": "5",
+    "SUM(Wall Duration)": "86000",
+    "SUM(Self Duration)": "86000",
+    "AVG(Wall Duration)": "17200"
+  },
+  {
+    "Name": "v8.deserializeOnBackground.start",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "84000",
+    "SUM(Self Duration)": "84000",
+    "AVG(Wall Duration)": "84000"
+  },
+  {
+    "Name": "LoadingPredictorTabHelper::PrepareForPageLoad.",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "81000",
+    "SUM(Self Duration)": "5000",
+    "AVG(Wall Duration)": "81000"
+  },
+  {
+    "Name": "RemoteFrame",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "76000",
+    "SUM(Self Duration)": "76000",
+    "AVG(Wall Duration)": "38000"
+  },
+  {
+    "Name": "LoadingPredictor::PrepareForPageLoad",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "76000",
+    "SUM(Self Duration)": "75000",
+    "AVG(Wall Duration)": "76000"
+  },
+  {
+    "Name": "ImageUploadTask",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "76000",
+    "SUM(Self Duration)": "76000",
+    "AVG(Wall Duration)": "25333.333333333332"
+  },
+  {
+    "Name": "SiteInstanceImpl::LockProcessIfNeeded",
+    "COUNT": "6",
+    "SUM(Wall Duration)": "75000",
+    "SUM(Self Duration)": "75000",
+    "AVG(Wall Duration)": "12500"
+  },
+  {
+    "Name": "ClearStringTableJob started",
+    "COUNT": "56",
+    "SUM(Wall Duration)": "75000",
+    "SUM(Self Duration)": "75000",
+    "AVG(Wall Duration)": "1339.2857142857142"
+  },
+  {
+    "Name": "DocumentLoader::DidCommitNavigation",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "74000",
+    "SUM(Self Duration)": "35000",
+    "AVG(Wall Duration)": "24666.666666666668"
+  },
+  {
+    "Name": "DocumentLoader::DidInstallNewDocument",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "73000",
+    "SUM(Self Duration)": "51000",
+    "AVG(Wall Duration)": "24333.333333333332"
+  },
+  {
+    "Name": "RenderFrameHostImpl::DidFocusFrame",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "72000",
+    "SUM(Self Duration)": "72000",
+    "AVG(Wall Duration)": "36000"
+  },
+  {
+    "Name": "RenderFrameImpl::didFinishLoad",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "70000",
+    "SUM(Self Duration)": "70000",
+    "AVG(Wall Duration)": "70000"
+  },
+  {
+    "Name": "LocalWindowProxy::SetupWindowPrototypeChain",
+    "COUNT": "8",
+    "SUM(Wall Duration)": "69000",
+    "SUM(Self Duration)": "69000",
+    "AVG(Wall Duration)": "8625"
+  },
+  {
+    "Name": "V8.GC_MC_MARK_RETAIN_MAPS",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "67000",
+    "SUM(Self Duration)": "67000",
+    "AVG(Wall Duration)": "9571.42857142857"
+  },
+  {
+    "Name": "V8Console::Warn",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "63000",
+    "SUM(Self Duration)": "44000",
+    "AVG(Wall Duration)": "63000"
+  },
+  {
+    "Name": "DocumentLoader::DocumentLoader",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "59000",
+    "SUM(Self Duration)": "59000",
+    "AVG(Wall Duration)": "19666.666666666668"
+  },
+  {
+    "Name": "BrowsingContextState::OnDidStopLoading broadcast",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "59000",
+    "SUM(Self Duration)": "4000",
+    "AVG(Wall Duration)": "59000"
+  },
+  {
+    "Name": "V8.GC_MINOR_MS_BACKGROUND_SWEEPING",
+    "COUNT": "5",
+    "SUM(Wall Duration)": "58000",
+    "SUM(Self Duration)": "58000",
+    "AVG(Wall Duration)": "11600"
+  },
+  {
+    "Name": "BrowsingContextState::ExecuteRemoteFramesBroadcastMethod",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "56000",
+    "SUM(Self Duration)": "56000",
+    "AVG(Wall Duration)": "28000"
+  },
+  {
+    "Name": "RenderFrameImpl::NotifyObserversOfNavigationCommit",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "55000",
+    "SUM(Self Duration)": "55000",
+    "AVG(Wall Duration)": "55000"
+  },
+  {
+    "Name": "WebContentsImpl::DidNavigateMainFramePostCommit",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "52000",
+    "SUM(Self Duration)": "52000",
+    "AVG(Wall Duration)": "52000"
+  },
+  {
+    "Name": "NavigationRequest::NotifyCookiesAccessed",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "52000",
+    "SUM(Self Duration)": "52000",
+    "AVG(Wall Duration)": "52000"
+  },
+  {
+    "Name": "V8.GC_SCAVENGER_COMPLETE_SWEEP_ARRAY_BUFFERS",
+    "COUNT": "4",
+    "SUM(Wall Duration)": "51000",
+    "SUM(Self Duration)": "51000",
+    "AVG(Wall Duration)": "12750"
+  },
+  {
+    "Name": "LocalFrame",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "51000",
+    "SUM(Self Duration)": "51000",
+    "AVG(Wall Duration)": "25500"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_FLUSHED_JS_FUNCTIONS",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "47000",
+    "SUM(Self Duration)": "47000",
+    "AVG(Wall Duration)": "6714.285714285715"
+  },
+  {
+    "Name": "CookieAccessObserver.copy",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "47000",
+    "SUM(Self Duration)": "47000",
+    "AVG(Wall Duration)": "15666.666666666666"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_FLUSHABLE_BYTECODE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "46000",
+    "SUM(Self Duration)": "46000",
+    "AVG(Wall Duration)": "6571.428571428572"
+  },
+  {
+    "Name": "BackForwardCache_MaybeStorePage",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "46000",
+    "SUM(Self Duration)": "42000",
+    "AVG(Wall Duration)": "46000"
+  },
+  {
+    "Name": "V8.GC_MC_COMPLETE_SWEEP_ARRAY_BUFFERS",
+    "COUNT": "4",
+    "SUM(Wall Duration)": "45000",
+    "SUM(Self Duration)": "45000",
+    "AVG(Wall Duration)": "11250"
+  },
+  {
+    "Name": "HTMLDocumentParser::DocumentElementAvailable",
+    "COUNT": "6",
+    "SUM(Wall Duration)": "45000",
+    "SUM(Self Duration)": "45000",
+    "AVG(Wall Duration)": "7500"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_SWEEP_WASM_CODE_POINTER_TABLE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "44000",
+    "SUM(Self Duration)": "44000",
+    "AVG(Wall Duration)": "6285.714285714285"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_JS_WEAK_REFERENCES",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "44000",
+    "SUM(Self Duration)": "44000",
+    "AVG(Wall Duration)": "6285.714285714285"
+  },
+  {
+    "Name": "V8.GC_MC_MARK_FINISH_INCREMENTAL",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "42000",
+    "SUM(Self Duration)": "42000",
+    "AVG(Wall Duration)": "6000"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_REBALANCE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "41000",
+    "SUM(Self Duration)": "41000",
+    "AVG(Wall Duration)": "5857.142857142857"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_CLEAN_UP",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "40000",
+    "SUM(Self Duration)": "40000",
+    "AVG(Wall Duration)": "5714.285714285715"
+  },
+  {
+    "Name": "CommitLoad",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "39000",
+    "SUM(Self Duration)": "39000",
+    "AVG(Wall Duration)": "39000"
+  },
+  {
+    "Name": "v8.produceCache",
+    "COUNT": "22",
+    "SUM(Wall Duration)": "38000",
+    "SUM(Self Duration)": "38000",
+    "AVG(Wall Duration)": "1727.2727272727273"
+  },
+  {
+    "Name": "NavigationRequest::DidCommitNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "38000",
+    "SUM(Self Duration)": "38000",
+    "AVG(Wall Duration)": "38000"
+  },
+  {
+    "Name": "RenderFrameHostImpl::RenderFrameHostImpl",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "37000",
+    "SUM(Self Duration)": "37000",
+    "AVG(Wall Duration)": "37000"
+  },
+  {
+    "Name": "RenderFrameHostImpl::IsInactiveAndDisallowActivation",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "37000",
+    "SUM(Self Duration)": "37000",
+    "AVG(Wall Duration)": "12333.333333333334"
+  },
+  {
+    "Name": "BackForwardCacheBufferLimitTracker::DidRemoveFrameOrWorkerFromBackForwardCache",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "37000",
+    "SUM(Self Duration)": "37000",
+    "AVG(Wall Duration)": "5285.714285714285"
+  },
+  {
+    "Name": "V8.GC_MC_CLEAR_WEAK_REFERENCES_TRUSTED",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "36000",
+    "SUM(Self Duration)": "36000",
+    "AVG(Wall Duration)": "5142.857142857143"
+  },
+  {
+    "Name": "CppGC.MarkAtomicEpilogue",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "34000",
+    "SUM(Self Duration)": "34000",
+    "AVG(Wall Duration)": "4857.142857142857"
+  },
+  {
+    "Name": "PointersUpdatingJob started",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "33000",
+    "SUM(Self Duration)": "33000",
+    "AVG(Wall Duration)": "4714.285714285715"
+  },
+  {
+    "Name": "V8RuntimeAgentImpl::enable",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "32000",
+    "SUM(Self Duration)": "32000",
+    "AVG(Wall Duration)": "16000"
+  },
+  {
+    "Name": "PageEvacuationJob started",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "32000",
+    "SUM(Self Duration)": "32000",
+    "AVG(Wall Duration)": "4571.428571428572"
+  },
+  {
+    "Name": "V8.GC_MC_EVACUATE_UPDATE_POINTERS_CLIENT_HEAPS",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "30000",
+    "SUM(Self Duration)": "30000",
+    "AVG(Wall Duration)": "4285.714285714285"
+  },
+  {
+    "Name": "TrustTokenAccessObserver.copy",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "30000",
+    "SUM(Self Duration)": "30000",
+    "AVG(Wall Duration)": "10000"
+  },
+  {
+    "Name": "Major concurrent marking started",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "30000",
+    "SUM(Self Duration)": "30000",
+    "AVG(Wall Duration)": "4285.714285714285"
+  },
+  {
+    "Name": "Frame::SwapImpl.CloneState",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "30000",
+    "SUM(Self Duration)": "25000",
+    "AVG(Wall Duration)": "30000"
+  },
+  {
+    "Name": "DeviceBoundSessionAccessObserver.copy",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "30000",
+    "SUM(Self Duration)": "30000",
+    "AVG(Wall Duration)": "10000"
+  },
+  {
+    "Name": "V8RuntimeAgentImpl::disable",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "28000",
+    "SUM(Self Duration)": "28000",
+    "AVG(Wall Duration)": "14000"
+  },
+  {
+    "Name": "V8.GC_MC_SWEEP_NEW_LO",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "28000",
+    "SUM(Self Duration)": "28000",
+    "AVG(Wall Duration)": "4000"
+  },
+  {
+    "Name": "URLLoaderNetworkServiceObserver.copy",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "28000",
+    "SUM(Self Duration)": "28000",
+    "AVG(Wall Duration)": "9333.333333333334"
+  },
+  {
+    "Name": "SharedDictionaryAccessObserver.copy",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "28000",
+    "SUM(Self Duration)": "28000",
+    "AVG(Wall Duration)": "9333.333333333334"
+  },
+  {
+    "Name": "DevToolsObserver.copy",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "28000",
+    "SUM(Self Duration)": "28000",
+    "AVG(Wall Duration)": "9333.333333333334"
+  },
+  {
+    "Name": "AcceptCHFrameObserver.copy",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "28000",
+    "SUM(Self Duration)": "28000",
+    "AVG(Wall Duration)": "9333.333333333334"
+  },
+  {
+    "Name": "MetricsWebContentsObserver::MaybeRestorePageLoadTrackerForBackForwardCache",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "27000",
+    "SUM(Self Duration)": "27000",
+    "AVG(Wall Duration)": "27000"
+  },
+  {
+    "Name": "ArrayBufferSweeper Finished",
+    "COUNT": "10",
+    "SUM(Wall Duration)": "26000",
+    "SUM(Self Duration)": "26000",
+    "AVG(Wall Duration)": "2600"
+  },
+  {
+    "Name": "V8.GC_MC_EPILOGUE",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "25000",
+    "SUM(Self Duration)": "25000",
+    "AVG(Wall Duration)": "3571.4285714285716"
+  },
+  {
+    "Name": "NavigationURLLoaderImpl::CreateInterceptors",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "24000",
+    "SUM(Self Duration)": "24000",
+    "AVG(Wall Duration)": "24000"
+  },
+  {
+    "Name": "RenderViewHostImpl::RenderViewHostImpl",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "23000",
+    "SUM(Self Duration)": "23000",
+    "AVG(Wall Duration)": "23000"
+  },
+  {
+    "Name": "RenderFrameImpl::didStopLoading",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "23000",
+    "SUM(Self Duration)": "23000",
+    "AVG(Wall Duration)": "23000"
+  },
+  {
+    "Name": "RenderFrameImpl::DidClearWindowObject",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "23000",
+    "SUM(Self Duration)": "23000",
+    "AVG(Wall Duration)": "11500"
+  },
+  {
+    "Name": "ClassifyNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "23000",
+    "SUM(Self Duration)": "23000",
+    "AVG(Wall Duration)": "23000"
+  },
+  {
+    "Name": "V8.GC_MC_MARK_CLIENT_HEAPS",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "22000",
+    "SUM(Self Duration)": "22000",
+    "AVG(Wall Duration)": "3142.8571428571427"
+  },
+  {
+    "Name": "DocumentLoader::RecordUseCountersForCommit",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "22000",
+    "SUM(Self Duration)": "22000",
+    "AVG(Wall Duration)": "7333.333333333333"
+  },
+  {
+    "Name": "DoDigestReply",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "22000",
+    "SUM(Self Duration)": "22000",
+    "AVG(Wall Duration)": "22000"
+  },
+  {
+    "Name": "PrerenderHostRegistry::FindPotentialHostToActivate",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "21000",
+    "SUM(Self Duration)": "21000",
+    "AVG(Wall Duration)": "21000"
+  },
+  {
+    "Name": "MetricsWebContentsObserver::MaybeActivatePageLoadTracker",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "21000",
+    "SUM(Self Duration)": "21000",
+    "AVG(Wall Duration)": "21000"
+  },
+  {
+    "Name": "V8.GC_CONSERVATIVE_STACK_SCANNING",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "20000",
+    "SUM(Self Duration)": "20000",
+    "AVG(Wall Duration)": "2857.1428571428573"
+  },
+  {
+    "Name": "AgentSchedulingGroupHost::RemoveRoute",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "20000",
+    "SUM(Self Duration)": "20000",
+    "AVG(Wall Duration)": "10000"
+  },
+  {
+    "Name": "SiteInstanceImpl::SetProcessInternal",
+    "COUNT": "6",
+    "SUM(Wall Duration)": "18000",
+    "SUM(Self Duration)": "18000",
+    "AVG(Wall Duration)": "3000"
+  },
+  {
+    "Name": "RemoteFrame::SetReplicatedOrigin",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "16000",
+    "SUM(Self Duration)": "16000",
+    "AVG(Wall Duration)": "16000"
+  },
+  {
+    "Name": "PrefetchMatchResolver::FindPrefetch",
+    "COUNT": "6",
+    "SUM(Wall Duration)": "16000",
+    "SUM(Self Duration)": "16000",
+    "AVG(Wall Duration)": "2666.6666666666665"
+  },
+  {
+    "Name": "ClearTrivialWeakRefJob started",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "16000",
+    "SUM(Self Duration)": "16000",
+    "AVG(Wall Duration)": "2285.714285714286"
+  },
+  {
+    "Name": "v8.deserializeOnBackground.finishedBeforeResource",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "15000",
+    "SUM(Self Duration)": "15000",
+    "AVG(Wall Duration)": "15000"
+  },
+  {
+    "Name": "RenderFrameHostImpl::DispatchBeforeUnload",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "15000",
+    "SUM(Self Duration)": "11000",
+    "AVG(Wall Duration)": "15000"
+  },
+  {
+    "Name": "KeepAliveURLLoaderFactories::BindFactory",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "15000",
+    "SUM(Self Duration)": "15000",
+    "AVG(Wall Duration)": "15000"
+  },
+  {
+    "Name": "RenderFrameHostImpl::StartPendingDeletionOnSubtree",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "14000",
+    "SUM(Self Duration)": "14000",
+    "AVG(Wall Duration)": "14000"
+  },
+  {
+    "Name": "LookalikeUrlService::ForceUpdateEngagedSites",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "14000",
+    "SUM(Self Duration)": "14000",
+    "AVG(Wall Duration)": "14000"
+  },
+  {
+    "Name": "CommitDeferringConditionRunner::RegisterDeferringConditions",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "14000",
+    "SUM(Self Duration)": "14000",
+    "AVG(Wall Duration)": "14000"
+  },
+  {
+    "Name": "WebContentsImpl::DidNavigateAnyFramePostCommit",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "13000",
+    "SUM(Self Duration)": "13000",
+    "AVG(Wall Duration)": "13000"
+  },
+  {
+    "Name": "DoDigest",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "13000",
+    "SUM(Self Duration)": "13000",
+    "AVG(Wall Duration)": "13000"
+  },
+  {
+    "Name": "WebContentsImpl::DidNavigateMainFramePreCommit",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "12000",
+    "SUM(Self Duration)": "12000",
+    "AVG(Wall Duration)": "12000"
+  },
+  {
+    "Name": "DocumentLoader::~DocumentLoader",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "12000",
+    "SUM(Self Duration)": "12000",
+    "AVG(Wall Duration)": "4000"
+  },
+  {
+    "Name": "ClearTrustedWeakRefJob started",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "11000",
+    "SUM(Self Duration)": "11000",
+    "AVG(Wall Duration)": "1571.4285714285713"
+  },
+  {
+    "Name": "RenderFrameHostImpl::ResetChildren",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "10000",
+    "SUM(Self Duration)": "10000",
+    "AVG(Wall Duration)": "10000"
+  },
+  {
+    "Name": "FetchLaterLoaderFactories::BindFactory",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "10000",
+    "SUM(Self Duration)": "10000",
+    "AVG(Wall Duration)": "10000"
+  },
+  {
+    "Name": "ClearNonTrivialWeakRefs started",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "10000",
+    "SUM(Self Duration)": "10000",
+    "AVG(Wall Duration)": "1428.5714285714287"
+  },
+  {
+    "Name": "SharedWorkerServiceImpl::EvictBFCachedClientsIfLastActive",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "8000",
+    "SUM(Self Duration)": "8000",
+    "AVG(Wall Duration)": "4000"
+  },
+  {
+    "Name": "RenderFrameHostManager::DiscardSpeculativeRFH",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "8000",
+    "SUM(Self Duration)": "8000",
+    "AVG(Wall Duration)": "8000"
+  },
+  {
+    "Name": "BrowsingContextState::DeleteRenderFrameProxyHost",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "8000",
+    "SUM(Self Duration)": "8000",
+    "AVG(Wall Duration)": "8000"
+  },
+  {
+    "Name": "MaybeSetLCPPNavigationHint",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "7000",
+    "SUM(Self Duration)": "5000",
+    "AVG(Wall Duration)": "7000"
+  },
+  {
+    "Name": "BrowsingContextState::OnDidStartLoading broadcast",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "7000",
+    "SUM(Self Duration)": "6000",
+    "AVG(Wall Duration)": "7000"
+  },
+  {
+    "Name": "RenderFrameImpl::didStartLoading",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "6000",
+    "SUM(Self Duration)": "6000",
+    "AVG(Wall Duration)": "6000"
+  },
+  {
+    "Name": "PrefetchMatchResolver::UnblockForNoCandidates",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "6000",
+    "SUM(Self Duration)": "6000",
+    "AVG(Wall Duration)": "3000"
+  },
+  {
+    "Name": "LoadingPredictor::OnNavigationStarted",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "6000",
+    "SUM(Self Duration)": "6000",
+    "AVG(Wall Duration)": "6000"
+  },
+  {
+    "Name": "RemoteFrame::DidSetFramePolicyHeaders",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "5000",
+    "SUM(Self Duration)": "5000",
+    "AVG(Wall Duration)": "5000"
+  },
+  {
+    "Name": "RenderFrameHostImpl::SendBeforeUnload",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "4000",
+    "SUM(Self Duration)": "4000",
+    "AVG(Wall Duration)": "4000"
+  },
+  {
+    "Name": "PrefetchURLLoaderInterceptor::MaybeCreateLoader",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "4000",
+    "SUM(Self Duration)": "4000",
+    "AVG(Wall Duration)": "2000"
+  },
+  {
+    "Name": "LocalWindowProxy::UpdateDocumentProperty",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "4000",
+    "SUM(Self Duration)": "4000",
+    "AVG(Wall Duration)": "4000"
+  },
+  {
+    "Name": "ConcurrentMarking::RunMajor Preempted",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "4000",
+    "SUM(Self Duration)": "4000",
+    "AVG(Wall Duration)": "4000"
+  },
+  {
+    "Name": "RenderFrameImpl::RenderFrameImpl",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "3000",
+    "SUM(Self Duration)": "3000",
+    "AVG(Wall Duration)": "3000"
+  },
+  {
+    "Name": "NavigationURLLoaderImpl::MaybeCreateLoaderForResponse",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "3000",
+    "SUM(Self Duration)": "3000",
+    "AVG(Wall Duration)": "3000"
+  },
+  {
+    "Name": "LcppDataMap::GetLcppStat",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "3000",
+    "SUM(Self Duration)": "3000",
+    "AVG(Wall Duration)": "1500"
+  },
+  {
+    "Name": "BackForwardCacheImpl::GetCurrentBackForwardCacheEligibility",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "3000",
+    "SUM(Self Duration)": "3000",
+    "AVG(Wall Duration)": "3000"
+  },
+  {
+    "Name": "RemoteFrame::SetReplicatedName",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2000",
+    "SUM(Self Duration)": "2000",
+    "AVG(Wall Duration)": "2000"
+  },
+  {
+    "Name": "RemoteFrame::EnforceInsecureNavigationsSet",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2000",
+    "SUM(Self Duration)": "2000",
+    "AVG(Wall Duration)": "2000"
+  },
+  {
+    "Name": "PrefetchURLLoaderInterceptor::GetPrefetch",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "2000",
+    "SUM(Self Duration)": "2000",
+    "AVG(Wall Duration)": "1000"
+  },
+  {
+    "Name": "NavigationURLLoaderImpl::~NavigationURLLoaderImpl",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2000",
+    "SUM(Self Duration)": "2000",
+    "AVG(Wall Duration)": "2000"
+  },
+  {
+    "Name": "FrameTreeNode::CancelRestartingBackForwardCacheNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2000",
+    "SUM(Self Duration)": "2000",
+    "AVG(Wall Duration)": "2000"
+  },
+  {
+    "Name": "BackForwardCacheImpl::GetCompleteBackForwardCacheEligibilityForReporting",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "2000",
+    "SUM(Self Duration)": "2000",
+    "AVG(Wall Duration)": "2000"
+  },
+  {
+    "Name": "RemoteFrame::SetReplicatedIsAdFrame",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1000",
+    "SUM(Self Duration)": "1000",
+    "AVG(Wall Duration)": "1000"
+  },
+  {
+    "Name": "RemoteFrame::SetHadStickyUserActivationBeforeNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1000",
+    "SUM(Self Duration)": "1000",
+    "AVG(Wall Duration)": "1000"
+  },
+  {
+    "Name": "PrefetchURLLoaderInterceptor::OnGetPrefetchComplete",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "1000",
+    "SUM(Self Duration)": "1000",
+    "AVG(Wall Duration)": "500"
+  },
+  {
+    "Name": "MaybePrewarmMainResourceAndSubresourcesOnNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "1000",
+    "SUM(Self Duration)": "1000",
+    "AVG(Wall Duration)": "1000"
+  },
+  {
+    "Name": "~RenderViewHostImpl()",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "viewport",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "unloadEventStart",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "unloadEventEnd",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "responseEnd",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "navigationStart",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "markAsMainFrame",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "loadEventStart",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "loadEventEnd",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "largestContentfulPaint::CandidateForSoftNavigation",
+    "COUNT": "44",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "largestContentfulPaint::Candidate",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "firstPaint",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "firstMeaningfulPaintCandidate",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "firstMeaningfulPaint",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "firstContentfulPaint",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "fetchStart",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "domLoading",
+    "COUNT": "7",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "domInteractive",
+    "COUNT": "4",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "domContentLoadedEventStart",
+    "COUNT": "4",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "domContentLoadedEventEnd",
+    "COUNT": "4",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "domComplete",
+    "COUNT": "4",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "commitNavigationEnd",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "WebSocketSendHandshakeRequest",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "WebSocketSend",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "WebSocketReceiveHandshakeResponse",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "WebSocketReceive",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "WebSocketDestroy",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "WebSocketCreate",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "UpdateCounters",
+    "COUNT": "7465",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "UkmPageLoadTimingUpdate",
+    "COUNT": "10",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "TracingStartedInBrowser",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "TracingSessionIdForWorker",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "TimerRemove",
+    "COUNT": "108",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "TimerInstall",
+    "COUNT": "268",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "SoftNavigationHeuristics::SoftNavigationContextWasExhausted",
+    "COUNT": "73",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "SoftNavigationContextCreated",
+    "COUNT": "88",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "SoftNavigationContext::OnPaintFinished",
+    "COUNT": "109",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "SoftNavigationContext::OnInputOrScroll",
+    "COUNT": "3229",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "SoftNavigationContext::AttributablePaintInAnimationFrame",
+    "COUNT": "9900",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "SoftNavigationContext::AddedModifiedNodeInAnimationFrame",
+    "COUNT": "30804",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "SiteInstanceImpl::LockProcessIfNeeded_used",
+    "COUNT": "6",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "SetLayerTreeId",
+    "COUNT": "6005",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "ScheduleStyleRecalculation",
+    "COUNT": "3095",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "SchedulePostMessage",
+    "COUNT": "22",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "ResourceWillSendRequest",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "ResourceSendRequest",
+    "COUNT": "88",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "ResourceReceivedData",
+    "COUNT": "94",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "ResourceReceiveResponse",
+    "COUNT": "89",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "ResourceMarkAsCached",
+    "COUNT": "14",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "ResourceFinish",
+    "COUNT": "89",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "RequestMainThreadFrame",
+    "COUNT": "3188",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "RequestIdleCallback",
+    "COUNT": "44",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "RequestAnimationFrame",
+    "COUNT": "462",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "RendererNavigationMetricsManager::RecordTraceEventsAndMetrics",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "RenderFrameHostManager::GetSiteInstanceForNavigation_ShouldSwapResult",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "RenderFrameHostManager::GetSiteInstanceForNavigation",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "ParseMetaViewport",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "PaintTimingVisualizer::Viewport",
+    "COUNT": "3",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "PaintTimingVisualizer::LayoutObjectPainted",
+    "COUNT": "10358",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "PageLoadMetrics.NavigationToMainFrameOnLoad",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "PageLoadMetrics.NavigationToDOMContentLoadedEventFired",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "PageLoad.PaintTiming.LargestContentfulPaintCandidate",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "NeedsBeginFrameChanged",
+    "COUNT": "276",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "NavigationTiming navigationStart",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "NavigationStartToBeginNavigation",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "NavStartToLargestContentfulPaint::Invalidate::AllFrames::UKM",
+    "COUNT": "4",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "NavStartToLargestContentfulPaint::Candidate::AllFrames::UKM",
+    "COUNT": "6",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "NavStartToLargestContentfulPaint::AllFrames::UMA",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "NavStartToExperimentalLargestContentfulPaint::Invalidate::AllFrames::UKM",
+    "COUNT": "10",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "MetaCharsetCheck",
+    "COUNT": "5",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "MarkLoad",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "MarkDOMContent",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "LoadFinished",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "LayoutShift",
+    "COUNT": "30",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "Layer:deleted",
+    "COUNT": "881",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "Layer:created",
+    "COUNT": "869",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "LargestTextPaint::Candidate",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "InvalidateLayout",
+    "COUNT": "793",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "InteractiveTime",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "GlobalFirstContentfulPaint",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "FrameTree::UnregisterRenderViewHost",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "FrameTree::RegisterRenderViewHost",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "FrameStartedLoading",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "FrameLoader:state_snapshot",
+    "COUNT": "10",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "FrameLoader:deleted",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "FrameLoader:created",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "FrameCommittedInBrowser",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "FirstInputDelay::AllFrames::UMA",
+    "COUNT": "2",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "DroppedFrame",
+    "COUNT": "952",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "DrawFrame",
+    "COUNT": "2807",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "DOMStats",
+    "COUNT": "357",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "CumulativeShiftScore::AllFrames::UMA",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "CancelIdleCallback",
+    "COUNT": "43",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "BenchmarkInstrumentation::ImplThreadRenderingStats",
+    "COUNT": "2942",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "BeginMainThreadFrame",
+    "COUNT": "3187",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "BeginFrame",
+    "COUNT": "5135",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "BeginCommitCompositorFrame",
+    "COUNT": "3174",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "BeforeUnloadExecutionMode",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "BeforeUnloadDialog",
+    "COUNT": "1",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "AnimationFrame::Presentation",
+    "COUNT": "3187",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "AnimationFrame::FirstUIEvent",
+    "COUNT": "88",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  },
+  {
+    "Name": "ActivateLayerTree",
+    "COUNT": "2243",
+    "SUM(Wall Duration)": "0",
+    "SUM(Self Duration)": "0",
+    "AVG(Wall Duration)": "0"
+  }
+]
