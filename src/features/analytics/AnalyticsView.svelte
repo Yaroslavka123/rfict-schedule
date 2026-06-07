@@ -56,6 +56,7 @@
 
   let currentDayStamp = $state(dayStamp(new Date()))
   let today = $derived(new Date(currentDayStamp))
+  let debouncedSearch = $state(search)
   let planInputs = $state<Record<string, string>>({})
   let savingRows = $state<Record<string, boolean>>({})
   let saveStatus = $state<Record<string, 'saved' | 'error'>>({})
@@ -68,8 +69,16 @@
     const interval = setInterval(() => {
       const nextStamp = dayStamp(new Date())
       if (nextStamp !== currentDayStamp) currentDayStamp = nextStamp
-    }, 60_000)
+    }, 600_000)
     return () => clearInterval(interval)
+  })
+
+  $effect(() => {
+    const nextSearch = search
+    const timeout = setTimeout(() => {
+      debouncedSearch = nextSearch
+    }, 200)
+    return () => clearTimeout(timeout)
   })
 
   let courses = $derived(active ? resolveCourses(course, groups, lessons) : [])
@@ -103,7 +112,7 @@
           index: analyticsIndex,
           plans,
           today,
-          search,
+          search: debouncedSearch,
         })
       : [],
   )
@@ -238,11 +247,11 @@
   }
 
   function setInput(key: string, value: string) {
-    planInputs = { ...planInputs, [key]: value }
+    planInputs[key] = value
+    planInputs = planInputs
     if (saveStatus[key] === 'saved') {
-      const next = { ...saveStatus }
-      delete next[key]
-      saveStatus = next
+      delete saveStatus[key]
+      saveStatus = saveStatus
       const timer = savedTimers.get(key)
       if (timer) {
         clearTimeout(timer)
@@ -275,27 +284,29 @@
       clearTimeout(existingTimer)
       savedTimers.delete(key)
     }
-    savingRows = { ...savingRows, [key]: true }
+    savingRows[key] = true
+    savingRows = savingRows
     try {
       await onPlanChange(entry)
-      const nextInputs = { ...planInputs }
-      delete nextInputs[key]
-      planInputs = nextInputs
-      saveStatus = { ...saveStatus, [key]: 'saved' }
+      delete planInputs[key]
+      planInputs = planInputs
+      saveStatus[key] = 'saved'
+      saveStatus = saveStatus
       const timer = setTimeout(() => {
-        const next = { ...saveStatus }
-        if (next[key] === 'saved') {
-          delete next[key]
-          saveStatus = next
+        if (saveStatus[key] === 'saved') {
+          delete saveStatus[key]
+          saveStatus = saveStatus
         }
         savedTimers.delete(key)
       }, 2000)
       savedTimers.set(key, timer)
     } catch (error) {
-      saveStatus = { ...saveStatus, [key]: 'error' }
+      saveStatus[key] = 'error'
+      saveStatus = saveStatus
       alert(`Не удалось сохранить план: ${(error as Error).message}`)
     } finally {
-      savingRows = { ...savingRows, [key]: false }
+      savingRows[key] = false
+      savingRows = savingRows
     }
   }
 

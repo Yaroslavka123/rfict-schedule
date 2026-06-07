@@ -48,6 +48,12 @@ export interface BuildIndexedPlanFactOptions {
 }
 
 const lessonDayStampCache = new WeakMap<ScheduleLesson, number | null>()
+const hierarchyCache = new WeakMap<AnalyticsIndex, {
+  plans: Record<number, CoursePlanMap>
+  todayStamp: number
+  search: string
+  result: PlanFactCourse[]
+}>()
 
 function rawSubgroupNumbers(raw: string | null | undefined): string[] {
   if (!raw) return []
@@ -288,7 +294,28 @@ export function buildPlanFactHierarchy({
 }: BuildIndexedPlanFactOptions): PlanFactCourse[] {
   const query = search ? normalizeSearchQuery(search) : ''
   const todayStamp = dateDayStamp(today)
+  const cached = hierarchyCache.get(index)
 
+  if (
+    cached &&
+    cached.plans === plans &&
+    cached.todayStamp === todayStamp &&
+    cached.search === query
+  ) {
+    return cached.result
+  }
+
+  const result = buildPlanFactHierarchyUncached(index, plans, todayStamp, query)
+  hierarchyCache.set(index, { plans, todayStamp, search: query, result })
+  return result
+}
+
+function buildPlanFactHierarchyUncached(
+  index: AnalyticsIndex,
+  plans: Record<number, CoursePlanMap>,
+  todayStamp: number,
+  query: string,
+): PlanFactCourse[] {
   return index.courses
     .map<PlanFactCourse>((courseIndex) => {
       const coursePlan = plans[courseIndex.course] || {}
