@@ -9,3 +9,4 @@ coverage
 .vite
 .DS_Store
 .vercel
+performance_tests/Trace2.json
