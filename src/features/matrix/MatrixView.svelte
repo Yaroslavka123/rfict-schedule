@@ -626,7 +626,7 @@
           <col style="width: 2rem" />
           {#each columnSlots as slot, slotIndex (slot.id)}
             <col
-              style="width: 20px; min-width: 20px"
+              style="width: 23px; min-width: 23px"
               class={cn(
                 matrixColumnClass(slotIndex),
                 slot.column && columnMatch?.has(slot.column) && 'matrix-col-match',
@@ -752,7 +752,7 @@
                         data-slot-day={day}
                         data-slot-pair={pair}
                         data-matrix-column={column}
-                        title={hasSheet ? 'Открыть Google Таблицу' : undefined}
+                        aria-label={hasSheet ? 'Открыть Google Таблицу' : undefined}
                         onpointerdown={(event) => startLessonPress(event, cellKey)}
                         onpointerup={(event) => finishLessonPress(event, cellKey, cell)}
                         onpointercancel={cancelLessonPress}
