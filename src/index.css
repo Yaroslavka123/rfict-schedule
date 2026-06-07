@@ -927,13 +927,15 @@
 
   /* Teachers header: vertical labels */
   .teachers-matrix .th-teacher {
-    @apply px-0 align-bottom text-[10px] leading-none;
+    @apply px-0 align-bottom text-[12px] leading-none;
     height: 9rem;
     min-width: 30px;
     vertical-align: bottom;
   }
   .teachers-matrix .th-teacher-label {
     @apply font-semibold;
+    font-size: 12px;
+    line-height: 1.05;
     writing-mode: vertical-rl;
     transform: rotate(180deg);
     white-space: nowrap;

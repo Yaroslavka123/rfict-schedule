@@ -96,7 +96,6 @@
   let workerRequestCancel: (() => void) | null = null
   let searchRequestId = 0
   let lastWorkerPostAt = 0
-  const cellByKeyInternal = new Map<string, MatrixRenderCell>()
   const searchResultCache = new Map<string, { result: MatrixFilterResult; ts: number }>()
 
   let normalizedSearch = $derived(search ? normalizeSearchQuery(search) : '')
@@ -140,18 +139,18 @@
     cancelWorkerRequest()
 
     if (!currentSource) {
-      cellByKeyInternal.clear()
       cellByKey = null
       columnMatch = null
+      clearHoverState()
       return
     }
 
     refreshSearchCacheScope(currentSource)
 
     if (activeGroup === 'all' && !query && types.length === 0) {
-      cellByKeyInternal.clear()
       cellByKey = null
       columnMatch = null
+      clearHoverState()
       return
     }
 
@@ -224,14 +223,13 @@
     if (cacheKey) cacheSearchResult(cacheKey, filterResult)
 
     if (!currentSource || !filterResult.cells) {
-      cellByKeyInternal.clear()
       cellByKey = null
     } else {
-      adapter.buildCellMap(currentSource, filterResult.cells, cellByKeyInternal)
-      cellByKey = cellByKeyInternal
+      cellByKey = adapter.buildCellMap(currentSource, filterResult.cells)
     }
 
     columnMatch = filterResult.matches
+    clearHoverState()
   }
 
   function cancelFallbackSearch() {
