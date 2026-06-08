@@ -108,6 +108,7 @@
 
   let normalizedSearch = $derived(search ? normalizeSearchQuery(search) : '')
   let cellByKey = $state<Map<string, MatrixRenderCell> | null>(null)
+  const cellByKeyInternal = new Map<string, MatrixRenderCell>()
   let columnMatch = $state<ReadonlySet<string> | null>(null)
   let orderedColumns = $derived(applyColumnOrder(source ? adapter.getOrderedColumns(source) : [], $columnOrderStore[adapter.scope]))
   let matrixGroups = $derived($columnGroupsStore[adapter.scope])
@@ -233,9 +234,11 @@
     if (cacheKey) cacheSearchResult(cacheKey, filterResult)
 
     if (!currentSource || !filterResult.cells) {
+      cellByKeyInternal.clear()
       cellByKey = null
     } else {
-      cellByKey = adapter.buildCellMap(currentSource, filterResult.cells)
+      adapter.buildCellMap(currentSource, filterResult.cells, cellByKeyInternal)
+      cellByKey = cellByKeyInternal
     }
 
     columnMatch = filterResult.matches

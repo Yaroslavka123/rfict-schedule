@@ -498,6 +498,11 @@
     @apply w-full border-collapse text-sm;
   }
 
+  .dense-table tbody tr {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 2.5rem;
+  }
+
   .dense-table th,
   .dense-table td {
     @apply border-b border-border px-3 py-2 text-left align-middle;
@@ -689,6 +694,12 @@
     flex: 1 1 auto;
   }
 
+  .room-matrix tbody tr,
+  .teachers-matrix tbody tr {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 2rem;
+  }
+
   .room-matrix col[class^="matrix-col-"],
   .teachers-matrix col[class^="matrix-col-"] {
     width: 30px;
@@ -746,7 +757,7 @@
   .teachers-matrix .td-day {
     position: sticky;
     left: 0;
-    z-index: 24;
+    z-index: 1;
   }
 
   .room-matrix .th-pair,
@@ -755,7 +766,7 @@
   .teachers-matrix .td-pair {
     position: sticky;
     left: 2rem;
-    z-index: 24;
+    z-index: 1;
     box-shadow: 1px 0 0 hsl(var(--border));
   }
 
@@ -1013,7 +1024,7 @@
     width: 2rem;
     min-width: 2rem;
     max-width: 2rem;
-    z-index: 26;
+    z-index: 1;
   }
 
   .room-matrix .td-pair,
@@ -1022,7 +1033,7 @@
     width: 2rem;
     min-width: 2rem;
     max-width: 2rem;
-    z-index: 25;
+    z-index: 1;
   }
 
   .room-matrix tr.day-separator > td,
