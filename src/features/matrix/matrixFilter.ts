@@ -10,6 +10,7 @@ import type { LessonType } from '@/types/schedule'
 export type MatrixCellFilter = [key: string, entryIndexes: number[] | null][]
 
 const roomSearchKeyCache = new Map<string, string>()
+const ROOM_SEARCH_KEY_CACHE_LIMIT = 500
 
 export interface RoomMatrixFilterResult {
   cells: MatrixCellFilter | null
@@ -45,6 +46,7 @@ function getRoomSearchKey(room: string) {
   const cached = roomSearchKeyCache.get(room)
   if (cached !== undefined) return cached
   const key = buildSearchKey(room)
+  if (roomSearchKeyCache.size > ROOM_SEARCH_KEY_CACHE_LIMIT) roomSearchKeyCache.clear()
   roomSearchKeyCache.set(room, key)
   return key
 }

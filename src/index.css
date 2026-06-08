@@ -73,7 +73,6 @@
       color 160ms var(--ease),
       background-color 160ms var(--ease),
       border-color 160ms var(--ease),
-      box-shadow 200ms var(--ease),
       opacity 160ms var(--ease);
   }
 

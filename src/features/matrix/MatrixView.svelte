@@ -60,6 +60,7 @@
 
   const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
   const SEARCH_CACHE_TTL_MS = 30_000
+  const SEARCH_CACHE_MAX_SIZE = 50
   const WORKER_POST_THROTTLE_MS = 50
 
   let { active, source, groupFilter, search, lessonTypes, adapter }: MatrixViewProps = $props()
@@ -306,6 +307,7 @@
   }
 
   function cacheSearchResult(key: string, result: MatrixFilterResult) {
+    if (searchResultCache.size > SEARCH_CACHE_MAX_SIZE) searchResultCache.clear()
     searchResultCache.set(key, { result, ts: Date.now() })
   }
 
