@@ -1,337 +1,134 @@
-# Performance Roadmap
+# ROADMAP — Требования и баги
 
 Дата создания: 2026-06-07.
-Дата обновления: 2026-06-08.
-Источник данных: Chrome DevTools trace (81с, 196MB), `performance_tests/data_export_For_2.json`, `performance_tests/Trace2.json`.
-
-**Принцип:** сайт должен оставаться функционально идентичным. Все изменения — только в производительности. API-запросы, логика фильтрации, UI поведение не меняются.
+Дата обновления: 2026-06-09.
 
 ---
 
-## Краткая сводка проблем из trace
+## Баги (критично — сломано сейчас)
 
-| Метрика | Значение | Budget |
-|---|---|---|
-| AnimationFrame max | 1256ms | <16.6ms |
-| AnimationFrame avg | 14.1ms | <16.6ms |
-| MouseMove avg latency | 61.8ms | <4ms |
-| Paint events total | 30,933 | <5,000 |
-| Paint max | 70.5ms | <4ms |
-| Long tasks (>100ms) | 37 | 0 |
-| Long task max | 1417ms | <50ms |
-| HandlePostMessage avg | 187ms | <10ms |
-| RunTask total | 190,013 | — |
-| MajorGC count | 7 | 0 |
-| MajorGC avg | 25.8ms | <5ms |
-| UpdateLayoutTree | 3,254 | <500 |
-| Layout (forced) | 548, avg 4.6ms | <1ms |
+### B-1: Ghost text в поиске не отображается
 
----
+**Симптом:** при вводе текста в поиск серая подсказка-автодополнение не появляется.
 
-## Phase 0: CSS Hot Path — ✅ ВЫПОЛНЕНО
+**Причина:** CSS z-index конфликт в `src/index.css`:
 
-### 0.1 Убрать transition с `.slot-busy` — ✅
+| Элемент | z-index | Background |
+|---------|---------|------------|
+| `<Search>` icon | z-30 | none |
+| `<input>` (.filter-search) | z-20 | **opaque gradient** при `filter-field-active` |
+| `.filter-search-ghost` div | z-10 | transparent |
 
-**Файл:** `src/index.css:1109-1118`
+Ghost всегда ниже input. Когда пользователь печатает, input получает `filter-field-active` → opaque gradient background → ghost полностью скрыт за input.
 
-- `transition` удалён
-- `ring-2 ring-inset` → `outline: 2px solid` (не создаёт repaint area)
+**Файл:** `src/index.css`, строка ~475.
 
-### 0.2 Убрать transition с `.dense-table td` — ✅
-
-**Файл:** `src/index.css`
-
-- Правило `.dense-table tbody tr td { transition: ... }` удалено
-
-### 0.3 Убрать transition с `.slot-free:hover` — ✅
-
-**Файл:** `src/index.css:1107`
-
-- Нет transition
-
-### 0.4 Убрать `will-change` с `.matrix-drag-preview` — ✅
-
-**Файл:** `src/index.css:859-862`
-
-- `will-change: transform` удалён
-
-### 0.5 Оставить `body` transition — ✅
-
-- Оставлено: `transition: background-color 220ms, color 220ms` (theme toggle — редкая операция)
-
-### 0.6 Оставить `.app-header` transition — ✅
-
-- Оставлено: `transition: box-shadow 240ms, background-color 220ms` (1 элемент)
-
-### 0.7 Оставить pseudo-element для group border — ✅
-
-- Оставлено: `::before` только при active drag (1 элемент)
-
-### 0.8 Обрезать transition `.matrix-draggable-header` — ✅
-
-**Файл:** `src/index.css:905-911`
-
-- Оставлены только: `opacity`, `box-shadow`, `outline-color`
-- Убраны: `background-color`, `color`
-
-### 0.9 `content-visibility: auto` на строки матрицы — ❌ НЕ ВЫПОЛНЕНО
-
-**Файл:** `src/index.css`
-
-Добавить:
-
-```css
-.room-matrix tbody tr,
-.teachers-matrix tbody tr {
-  content-visibility: auto;
-  contain-intrinsic-size: 0 2rem;
-}
-```
-
-**Почему:** строки за пределами viewport не рендерятся браузером. DOM матрицы огромный при большом числе columns.
-
-### 0.10 `backdrop-filter: none` на tooltip — ✅
-
-**Файл:** `src/index.css:1191`
-
-- Уже `none`
+**Фикс:** поднять `z-index` ghost с `z-10` на `z-25` ( ghost уже имеет `pointer-events-none`, input по-прежнему кликабельен).
 
 ---
 
-## Phase 1: MouseMove Throttling — ✅ ВЫПОЛНЕНО
+### B-2: Тултипы в матрицах не показывают информацию о чётности недели
 
-### 1.1 RAF gate для `handleTableHover` — ✅
+**Симптом:** тултип по занятому слоту показывает только группу и подгруппу (например, "Группа (1 пг)"), но не показывает чет/нечет/чет-нечет.
 
-**Файл:** `src/features/matrix/MatrixView.svelte:90-93, 452-465`
+**Причина:** поле `frequency` (чет/нечет/еженедельно) не пробрасывается в `RoomSlotEntry` и `TeacherSlotEntry`. Оно потребляется при построении индекса для фильтрации, но отбрасывается до того, как попадает в тултип.
 
-- `hoverFrame` + `pendingHoverEvent` + `flushTableHover` через `requestAnimationFrame`
+**Файлы:**
 
-### 1.2 RAF gate для `flushPointerDrag` — ✅
+- `src/stores/scheduleStore.ts` — `RoomSlotEntry`, `TeacherSlotEntry` (нет поля `frequency`)
+- `src/features/matrix/matrixTooltip.ts` — `MatrixTooltipInput`, `MatrixTooltipGroup` (нет `frequency`)
+- `src/features/matrix/RoomAdapter.ts` — маппинг entries → tooltip input
+- `src/features/matrix/TeacherAdapter.ts` — маппинг entries → tooltip input
 
-- Уже было: `pendingDragPoint` + `dragFrame`
+**Фикс:**
 
----
-
-## Phase 2: Worker Message Optimization — ⚠️ ЧАСТИЧНО
-
-### 2.1 Не передавать source при каждом search — ❌ НЕ ВЫПОЛНЕНО
-
-**Файл:** `src/features/matrix/MatrixView.svelte`
-
-Worker возвращает `cells` (массив пар `[key, entryIndexes]`), `adapter.buildCellMap` пересоздаёт Map при каждом search.
-
-**Решение:** worker должен возвращать `Set<string>` (только ключи matched cells). `getVisibleCell` проверяет `cellByKey.has(key)` вместо пересоздания Map.
-
-**Примечание:** filter модифицирует ячейки (подмножество entries через `entryIndexes`). Компромисс — in-place update `cellByKeyInternal` Map вместо полной замены.
-
-### 2.2 Transferable ArrayBuffer — ❌ НЕ ВЫПОЛНЕНО
-
-**Файл:** `src/features/matrix/matrixWorkerClient.ts`
-
-Конвертировать `cells` в compact `keys`/`indexes` arrays перед `postMessage`.
-
-**Приоритет:** низкий. Основной win от Phase 0.
-
-### 2.3 Кэшировать `searchResultCache` дольше — ✅
-
-**Файл:** `src/features/matrix/MatrixView.svelte:62`
-
-- `SEARCH_CACHE_TTL_MS = 30_000` (30 секунд)
+1. Добавить `frequency: string | null` в `RoomSlotEntry` и `TeacherSlotEntry`.
+2. Заполнять из `lesson.frequency` при построении индекса (`scheduleStore.ts`, ~строки 564, 594).
+3. Пробрасывать через `MatrixTooltipInput` → `MatrixTooltipGroup`.
+4. Отображать в `formatTooltipGroup()` — добавить текст чет/нечет после номера подгруппы.
 
 ---
 
-## Phase 3: Analytics Memoization — ✅ ВЫПОЛНЕНО
+### B-3: ScheduleView показывает пары не той чётности
 
-### 3.1 `hierarchyCache` WeakMap — ✅
+**Симптом:** при выбранной неделе (например, нечётная) в таблице Расписание отображаются пары с `frequency: 'even'`, которые не должны идти на этой неделе.
 
-**Файл:** `src/features/analytics/analyticsIndex.ts:51-56`
+**Причина:** `applyLessonFilters` в `src/lib/schedule/filterLessons.ts` **не вызывает** `isLessonActiveForWeek` — фильтрует только по group, subgroup, type, search.
 
-### 3.2 Debounce search в AnalyticsView — ✅
+В матрицах (Rooms/Teachers) чётность работает правильно, потому что `roomOccupancyByWeek`/`teacherOccupancyByWeek` строятся с учётом `isLessonActiveForWeek`.
 
-**Файл:** `src/features/analytics/AnalyticsView.svelte:59, 79`
+**Файл:** `src/lib/schedule/filterLessons.ts`.
 
-### 3.3 Optimistic `setInput` — ✅
+**Фикс:** в `applyLessonFilters` добавить проверку:
 
-### 3.4 Optimistic `savingRows` / `saveStatus` — ✅
-
-### 3.5 Интервал `today` → 10 минут — ✅
-
-**Файл:** `src/features/analytics/AnalyticsView.svelte:72`
-
-- `600_000ms`
-
----
-
-## Phase 4: matrixFilter Optimization — ⚠️ ЧАСТИЧНО
-
-### 4.1 Кэш `roomSearchKeyCache` — ✅
-
-**Файл:** `src/features/matrix/matrixFilter.ts:12`
-
-### 4.2 Оптимизация `entryIndexes` accumulation — ❌ НЕ ВЫПОЛНЕНО
-
-**Файл:** `src/features/matrix/matrixFilter.ts`
-
-Текущий код создаёт промежуточные массивы через `Array.from()` при первом non-match. Оптимизация: два прохода — подсчёт matchCount, затем заполнение entryIndexes.
-
-### 4.3 `Object.keys` вместо `Object.entries` — ✅
-
-**Файл:** `src/features/matrix/matrixFilter.ts:93, 97, 143, 147`
-
----
-
-## Phase 5: ScheduleStore Index Optimization — ❌ НЕ НАЧАТО
-
-**Цель:** уменьшить время построения индекса и размер clone при передаче в worker.
-
-**Impact:** -50% startup time, -30% GC pressure.
-
-### 5.1 Lazy week-based index building
-
-**Файл:** `src/stores/scheduleStore.ts`
-
-Строить `roomOccupancyByWeek` / `teacherOccupancyByWeek` только для текущей недели. Остальные — по demand.
-
-### 5.2 Оптимизировать clone в `scheduleIndexWorker`
-
-**Файл:** `src/stores/scheduleIndexWorker.ts`
-
-Использовать Transferable для TypedArray.
-
-### 5.3 Кэшировать `roomCell`/`teacherCell` результаты
-
-**Файл:** `src/stores/scheduleStore.ts`
-
-Кэшировать по content hash, а не по ссылке на `entries`.
-
----
-
-## Phase 6: DOM Optimization — ❌ НЕ НАЧАТО
-
-**Цель:** уменьшить размер DOM и количество layout/paint.
-
-**Impact:** -30% Paint count, -20% Layout time.
-
-### 6.1 `content-visibility` на строки
-
-Уже описано в Phase 0.9.
-
-### 6.2 Снизить z-index на sticky ячейках
-
-**Файл:** `src/index.css:749, 758`
-
-Текущий `z-index: 24` → `z-index: 1`. Каждая sticky ячейка создаёт отдельный stacking context.
-
-### 6.3 Убрать `shadow-md` с `.slot-badge`
-
-**Файл:** `src/index.css:1158-1159`
-
-Badge 14×14px, shadow не заметен, но создаёт repaint.
-
----
-
-## Phase 7: GC Pressure Reduction — ❌ НЕ НАЧАТО
-
-**Цель:** уменьшить количество MajorGC и их длительность.
-
-**Impact:** -50% GC time, -20% frame drops.
-
-### 7.1 `searchResultCache` TTL — ✅ (выполнено в Phase 2.3)
-
-### 7.2 Переиспользовать `cellByKeyInternal` Map — ✅
-
-Map уже переиспользуется через `.clear()` + `.set()`.
-
-### 7.3 Batch state updates через microtask
-
-**Файл:** `src/features/matrix/MatrixView.svelte`
-
-Обновлять `columnMatch` через `queueMicrotask()` вместо прямого присваивания в `applyFilterResult`.
-
----
-
-## Phase 8: ScheduleView Optimization — ❌ НЕ НАЧАТО
-
-**Цель:** уменьшить DOM в ScheduleView при большом количестве уроков.
-
-**Impact:** -20% ScheduleView render time.
-
-### 8.1 `content-visibility` на строки ScheduleView
-
-**Файл:** `src/features/schedule/ScheduleView.svelte`
-
-```css
-.dense-table tbody tr {
-  content-visibility: auto;
-  contain-intrinsic-size: 0 2.5rem;
-}
+```ts
+if (!isLessonActiveForWeek(lesson, filters.week)) return false
 ```
 
 ---
 
-## Сводка выполнения
+## Функциональные требования (должны работать всегда)
 
-| Phase | Статус | Impact | Effort |
-|---|---|---|---|
-| 0 CSS Hot Path | ✅ 90% (кроме 0.9) | 🔴 Критический | 🟢 Низкий |
-| 1 MouseMove Throttling | ✅ 100% | 🔴 Высокий | 🟢 Низкий |
-| 2 Worker Messages | ⚠️ 33% (только 2.3) | 🟡 Средний | 🟡 Средний |
-| 3 Analytics Memoization | ✅ 100% | 🟡 Средний | 🟢 Низкий |
-| 4 matrixFilter | ⚠️ 66% (кроме 4.2) | 🟡 Средний | 🟢 Низкий |
-| 5 Store Index | ❌ 0% | 🟡 Средний | 🔴 Высокий |
-| 6 DOM Optimization | ❌ 0% | 🟡 Средний | 🟢 Низкий |
-| 7 GC Pressure | ⚠️ 66% (кроме 7.3) | 🟢 Низкий | 🟢 Низкий |
-| 8 ScheduleView | ❌ 0% | 🟢 Низкий | 🟢 Низкий |
+### FR-1: Недели и чётность
 
-**Общий прогресс: ~68%**
+- При выборе недели показываются **только** пары, соответствующие её чётности.
+- `frequency: 'even'` → только на чётных неделях (2, 4, 6...).
+- `frequency: 'odd'` → только на нечётных неделях (1, 3, 5...).
+- `frequency: 'weekly'` или `null` → на всех неделях.
+- Подгруппы отображаются с учётом активности на выбранной неделе.
+- Автоподбор текущей недели работает при загрузке и смене курса.
 
----
+### FR-2: Ghost text в поиске
 
-## Рекомендуемый порядок оставшейся работы
+- При вводе 1+ символов в поле поиска отображается серая подсказка (ghost text).
+- Подсказка показывает первое совпадение из кандидатов текущей вкладки.
+- Нажатие Tab или → заполняет input полным текстом подсказки.
+- Ghost text появляется через ~80ms после ввода (debounce).
+- Подсказка обновляется при смене вкладки.
 
-| # | Задача | Phase | Сложность |
-|---|---|---|---|
-| 1 | `content-visibility: auto` на строки матрицы | 0.9 | 🟢 |
-| 2 | Снизить z-index sticky ячеек | 6.2 | 🟢 |
-| 3 | Убрать shadow со `.slot-badge` | 6.3 | 🟢 |
-| 4 | `content-visibility` на ScheduleView | 8.1 | 🟢 |
-| 5 | Batch `columnMatch` через microtask | 7.3 | 🟢 |
-| 6 | Оптимизация `entryIndexes` в matrixFilter | 4.2 | 🟢 |
-| 7 | Worker compact Set вместо Map | 2.1 | 🟡 |
-| 8 | Transferable ArrayBuffer для worker | 2.2 | 🟡 |
-| 9 | Lazy week-based index building | 5.1 | 🔴 |
-| 10 | Кэшировать roomCell/teacherCell | 5.3 | 🔴 |
+### FR-3: Тултипы в матрицах
 
----
+- Тултип показывает: предмет, преподавателя/аудиторию, группу, подгруппу, тип пары, время.
+- Подгруппа отображается как "N пг" (или "1 пг, 2 пг" для совместных).
+- Информация о чётности недели видна в тултипе (чет/нечет/еженедельно).
 
-## Ожидаемый результат
+### FR-4: Навигация
 
-| Метрика | До | После Phase 0–4 | После всех Phase |
-|---|---|---|---|
-| AnimationFrame max | 1256ms | <200ms | <100ms |
-| AnimationFrame avg | 14.1ms | <8ms | <5ms |
-| MouseMove avg | 61.8ms | <15ms | <8ms |
-| Paint events | 30,933 | <10,000 | <5,000 |
-| Paint max | 70.5ms | <20ms | <10ms |
-| Long tasks >100ms | 37 | <5 | 0 |
-| Long task max | 1417ms | <200ms | <50ms |
-| HandlePostMessage avg | 187ms | <50ms | <20ms |
-| MajorGC avg | 25.8ms | <10ms | <5ms |
-| Layout avg | 4.6ms | <2ms | <1ms |
+- Четыре вкладки: Расписание, Аудитории, Преподаватели, Аналитика.
+- Переключение вкладки сохраняет фильтры.
+- Header sticky при прокрутке.
 
----
+### FR-5: Фильтры
 
-## Что НЕ меняется
+- Курс, группа, неделя, тип занятия, поиск — общие для всех вкладок.
+- Сброс фильтров возвращает UI в начальное состояние.
 
-- API endpoints и формат запросов/ответов
-- Логика фильтрации (group, type, search)
-- Google Sheets интеграция
-- SSE подписка
-- Кэширование в localStorage
-- DnD поведение (column reorder, group assign)
-- Tooltip content
-- Analytics plan-fact hierarchy (логика, не производительность)
-- ScheduleView отображение
-- Theme toggle
-- Auto-week selection
-- Search suggestion
+### FR-6: Данные
+
+- Расписание: `GET /api/v1/schedule?course=N`.
+- План-факт: `GET /api/v1/plan?course=N`, `PUT /api/v1/plan`.
+- SSE: `GET /api/v1/sse/schedule`.
+- Кеш в `localStorage`.
+- Курсы: 1, 2, 3, 4.
+
+### FR-7: Google Sheets
+
+- Клик по строке/ячейке открывает Google Sheet в именованном окне `rfict-sheet-{id}`.
+
+### FR-8: Аналитика
+
+- План-факт по курсам, предметам, группам, типам, подгруппам.
+- Редактирование done-значений с сохранением.
+- Экспорт в CSV.
+
+### FR-9: Тема
+
+- Dark/light переключение.
+- Состояние в `localStorage` (`rfict-theme`).
+- Класс `.dark` на `document.documentElement`.
+
+### FR-10: Сборка
+
+- `npm run build` без ошибок.
+- `npm run lint` без ошибок.
+- `npm run check` без ошибок TypeScript.
